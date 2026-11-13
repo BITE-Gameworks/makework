@@ -41,9 +41,22 @@ export async function cachedConversion(dir, hash, kind) {
 
 const exists = (file) => fs.access(file).then(() => true, () => false);
 
-const argsFor = (kind, input, output) => kind === "sound"
+const cpuEncoder = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20"];
+const gpuEncoder = ["-c:v", "h264_nvenc", "-preset", "p4", "-rc", "vbr", "-cq", "21", "-b:v", "0"];
+
+// NVIDIA's encoder when ffmpeg has it and it works on this computer (many times faster than libx264, and the CPU stays
+// free), else libx264. ffmpeg lists NVENC whether or not there is a card to run it, so it encodes one frame to find out.
+let encoder;
+function videoEncoder(ffmpeg) {
+  encoder ??= new Promise((resolve) =>
+    execFile(ffmpeg, ["-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i", "color=size=256x256", "-frames:v", "1", ...gpuEncoder, "-f", "null", "-"],
+      { timeout: 15000, windowsHide: true }, (error) => resolve(error ? cpuEncoder : gpuEncoder)));
+  return encoder;
+}
+
+const argsFor = (kind, input, output, videoArgs) => kind === "sound"
   ? ["-y", "-i", input, "-map", "0:a:0", "-vn", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", "-f", "mp4", output]
-  : ["-y", "-i", input, "-map", "0:v:0", "-map", "0:a:0?", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+  : ["-y", "-i", input, "-map", "0:v:0", "-map", "0:a:0?", ...videoArgs,
     "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", "-f", "mp4", output];
 
 const seconds = (h, m, s) => Number(h) * 3600 + Number(m) * 60 + Number(s);
@@ -57,10 +70,11 @@ export async function convert({ dir, hash, kind, input, onProgress, signal }) {
   const name = convertedName(hash, kind);
   // A part file of its own: two conversions of one video at once (two viewers) must not write into the same file.
   const part = path.join(dir, `${name}.${randomBytes(6).toString("hex")}.part`);
+  const videoArgs = kind === "video" ? await videoEncoder(ffmpeg) : [];
   let duration = 0;
   let log = "";
   const code = await new Promise((resolve, reject) => {
-    const child = spawn(ffmpeg, ["-hide_banner", "-nostats", "-progress", "pipe:1", ...argsFor(kind, input, part)], { windowsHide: true });
+    const child = spawn(ffmpeg, ["-hide_banner", "-nostats", "-progress", "pipe:1", ...argsFor(kind, input, part, videoArgs)], { windowsHide: true });
     const stop = () => child.kill("SIGKILL");
     signal?.addEventListener("abort", stop);
     child.stderr.on("data", (chunk) => {
@@ -107,12 +121,47 @@ async function prune(dir) {
 }
 
 // The sound's codec ("ac3", "dts", ...), or null for a file without sound.
+// The length in seconds (0 when ffmpeg can't tell) and whether the file has a picture and sound.
+export async function probeMedia(input) {
+  const ffmpeg = await findFfmpeg();
+  if (!ffmpeg) return null;
+  const log = await new Promise((resolve) =>
+    execFile(ffmpeg, ["-hide_banner", "-i", input], { timeout: 15000, windowsHide: true, maxBuffer: 4 * 1024 * 1024 }, (_error, _out, err) => resolve(String(err))));
+  const length = /Duration: (\d+):(\d+):(\d+(?:\.\d+)?)/.exec(log);
+  return {
+    duration: length ? seconds(length[1], length[2], length[3]) : 0,
+    picture: /Stream #\d+:\d+(?:[^:\d][^:]*)?: Video: /.test(log),
+    sound: /Stream #\d+:\d+(?:[^:\d][^:]*)?: Audio: /.test(log),
+  };
+}
+
 export async function probeSound(input) {
   const ffmpeg = await findFfmpeg();
   if (!ffmpeg) return null;
   const log = await new Promise((resolve) =>
     execFile(ffmpeg, ["-hide_banner", "-i", input], { timeout: 15000, windowsHide: true, maxBuffer: 4 * 1024 * 1024 }, (_error, _out, err) => resolve(String(err))));
   return /Stream #\d+:\d+(?:[^:\d][^:]*)?: Audio: ([\w-]+)/.exec(log)?.[1] ?? null;
+}
+
+// The video from `start` seconds on, converted as it plays: fragmented MP4 (H.264 and AAC) that a MediaSource takes
+// in as it arrives. Its timestamps start at 0; the page places them at `start` (ui/videoStream.ts). The CPU encoder
+// runs at its fastest preset and at most 1080p, so it keeps ahead of playback. Ends ffmpeg when the reader stops.
+export async function streamVideo(input, start) {
+  const ffmpeg = await findFfmpeg();
+  if (!ffmpeg) throw new Error("ffmpeg isn't installed on this computer.");
+  const gpu = (await videoEncoder(ffmpeg)) === gpuEncoder;
+  const from = Math.max(0, start);
+  const child = spawn(ffmpeg, [
+    "-hide_banner", "-loglevel", "error", "-ss", String(from), "-i", input, "-map", "0:v:0", "-map", "0:a:0?",
+    ...(gpu ? gpuEncoder : ["-c:v", "libx264", "-preset", "ultrafast", "-crf", "22", "-vf", "scale='min(1920,iw)':-2"]),
+    "-profile:v", "high", "-pix_fmt", "yuv420p", "-g", "60", "-c:a", "aac", "-ac", "2", "-b:a", "192k",
+    "-movflags", "frag_keyframe+empty_moov+default_base_moof", "-f", "mp4", "pipe:1",
+  ], { windowsHide: true, stdio: ["ignore", "pipe", "ignore"] });
+  const stop = () => child.kill("SIGKILL");
+  child.stdout.on("close", stop);
+  child.stdout.on("error", stop);
+  child.on("error", () => child.stdout.destroy());
+  return { stream: child.stdout, stop };
 }
 
 // The sound from `start` seconds on, decoded and encoded as it plays (AAC in ADTS, which plays while it arrives), so

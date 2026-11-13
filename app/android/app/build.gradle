@@ -16,8 +16,22 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Release builds are signed with the key in MAKEWORK_ANDROID_KEYSTORE (scripts/android.mjs). Every release must
+    // use the same key: Android only installs an update signed like the installed app.
+    def keystore = System.getenv("MAKEWORK_ANDROID_KEYSTORE")
+    if (keystore) {
+        signingConfigs {
+            release {
+                storeFile file(keystore)
+                storePassword System.getenv("MAKEWORK_ANDROID_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("MAKEWORK_ANDROID_KEY_ALIAS") ?: "makework"
+                keyPassword System.getenv("MAKEWORK_ANDROID_KEY_PASSWORD") ?: System.getenv("MAKEWORK_ANDROID_KEYSTORE_PASSWORD")
+            }
+        }
+    }
     buildTypes {
         release {
+            if (keystore) signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

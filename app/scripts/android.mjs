@@ -1,5 +1,7 @@
 // Builds the Android app into release/: Capacitor wraps the app's build (dist/, the one Electron loads too) in
-// android/. Debug-signed like the desktop packages are unsigned, so it installs on any phone that allows unknown apps.
+// android/. With MAKEWORK_ANDROID_KEYSTORE (and MAKEWORK_ANDROID_KEYSTORE_PASSWORD, optionally _KEY_ALIAS and
+// _KEY_PASSWORD) it is a release build signed with that key, the one releases use; without, a debug build signed with
+// this computer's debug key, which installs fine but can't update an app signed with another key.
 import { execFileSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -31,10 +33,14 @@ function android(version) {
   run("npm", ["run", "build:web"]);
   run("npx", ["cap", "sync", "android"]);
   const gradlew = process.platform === "win32" ? "gradlew.bat" : "./gradlew";
-  run(gradlew, ["assembleDebug", `-PappVersion=${version}`, `-PappVersionCode=${versionCode(version)}`], join(app, "android"));
+  const signed = !!process.env.MAKEWORK_ANDROID_KEYSTORE;
+  const task = signed ? "assembleRelease" : "assembleDebug";
+  run(gradlew, [task, `-PappVersion=${version}`, `-PappVersionCode=${versionCode(version)}`], join(app, "android"));
   mkdirSync(release, { recursive: true });
   const apk = join(release, `MakeWork-${version}.apk`);
-  cpSync(join(app, "android", "app", "build", "outputs", "apk", "debug", "app-debug.apk"), apk);
+  const built = signed ? join("release", "app-release.apk") : join("debug", "app-debug.apk");
+  cpSync(join(app, "android", "app", "build", "outputs", "apk", built), apk);
+  if (!signed) console.log("Signed with this computer's debug key (MAKEWORK_ANDROID_KEYSTORE isn't set).");
   console.log(`Built ${apk}`);
 }
 

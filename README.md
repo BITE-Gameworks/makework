@@ -23,6 +23,7 @@ code signed yet.
 - **Windows:** run `MakeWork-Setup-<version>.exe`. SmartScreen warns about an unknown publisher: More info > Run anyway.
 - **macOS:** `MakeWork-<version>-arm64.dmg` for Apple Silicon, `-x64` for Intel. Drag MakeWork to Applications. As it
   isn't notarized, the first start needs right-click > Open.
+- **Android:** install `MakeWork-<version>.apk` (allow installs from your browser or file manager when asked).
 - **Browser:** https://app.makework.dev.
 
 ## Building from source

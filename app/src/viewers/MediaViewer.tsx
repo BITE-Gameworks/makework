@@ -3,10 +3,10 @@ import type { FileContext } from "../plugins/types";
 import { Icon } from "../theme/icons";
 import { saveBlob } from "../ui/download";
 import VideoPlayer from "../ui/VideoPlayer";
-import { createObjectUrl } from "./content";
+import { createMediaUrl } from "./content";
 
 export function VideoViewer(props: { file: FileContext }) {
-  const url = createObjectUrl(props.file);
+  const url = createMediaUrl(props.file);
   return (
     <div class="media-viewer">
       <Show when={url()}>
@@ -23,7 +23,7 @@ export function VideoViewer(props: { file: FileContext }) {
 }
 
 export function AudioViewer(props: { file: FileContext }) {
-  const url = createObjectUrl(props.file);
+  const url = createMediaUrl(props.file);
   return (
     <div class="media-viewer audio">
       <Show when={url()}>{(src) => <audio src={src()} controls autoplay />}</Show>

@@ -69,6 +69,19 @@ let systemFfmpeg: Promise<boolean> | undefined;
 const hasSystemFfmpeg = () => (systemFfmpeg ??= desktop?.video?.hasFfmpeg().catch(() => false) ?? Promise.resolve(false));
 const convertedRef = (name: string) => `mwc://converted/${name}`;
 
+// Whether this computer converts with its own ffmpeg (desktop app): quick enough to start without asking.
+export const convertsNatively = () => hasSystemFfmpeg();
+
+// What the player needs to play `src` converted as it plays (ui/videoStream.ts): only content (known by its hash) on a
+// computer with its own ffmpeg, and only a file with a picture. Null otherwise.
+export async function streamInfo(src: string): Promise<{ hash: string; duration: number; sound: boolean } | null> {
+  const hash = keyOf(src);
+  const video = desktop?.video;
+  if (!hash || !video || !(await hasSystemFfmpeg())) return null;
+  const probe = await video.probe(hash).catch(() => null);
+  return probe?.picture ? { hash, duration: probe.duration, sound: probe.sound } : null;
+}
+
 // undefined when nothing was converted on this computer; null for sound when the file has none.
 async function systemCached(src: string, kind: Kind): Promise<string | null | undefined> {
   const hash = keyOf(src);

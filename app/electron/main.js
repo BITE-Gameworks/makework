@@ -907,6 +907,17 @@ function serveContent() {
       const type = name.endsWith(".m4a") ? "audio/mp4" : "video/mp4";
       return serveFile(request, file, size, { "Access-Control-Allow-Origin": appOrigin, "Accept-Ranges": "bytes", "Cache-Control": "no-store", "Content-Type": type });
     }
+    // mwc://stream/<hash>?t=<seconds>: a content file's video, converted by the computer's ffmpeg as it plays.
+    if (hostname === "stream") {
+      if (!/^[0-9a-f]{64}$/.test(name)) return new Response("Not found", { status: 404 });
+      const input = await findContent(name);
+      if (!input) return new Response("Not found", { status: 404 });
+      const { stream, stop } = await videoTools.streamVideo(input, Number(new URL(request.url).searchParams.get("t")) || 0);
+      request.signal?.addEventListener("abort", stop);
+      return new Response(Readable.toWeb(stream), {
+        status: 200, headers: { "Access-Control-Allow-Origin": appOrigin, "Cache-Control": "no-store", "Content-Type": "video/mp4" },
+      });
+    }
     // mwc://sound/<hash>?t=<seconds>: a content file's sound, decoded by the computer's ffmpeg as it plays.
     if (hostname === "sound") {
       if (!/^[0-9a-f]{64}$/.test(name)) return new Response("Not found", { status: 404 });
@@ -954,6 +965,7 @@ function serveFile(request, file, size, headers) {
 const convertedDir = () => path.join(localDir(), "converted");
 const conversions = new Map();
 ipcMain.handle("video:has-ffmpeg", async () => !!(await videoTools.findFfmpeg()));
+ipcMain.handle("video:probe", async (_event, hash) => videoTools.probeMedia(await requireContent(checkHash(hash))));
 ipcMain.handle("video:probe-sound", async (_event, hash) => videoTools.probeSound(await requireContent(checkHash(hash))));
 ipcMain.handle("video:cached", (_event, hash, kind) => videoTools.cachedConversion(convertedDir(), checkHash(hash), kind === "sound" ? "sound" : "video"));
 // Resolves with the result's name or "none"; progress goes to the page as "video:progress" (id, 0..1).

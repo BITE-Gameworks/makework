@@ -175,14 +175,15 @@ export default {
   ```js
   contributes: { viewers: [{ id: "csv", label: "Table", mimeTypes: ["text/csv"], extensions: ["csv"] }] },
   viewers: {
-    async csv(element, file) {          // file: { name, mimeType, size, read() -> Promise<Blob> }
+    async csv(element, file) {          // file: { name, mimeType, size, read() -> Promise<Blob>, src?() -> string | null }
       const text = await (await file.read()).text();
       element.textContent = `${text.split("\n").length} rows`;
     },
   },
   ```
 
-  Channel views open files with `context.openFile(file)`.
+  `src()`, when the file has one, is an address the content loads from directly (stream media from it rather than
+  reading the whole file). Channel views open files with `context.openFile(file)`.
 - **Styling:** use the theme variables so the view follows the user's theme: `--mw-accent`,
   `--mw-accent-text`, `--mw-text`, `--mw-text-muted`, `--mw-text-disabled`, `--mw-border`, `--mw-link`,
   `--mw-warning`, `--mw-success`, `--mw-light`, `--mw-dark`, `--mw-darker`, `--mw-font-ui`, `--mw-font-code`,

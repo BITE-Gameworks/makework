@@ -268,6 +268,9 @@ export interface DesktopBridge {
   // result's name for mwc://converted/<name>, or "none" for sound when the file has none.
   video?: {
     hasFfmpeg(): Promise<boolean>;
+    // Length in seconds (0 when unknown) and which streams the file has; mwc://stream/<hash>?t=<seconds> streams it
+    // converted as it plays.
+    probe(hash: string): Promise<{ duration: number; picture: boolean; sound: boolean } | null>;
     // The sound's codec, or null when the file has none; mwc://sound/<hash>?t=<seconds> streams it decoded.
     probeSound(hash: string): Promise<string | null>;
     cached(hash: string, kind: "sound" | "video"): Promise<string | null>;
