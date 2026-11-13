@@ -231,6 +231,9 @@ export interface FileContext {
   size: number;
   // The content; fetched once, on first call.
   read(): Promise<Blob>;
+  // An address the page can load the content from directly (mwc://content/<hash> on desktop), so media streams and
+  // is known by its hash (converted copies are kept per hash); null while there is none.
+  src?(): string | null;
   // Set when the file can be edited in place; the viewer then offers an Edit button.
   edit?(): void;
   // More buttons in the viewer's header (Start a watch party).

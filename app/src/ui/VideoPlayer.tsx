@@ -1,11 +1,13 @@
 // Every <video> that plays a file (chat attachments, linked video files, the file viewer). Some formats only play
 // with hardware decoding (HEVC/H.265 on Linux: Chromium uses VA-API on Intel and AMD only), and then the element
-// plays the sound with no picture or stays blank; this says why, offers to convert it in the app (core/videoConvert.ts)
-// and another way to watch it.
-import { Show, createSignal, onCleanup, type JSX } from "solid-js";
+// plays the sound with no picture or stays blank. With the computer's own ffmpeg (desktop app) it plays the video while
+// ffmpeg converts it (ui/videoStream.ts) and keeps a converted copy for next time (core/videoConvert.ts); without, it
+// says why and offers to convert it in the page, or another way to watch it.
+import { Show, batch, createEffect, createSignal, onCleanup, type JSX } from "solid-js";
 import { userMessage } from "../api/client";
 import { Icon } from "../theme/icons";
 import { createSoundFix } from "./videoSound";
+import { canStream, streamVideo, type StreamInfo } from "./videoStream";
 import VolumeSlider from "../voice/VolumeSlider";
 import "./VideoPlayer.css";
 
@@ -17,26 +19,58 @@ export default function VideoPlayer(props: {
   fallback?: JSX.Element;
 }) {
   const [failure, setFailure] = createSignal<Failure | null>(null);
+  const [video, setVideo] = createSignal<HTMLVideoElement>();
   // The H.264 copy, once converted (or converted before on this computer).
   const [copy, setCopy] = createSignal<string | null>(null);
   const [progress, setProgress] = createSignal<number | null>(null);
   const [convertError, setConvertError] = createSignal("");
+  // Converting by itself, with the computer's own ffmpeg: shown as getting ready rather than as a failure.
+  const [preparing, setPreparing] = createSignal(false);
   let converting: AbortController | undefined;
   onCleanup(() => converting?.abort());
   const src = () => copy() ?? props.src;
+  // Played while the computer's ffmpeg converts it, until a converted copy is kept.
+  const [streaming, setStreaming] = createSignal<StreamInfo | null>(null);
   const formatFailed = () => {
+    if (streaming()) return streamFailed("This video couldn't be played.");
     setFailure({ kind: "format", detail: "" });
-    if (!copy()) void import("../core/videoConvert").then((m) => m.convertedUrl(props.src)).then((url) => url && play(url)).catch(() => {});
+    if (copy()) return;
+    void import("../core/videoConvert").then(async (m) => {
+      const url = await m.convertedUrl(props.src);
+      if (url) return play(url);
+      const info = await m.streamInfo(props.src);
+      if (info && canStream(info.sound)) {
+        batch(() => {
+          setStreaming(info);
+          setFailure(null);
+          setAttempt((n) => n + 1);
+        });
+        // A copy for next time, made beside the stream.
+        void m.convertVideo(props.src, () => {}, new AbortController().signal).catch(() => {});
+      } else if (await m.convertsNatively()) await convert(true);
+    }).catch(() => {});
   };
+  const streamFailed = (message: string) => {
+    setStreaming(null);
+    setFailure({ kind: "format", detail: "" });
+    setConvertError(message);
+  };
+  createEffect(() => {
+    const element = video();
+    const info = streaming();
+    if (!element || !info) return;
+    onCleanup(streamVideo(element, info, streamFailed));
+  });
   const play = (url: string) => {
     setCopy(url);
     setFailure(null);
     setAttempt((n) => n + 1);
   };
-  const convert = async () => {
+  const convert = async (automatic = false) => {
     converting = new AbortController();
     const signal = converting.signal;
     setConvertError("");
+    setPreparing(automatic);
     setProgress(0);
     try {
       const { convertVideo } = await import("../core/videoConvert");
@@ -45,10 +79,10 @@ export default function VideoPlayer(props: {
       if (!signal.aborted) setConvertError(userMessage(e));
     } finally {
       setProgress(null);
+      setPreparing(false);
     }
   };
-  const [video, setVideo] = createSignal<HTMLVideoElement>();
-  const sound = createSoundFix(video, src);
+  const sound = createSoundFix(video, () => (streaming() ? null : src()));
   // Bumped by "Try again" to make a new element.
   const [attempt, setAttempt] = createSignal(0);
   let safetyRetries = 0;
@@ -86,16 +120,23 @@ export default function VideoPlayer(props: {
     <Show when={!failure()} fallback={
       <div class="video-unplayable mw-fade-in">
         <Icon name="play" size={28} />
-        <strong>{failure()!.kind === "format" ? "MakeWork's player can't play this video" : "Couldn't load this video"}</strong>
-        <span class="hint">
-          {failure()!.kind === "format"
-            ? "The app plays video with its own built-in decoders, not your system's, and they don't cover this format (often HEVC/H.265 from phones). Players like mpv or VLC use your system's codecs."
-            : failure()!.detail}
-        </span>
+        <Show when={preparing()} fallback={
+          <>
+            <strong>{failure()!.kind === "format" ? "MakeWork's player can't play this video" : "Couldn't load this video"}</strong>
+            <span class="hint">
+              {failure()!.kind === "format"
+                ? "The app plays video with its own built-in decoders, not your system's, and they don't cover this format (often HEVC/H.265 from phones). Players like mpv or VLC use your system's codecs."
+                : failure()!.detail}
+            </span>
+          </>
+        }>
+          <strong>Getting this video ready</strong>
+          <span class="hint">The app's player can't decode this format, so your computer's ffmpeg makes a copy it can play. Next time it plays at once.</span>
+        </Show>
         <Show when={convertError()}><span class="warning">{convertError()}</span></Show>
         <Show when={progress() !== null}>
           <div class="video-convert-progress mw-fade-in" role="progressbar" aria-valuenow={Math.round(progress()! * 100)}>
-            <span>Converting {Math.round(progress()! * 100)}%</span>
+            <span>{preparing() ? "Preparing" : "Converting"} {Math.round(progress()! * 100)}%</span>
             <div class="video-convert-bar mw-box"><div style={{ transform: `scaleX(${progress()})` }} /></div>
           </div>
         </Show>
@@ -115,7 +156,7 @@ export default function VideoPlayer(props: {
       </div>
     }>
       <Show when={attempt() + 1} keyed>
-        <video ref={setVideo} src={src()} controls playsinline autoplay={props.autoplay} preload={props.preload ?? "metadata"}
+        <video ref={setVideo} src={streaming() ? undefined : src()} controls playsinline autoplay={props.autoplay} preload={props.preload ?? "metadata"}
           width={props.width} height={props.height}
           onLoadedData={(e) => checkPicture(e.currentTarget)}
           onError={(e) => onError(e.currentTarget)} />

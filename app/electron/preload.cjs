@@ -208,6 +208,7 @@ contextBridge.exposeInMainWorld("makeworkDesktop", {
   },
   video: {
     hasFfmpeg: () => ipcRenderer.invoke("video:has-ffmpeg"),
+    probe: (hash) => ipcRenderer.invoke("video:probe", hash),
     probeSound: (hash) => ipcRenderer.invoke("video:probe-sound", hash),
     cached: (hash, kind) => ipcRenderer.invoke("video:cached", hash, kind),
     convert: (id, hash, kind) => ipcRenderer.invoke("video:convert", id, hash, kind),

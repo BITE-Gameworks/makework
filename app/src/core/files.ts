@@ -1,7 +1,7 @@
 // The file open in the full-window viewer, if any.
 import { createSignal } from "solid-js";
 import type { FileContext } from "../plugins/types";
-import { contentBlob, contentRef, deleteContent, expectDelivery, markFinished, refHash, uploadToNode } from "./content";
+import { contentBlob, contentRef, contentUrl, deleteContent, expectDelivery, markFinished, refHash, uploadToNode } from "./content";
 import { minStripeBytes } from "../p2p/pieces";
 import { workspaceApi } from "./workspaces";
 import { isAbort, storeFile, type StoreOptions } from "./stream";
@@ -29,6 +29,7 @@ export function fileFromUrl(name: string, mimeType: string, size: number, url: s
       content = undefined;
       throw e;
     })),
+    src: () => contentUrl(url),
   };
 }
 
