@@ -66,13 +66,23 @@ In `app/`; everything goes to `app/release/`.
 | `npm run build:win` | NSIS installer | Windows (from Linux only with wine) |
 | `npm run build:mac` | dmg for this Mac's processor | macOS |
 | `npm run build:desktop` | this system's default targets | |
-| `npm run build:android` | `.apk` (debug-signed) | JDK 21 and the Android SDK, `ANDROID_HOME` set |
+| `npm run build:android` | `MakeWork-<version>.apk` (below) | JDK 21 and the Android SDK (platform 36), `ANDROID_HOME` set |
 | `npm run build:browser` | the browser version to host (`dist/`), without ffmpeg.wasm (over Cloudflare Pages' 25 MiB file limit) | |
 
 electron-builder packages only the `build.files` whitelist in `package.json`: a new file the main process imports must
-be added there, and tests stay out of it. Nothing is code signed: Windows shows SmartScreen's warning, macOS gets an
+be added there, and tests stay out of it. The desktop packages aren't code signed: Windows shows SmartScreen's warning, macOS gets an
 ad-hoc signature. The Android app is a Capacitor wrapper of the web build (`capacitor.config.json`, `app/android/`); no
-iOS build, which needs a Mac. Icons come from `app/resources/icon.svg` (`app/scripts/icon.sh`).
+iOS build, which needs a Mac.
+
+The APK is signed with the release key when `MAKEWORK_ANDROID_KEYSTORE` names it (with
+`MAKEWORK_ANDROID_KEYSTORE_PASSWORD`, and `MAKEWORK_ANDROID_KEY_ALIAS` when it isn't `makework`), else with this
+computer's debug key. Android installs an update only when it is signed like the installed app, so every published
+APK must use the release key: losing it means people have to uninstall to update. The release workflow takes it from
+the repository's secrets `ANDROID_KEYSTORE` (the keystore, base64), `ANDROID_KEYSTORE_PASSWORD` and
+`ANDROID_KEY_ALIAS`. Without the Android Studio IDE, the SDK comes from Google's command line tools:
+`sdkmanager --sdk_root=$ANDROID_HOME "platform-tools" "platforms;android-36" "build-tools;36.0.0"`.
+
+Icons come from `app/resources/icon.svg` (`app/scripts/icon.sh`).
 
 ## Versions and releases
 
@@ -87,7 +97,7 @@ npm run bump_version -- major    # 1.2.8 -> 2.0.0
 
 To release, push a tag with the current version (`git tag v1.2.7 && git push origin v1.2.7`).
 `.github/workflows/release.yml` builds every package on GitHub's Linux, Windows and macOS runners (macOS for Intel and
-Apple Silicon) and puts them in a draft release with the node (`makework-node.tar.gz`), the servers
+Apple Silicon) and the APK, and puts them in a draft release with the node (`makework-node.tar.gz`), the servers
 (`makework-user-server.tar.gz`, `makework-turn-server.tar.gz`, without MakeWork's own settings) and `latest.json`.
 Started by hand from the Actions tab, it keeps the files as the run's artifacts. Desktop apps read `latest.json` at
 start and every 6 hours and offer an update when it names a newer version, so publish it after the packages.
