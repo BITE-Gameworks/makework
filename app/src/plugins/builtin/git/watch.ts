@@ -1,0 +1,119 @@
+// Watching version control channels' remotes for new commits, so people know about a change without asking:
+// - an open channel checks every 60 s (and when the window comes back): a working copy on this device by fetching
+//   (which never touches local branches or files), a GitHub/GitLab channel through its API with ETags;
+// - in the background, every 5 minutes, channels with a working copy on this device that aren't open.
+// On a change: a note in the view or a desktop notification, and the channel's history is brought up to date.
+import { workspaceApi, workspaces } from "../../../core/workspaces";
+import { can } from "../../../core/roles";
+import { desktop } from "../../../core/desktop";
+import { openChannel } from "../../../core/navigation";
+import { isLooking, notify } from "../../../core/notifier";
+import { loadRepo, readerHere, workingCopies } from "./data";
+import { importRepo } from "./importer";
+import { gitCall } from "./local";
+
+export const openCheckMs = 60_000;
+export const backgroundCheckMs = 5 * 60_000;
+
+export interface RemoteChange {
+  branch: string;
+  // New commits, when known (a fetch counts them; a host's branch list only says the head moved).
+  count: number | null;
+  isNew: boolean;
+}
+
+// Branches whose head moved, and new ones, between what the channel has and what the remote says.
+export function compareHeads(known: { name: string; head: string }[], fresh: { name: string; head: string }[]): RemoteChange[] {
+  const before = new Map(known.map((b) => [b.name, b.head]));
+  return fresh.filter((b) => before.get(b.name) !== b.head).map((b) => ({ branch: b.name, count: null, isNew: !before.has(b.name) }));
+}
+
+export function describeChanges(changes: RemoteChange[]): string {
+  return changes.map((c) => c.isNew ? `new branch ${c.branch}`
+    : c.count === null ? `new commits on ${c.branch}` : `${c.count} new ${c.count === 1 ? "commit" : "commits"} on ${c.branch}`).join(", ");
+}
+
+// Runs `check` every `everyMs` and when the window gets focus (at most every `minGapMs`), never two at once.
+export function repeat(check: () => Promise<void>, everyMs: number,
+  options: { focus?: EventTarget; minGapMs?: number } = {}): () => void {
+  const focus = options.focus ?? (typeof window === "undefined" ? undefined : window);
+  const minGapMs = options.minGapMs ?? 15_000;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let checking = false;
+  let stopped = false;
+  let last = 0;
+  const run = async () => {
+    if (checking || stopped) return;
+    checking = true;
+    clearTimeout(timer);
+    try {
+      await check();
+    } catch (e) {
+      console.warn("Watching the repository failed:", e);
+    } finally {
+      checking = false;
+      last = Date.now();
+      if (!stopped) timer = setTimeout(() => void run(), everyMs);
+    }
+  };
+  const onFocus = () => {
+    if (Date.now() - last >= minGapMs) void run();
+  };
+  last = Date.now();
+  timer = setTimeout(() => void run(), everyMs);
+  focus?.addEventListener("focus", onFocus);
+  return () => {
+    stopped = true;
+    clearTimeout(timer);
+    focus?.removeEventListener("focus", onFocus);
+  };
+}
+
+// Brings a channel's history up to date if this member may (a GitHub/GitLab channel from the host, a local one from
+// the folder on this device); used after a change was seen. Errors are left to the caller.
+export async function importLatest(workspaceId: string, channelId: number): Promise<number> {
+  if (!workspaces.byId[workspaceId] || !can(workspaceId, "edit_content")) return 0;
+  const api = workspaceApi(workspaceId).plugin("git");
+  const repo = await loadRepo(api, channelId);
+  if (!repo) return 0;
+  const here = await readerHere(workspaceId, channelId, repo);
+  if (!here) return 0;
+  return (await importRepo(api, channelId, here.reader, "update")).added;
+}
+
+// Channels open in a view check themselves; the background leaves them alone.
+const watchedByView = new Set<string>();
+export function viewWatching(workspaceId: string, channelId: number): () => void {
+  const key = `${workspaceId}:${channelId}`;
+  watchedByView.add(key);
+  return () => watchedByView.delete(key);
+}
+
+export function channelName(workspaceId: string, channelId: number): string {
+  const server = workspaces.byId[workspaceId];
+  const channel = server?.channels.find((c) => c.id === channelId);
+  return channel ? `#${channel.name}${server?.info.name ? ` (${server.info.name})` : ""}` : "a version control channel";
+}
+
+let started = false;
+// Started once from the plugin; only in the desktop app, where working copies exist.
+export function startBackgroundWatch(): void {
+  if (started || !desktop?.git || typeof window === "undefined") return;
+  started = true;
+  repeat(async () => {
+    for (const { workspaceId, channelId, folder } of workingCopies()) {
+      if (watchedByView.has(`${workspaceId}:${channelId}`) || !workspaces.byId[workspaceId]) continue;
+      try {
+        const changes = (await gitCall((git) => git.fetch(folder))).filter((c) => c.count > 0);
+        if (!changes.length) continue;
+        const text = describeChanges(changes.map((c) => ({ branch: c.branch, count: c.count, isNew: c.from === null })));
+        if (!isLooking(workspaceId, channelId))
+          notify({ tag: `git:${workspaceId}:${channelId}`, title: `New commits in ${channelName(workspaceId, channelId)}`, body: text,
+            onClick: () => openChannel(workspaceId, channelId) });
+        await importLatest(workspaceId, channelId).catch((e) => console.warn("History not updated:", e));
+      } catch (e) {
+        console.warn(`Watching ${folder} failed:`, e);
+      }
+    }
+  }, backgroundCheckMs, { minGapMs: backgroundCheckMs });
+}

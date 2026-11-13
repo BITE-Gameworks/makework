@@ -1,0 +1,17 @@
+{
+  "name": "@trystero-p2p/core",
+  "version": "0.26.0",
+  "description": "Trystero's core 0.26.0 with fixes for passive rooms sharing a connection (see README.md)",
+  "license": "MIT",
+  "author": {
+    "name": "Dan Motzenbecker",
+    "email": "dan@oxism.com",
+    "url": "https://oxism.com"
+  },
+  "type": "module",
+  "types": "./lib/index.d.mts",
+  "exports": {
+    ".": "./lib/index.mjs",
+    "./package.json": "./package.json"
+  }
+}

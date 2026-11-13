@@ -1,0 +1,26 @@
+{
+  "id": "makework-oled",
+  "name": "MakeWork OLED",
+  "author": "MakeWork",
+  "extends": "makework-dark",
+  "scheme": "dark",
+  "colors": {
+    "accent": "#2fbfa5",
+    "accentText": "#000000",
+    "text": "#cfcfcf",
+    "textMuted": "#8a8a8a",
+    "textDisabled": "#5a5a5a",
+    "border": "#4a4a4a",
+    "link": "#5aa9e6",
+    "warning": "#e0604c",
+    "success": "#4caf7a",
+    "danger": "#f44336",
+    "light": "#000000",
+    "dark": "#000000",
+    "darker": "#000000"
+  },
+  "border": { "width": 1, "outlines": true },
+  "shadow": { "panel": "none", "popup": "none" },
+  "shape": { "corners": "rounded", "size": 6 },
+  "layout": { "gap": 6, "margin": 16 }
+}

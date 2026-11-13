@@ -1,0 +1,36 @@
+# mwt-app: one image for the shared Vite dev server (`vite`) and every test client (`client`, Electron under Xvfb).
+# Built by up.sh with the repository root as context: podman build -f mesh-test/Containerfile --ignorefile mesh-test/containerignore .
+FROM docker.io/library/node:22-bookworm
+
+# Xvfb + Electron's runtime libraries, socat for the two port forwards, certutil to trust the test CA. python3-pip:
+# mediasoup's prebuilt worker needs a newer glibc than bookworm's, so its postinstall builds the worker here (the
+# node image takes that binary).
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      xvfb xauth socat tini libnss3-tools curl ca-certificates iproute2 procps python3-pip \
+      libgtk-3-0 libnss3 libnspr4 libxss1 libasound2 libgbm1 libxshmfence1 libdrm2 libxkbcommon0 libxkbfile1 \
+      libatk1.0-0 libatk-bridge2.0-0 libatspi2.0-0 libcups2 libx11-xcb1 libxcomposite1 libxdamage1 libxrandr2 \
+      libxtst6 libpango-1.0-0 libcairo2 libdbus-1-3 libsecret-1-0 fonts-liberation fonts-dejavu-core \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY app/package.json app/package-lock.json ./
+# Trystero's core is installed from here (patched, app/vendor/trystero-core/README.md).
+COPY app/vendor/ ./vendor/
+# package.json's postinstall runs it (removes adblock-rs's Cargo build folder).
+COPY app/scripts/clean-modules.mjs ./scripts/clean-modules.mjs
+RUN PIP_BREAK_SYSTEM_PACKAGES=1 npm ci --no-audit --no-fund
+# Electron 44's package fetches its binary on first use instead of at install; fetch it now.
+RUN node node_modules/electron/install.js && test -x "node_modules/electron/dist/$(cat node_modules/electron/path.txt)"
+
+# The app as it is in the working tree (node_modules, dist and release are excluded by containerignore).
+COPY app/ ./
+# Test-only Vite config: pre-bundles every dependency at start, so no page reloads itself mid-test.
+COPY mesh-test/infra/vite.mwt.config.ts ./vite.mwt.config.ts
+COPY mesh-test/tools/ /mwt-tools/
+COPY mesh-test/entrypoint.sh /usr/local/bin/mwt-entrypoint
+
+ARG GIT_SHA=unknown
+ENV MWT_GIT_SHA=$GIT_SHA
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/mwt-entrypoint"]
+CMD ["client"]

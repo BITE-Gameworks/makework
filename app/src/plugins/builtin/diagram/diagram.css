@@ -1,0 +1,611 @@
+.diagram {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.diagram-body {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.diagram-side-closed:not(.narrow-pane) {
+  display: none;
+}
+
+.diagram-side {
+  position: relative;
+  display: flex;
+  flex: none;
+  width: calc(var(--mw-channel-bar-width) * 0.95);
+  min-width: 0;
+}
+
+.diagram-library,
+.diagram-properties {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: calc(var(--mw-margin) / 2);
+  min-width: 0;
+  padding: calc(var(--mw-margin) / 2);
+  overflow-y: auto;
+  background: var(--mw-dark);
+}
+
+.diagram-library {
+  border-right: var(--mw-border-width) solid var(--mw-darker);
+}
+
+.diagram-properties {
+  border-left: var(--mw-border-width) solid var(--mw-darker);
+}
+
+.diagram-export {
+  display: grid;
+  padding-top: calc(var(--mw-margin) / 2);
+  border-top: var(--mw-border-width) solid var(--mw-darker);
+}
+
+.diagram-group-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--mw-margin) / 2);
+  width: 100%;
+  margin-top: calc(var(--mw-margin) / 2);
+}
+
+.diagram-export-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.diagram-page-settings {
+  display: grid;
+  gap: calc(var(--mw-margin) / 3);
+  margin-top: auto;
+  padding-top: calc(var(--mw-margin) / 2);
+  border-top: var(--mw-border-width) solid var(--mw-darker);
+}
+
+.diagram-page-setting-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: calc(var(--mw-margin) / 2);
+  min-height: 30px;
+  color: var(--mw-text-muted);
+}
+
+.diagram-search {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: calc(var(--mw-margin) / 2);
+  padding: calc(var(--mw-margin) / 4) calc(var(--mw-margin) / 2);
+  color: var(--mw-text-muted);
+}
+
+.diagram-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--mw-text);
+  font: inherit;
+  outline: none;
+}
+
+.diagram-library-items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mw-margin);
+}
+
+/* Shapes, Flow, UML, ER relationships: a titled group each. */
+.diagram-library-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* A section's header opens and closes it (ui/Disclosure). */
+.diagram-library-title {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: calc(var(--mw-margin) / 2);
+  color: var(--mw-text-muted);
+  font-size: 0.85em;
+  font-weight: 600;
+}
+
+.diagram-library-section-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: 4px;
+}
+
+.diagram-library-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 56px;
+  padding: 4px 2px;
+  border: var(--mw-border-width) solid transparent;
+  background: var(--mw-darker);
+  color: var(--mw-text);
+  text-align: center;
+  cursor: grab;
+}
+
+.diagram-library-item:hover:not(:disabled) {
+  border-color: var(--mw-accent);
+}
+
+/* The connector kind new connectors are drawn with. */
+.diagram-library-item.active {
+  border-color: var(--mw-accent);
+  color: var(--mw-accent);
+}
+
+/* The item's name, and under it what it is for. */
+.diagram-library-text {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font-size: 0.8em;
+  line-height: 1.15;
+}
+
+.diagram-library-item:disabled {
+  opacity: 0.55;
+}
+
+.diagram-stage {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+.diagram-board {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  background-color: var(--mw-darker);
+  background-image: radial-gradient(circle, color-mix(in srgb, var(--mw-border) 45%, transparent) 1px, transparent 1.5px);
+  background-size: 24px 24px;
+  cursor: default;
+  touch-action: none;
+  user-select: none;
+  outline: none;
+}
+
+.diagram-board[style*="--diagram-grid: 0"] {
+  background-image: none;
+}
+
+.diagram-board.panning {
+  cursor: grab;
+}
+
+.diagram-board.dragging {
+  cursor: grabbing;
+}
+
+.diagram-board.connect-mode {
+  cursor: crosshair;
+}
+
+.diagram-world {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+}
+
+.diagram-wires {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.diagram-wires path.diagram-edge-hit {
+  pointer-events: stroke;
+  cursor: pointer;
+}
+
+.diagram-wires path.diagram-edge-visible {
+  pointer-events: none;
+}
+
+.diagram-wires path.diagram-edge-visible.selected {
+  stroke: var(--mw-accent);
+}
+
+.diagram-edge-handle {
+  box-shadow: 0 0 0 2px var(--mw-dark);
+  position: absolute;
+  z-index: 4;
+  width: 12px;
+  height: 12px;
+  margin: -6px;
+  padding: 0;
+  border: 2px solid var(--mw-accent);
+  border-radius: 50%;
+  background: var(--mw-light);
+  cursor: move;
+  pointer-events: auto;
+}
+
+.diagram-edge-bend {
+  position: absolute;
+  z-index: 4;
+  width: 10px;
+  height: 10px;
+  margin: -5px;
+  padding: 0;
+  border: 1px solid var(--mw-light);
+  border-radius: 2px;
+  background: var(--mw-accent);
+  cursor: move;
+  pointer-events: auto;
+  transform: rotate(45deg);
+}
+
+.diagram-edge-bend.x {
+  cursor: ew-resize;
+}
+
+.diagram-edge-bend.y {
+  cursor: ns-resize;
+}
+
+.diagram-preview-wire {
+  fill: none;
+  stroke: var(--mw-accent);
+  stroke-dasharray: 6 4;
+  stroke-width: 2;
+}
+
+.diagram-edge-label {
+  fill: var(--mw-text);
+  font: inherit;
+  text-anchor: middle;
+}
+
+/* A multiplicity or role next to a connector's end (render.ts endLabelPoint places it). */
+.diagram-edge-label.end {
+  dominant-baseline: central;
+  font-size: 0.85em;
+}
+
+.diagram-shape {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  animation: diagram-shape-in var(--mw-duration) var(--mw-ease);
+}
+
+.diagram-shape.selected::after {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  border: 1px solid var(--mw-accent);
+  content: "";
+  pointer-events: none;
+}
+
+@keyframes diagram-shape-in {
+  from { opacity: 0; }
+}
+
+.diagram-shape-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.diagram-shape-text {
+  position: relative;
+  z-index: 1;
+  max-width: 100%;
+  padding: calc(var(--mw-margin) / 4);
+  overflow-wrap: anywhere;
+  color: var(--shape-text-color);
+  font-size: var(--shape-font-size);
+  text-align: center;
+  white-space: pre-wrap;
+  pointer-events: none;
+}
+
+.diagram-shape-icon {
+  position: absolute;
+  inset: 12%;
+  width: 76%;
+  height: 76%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.diagram-port {
+  position: absolute;
+  z-index: 2;
+  width: 10px;
+  height: 10px;
+  margin: -5px;
+  padding: 0;
+  border: 1px solid var(--mw-light);
+  border-radius: 50%;
+  background: var(--mw-accent);
+  opacity: 0;
+  cursor: crosshair;
+  pointer-events: none;
+  transition: opacity var(--mw-duration) var(--mw-ease);
+}
+
+.diagram-shape.selected .diagram-port,
+.diagram-shape.hovered .diagram-port {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.diagram-port.n { left: 50%; top: 0; }
+.diagram-port.e { left: 100%; top: 50%; }
+.diagram-port.s { left: 50%; top: 100%; }
+.diagram-port.w { left: 0; top: 50%; }
+.diagram-port.c { left: 50%; top: 50%; }
+
+.diagram-text-input {
+  position: relative;
+  z-index: 3;
+  width: 90%;
+  height: 80%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--shape-text-color);
+  font: inherit;
+  font-size: var(--shape-font-size);
+  text-align: center;
+  resize: none;
+  outline: 1px solid var(--mw-accent);
+  user-select: text;
+}
+
+.diagram-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.diagram-connect-hint {
+  position: absolute;
+  z-index: 5;
+  top: var(--mw-margin);
+  left: 50%;
+  padding: calc(var(--mw-margin) / 3) calc(var(--mw-margin) / 2);
+  border-radius: var(--mw-radius);
+  background: var(--mw-dark);
+  color: var(--mw-text);
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+.diagram-band {
+  position: absolute;
+  transform-origin: center;
+  border: var(--mw-border-width) dashed var(--mw-accent);
+  background: color-mix(in srgb, var(--mw-accent) 12%, transparent);
+  z-index: 100;
+  pointer-events: none;
+}
+
+.diagram-resize {
+  pointer-events: none;
+}
+
+.diagram-quick {
+  position: absolute;
+  z-index: 4;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  border: var(--mw-border-width) solid var(--mw-accent);
+  border-radius: var(--mw-radius);
+  background: var(--mw-accent);
+  color: var(--mw-accent-text);
+  font: inherit;
+  cursor: pointer;
+  pointer-events: auto;
+  opacity: 0;
+  transition: opacity var(--mw-duration) var(--mw-ease) 450ms;
+}
+
+.diagram-shape.selected:hover .diagram-quick,
+.diagram-quick:hover {
+  opacity: 1;
+  transition-delay: 0s;
+}
+
+.diagram-quick.n { left: 50%; top: 0; transform: translate(-50%, calc(-100% - var(--mw-margin) / 4)); }
+.diagram-quick.e { left: 100%; top: 50%; transform: translate(calc(var(--mw-margin) / 4), -50%); }
+.diagram-quick.s { left: 50%; top: 100%; transform: translate(-50%, calc(var(--mw-margin) / 4)); }
+.diagram-quick.w { left: 0; top: 50%; transform: translate(calc(-100% - var(--mw-margin) / 4), -50%); }
+
+.diagram-properties h3 {
+  margin: 0;
+  color: var(--mw-text);
+  font-size: 1em;
+}
+
+.diagram-property {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--mw-text-muted);
+}
+
+.diagram-property textarea {
+  min-height: 4em;
+  resize: vertical;
+}
+
+.diagram-property .mw-color-picker-trigger {
+  width: 100%;
+  min-height: 30px;
+  padding: 2px;
+}
+
+.diagram-grid-toggle {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--mw-margin) / 2);
+  color: var(--mw-text-muted);
+}
+
+.diagram-clear-background {
+  justify-self: stretch;
+  min-height: 30px;
+}
+
+.diagram-page-color {
+  width: 100%;
+  min-width: 0;
+  min-height: 30px;
+  padding: 2px;
+}
+
+.diagram-edge-arrows {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: calc(var(--mw-margin) / 2);
+}
+
+.diagram-align {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding-top: calc(var(--mw-margin) / 2);
+  border-top: var(--mw-border-width) solid var(--mw-darker);
+}
+
+.diagram-align > span {
+  flex-basis: 100%;
+}
+
+.diagram-delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--mw-margin) / 2);
+  color: var(--mw-danger);
+}
+
+.diagram-inspector-empty,
+.diagram-empty {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  padding: var(--mw-margin);
+  color: var(--mw-text-disabled);
+  text-align: center;
+}
+
+.diagram-readonly {
+  position: absolute;
+  left: 50%;
+  bottom: var(--mw-margin);
+  margin: 0;
+  padding: calc(var(--mw-margin) / 4) calc(var(--mw-margin) / 2);
+  border-radius: var(--mw-radius);
+  background: var(--mw-dark);
+  color: var(--mw-text-muted);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+/* A class or table: its SVG draws the name and rows, so the plain shape text is hidden; the name is typed in the
+   header, a row on its own line (StructuredEditors.tsx). */
+.diagram-shape.structured > .diagram-shape-text {
+  display: none;
+}
+
+.diagram-shape.structured > .diagram-text-input {
+  position: absolute;
+  top: 0;
+  left: 5%;
+  height: 30px;
+  font-weight: 600;
+}
+
+.diagram-row-input {
+  position: absolute;
+  left: 4px;
+  z-index: 3;
+  width: calc(100% - 8px);
+  padding: 0 4px;
+  border: var(--mw-border-width) solid var(--mw-accent);
+  background: var(--mw-darker);
+  color: var(--mw-text);
+  font: inherit;
+  font-size: min(var(--shape-font-size), 13px);
+}
+
+/* The panel's rows: each a field with its marks, order and removal under it. */
+.diagram-rows {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--mw-margin) / 2);
+}
+
+.diagram-rows-title {
+  color: var(--mw-text-muted);
+  font-size: 0.85em;
+  font-weight: 600;
+}
+
+.diagram-row-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.diagram-row-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+}
+
+.diagram-row-mark {
+  min-height: 0;
+  padding: 0 6px;
+  font-size: 0.8em;
+}
+
+.diagram-row-mark.active {
+  border-color: var(--mw-accent);
+  color: var(--mw-accent);
+}
+
+/* The page's name while it is renamed, in place of the page picker (same padding). */
+.diagram-page-name {
+  width: 14em;
+  min-width: 0;
+  padding: 0.3em 0.5em;
+}

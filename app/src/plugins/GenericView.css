@@ -1,0 +1,83 @@
+.generic-view {
+  max-width: 900px;
+  padding: calc(var(--mw-margin) * 2);
+}
+
+.generic-view h2 {
+  margin: 0;
+  color: var(--mw-accent);
+  font-weight: 500;
+}
+
+.generic-view h3 {
+  margin: 0 0 8px;
+  font-weight: 500;
+}
+
+.generic-view > h3 {
+  margin-top: 24px;
+}
+
+.generic-section {
+  padding: var(--mw-margin);
+  margin-top: var(--mw-margin);
+  background: var(--mw-dark);
+}
+
+.generic-section > p {
+  margin: 0 0 8px;
+}
+
+.generic-table-wrap {
+  overflow-x: auto;
+}
+
+.generic-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.generic-table th,
+.generic-table td {
+  padding: 4px 8px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.generic-table th {
+  color: var(--mw-text-disabled);
+  font-weight: 500;
+  border-bottom: 1px solid var(--mw-light);
+}
+
+.generic-table tbody tr:hover {
+  background: var(--mw-light);
+}
+
+.generic-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 12px;
+  margin-top: 10px;
+}
+
+.generic-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.generic-result {
+  flex-basis: 100%;
+  margin: 0;
+  padding: 8px 10px;
+  max-height: 240px;
+  overflow: auto;
+  background: var(--mw-darker);
+  animation: mw-fade-in var(--mw-duration) var(--mw-ease);
+}
+
+.muted {
+  color: var(--mw-text-disabled);
+}

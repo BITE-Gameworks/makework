@@ -1,0 +1,49 @@
+/* A switch's track and thumb. Sizes follow the UI font size (em), colors follow the theme. */
+
+.mw-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mw-switch button {
+  position: relative;
+  width: 2.6em;
+  height: 1.5em;
+  padding: 0;
+  border: none;
+  border-radius: 1.5em;
+  background: var(--mw-light);
+  cursor: pointer;
+  transition: background var(--mw-duration) var(--mw-ease);
+}
+
+.mw-switch.on button {
+  background: var(--mw-accent);
+}
+
+.mw-switch.disabled button {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.mw-switch-thumb {
+  position: absolute;
+  top: 0.15em;
+  left: 0.15em;
+  width: 1.2em;
+  height: 1.2em;
+  border-radius: 50%;
+  background: var(--mw-dark);
+  transform: translateX(0);
+  transition: transform var(--mw-duration) var(--mw-ease);
+}
+
+.mw-switch.on .mw-switch-thumb {
+  transform: translateX(1.1em);
+  background: var(--mw-accent-text);
+}
+
+.mw-switch-label {
+  margin: 0;
+}

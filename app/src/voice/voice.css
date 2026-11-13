@@ -1,0 +1,1279 @@
+/* Buttons */
+
+.voice-button {
+  display: grid;
+  place-items: center;
+  height: 34px;
+  min-width: 34px;
+  padding: 0 8px;
+  background: var(--mw-light);
+  color: var(--mw-text);
+  border: var(--mw-border-width) solid transparent;
+}
+
+.voice-button:hover {
+  border-color: var(--mw-accent);
+}
+
+.voice-button.plain {
+  background: none;
+  color: var(--mw-accent);
+  border: none;
+}
+
+.voice-button.on {
+  color: var(--mw-accent);
+}
+
+.voice-button.danger,
+.voice-button.hang-up {
+  background: var(--mw-warning);
+  color: var(--mw-darker);
+}
+
+.voice-button.hang-up.wide {
+  flex: 1;
+  min-width: 48px;
+}
+
+.voice-split {
+  display: flex;
+  height: 34px;
+  background: var(--mw-light);
+  border: var(--mw-border-width) solid transparent;
+}
+
+.voice-split:hover {
+  border-color: var(--mw-accent);
+}
+
+.voice-split.off .voice-split-main {
+  color: var(--mw-warning);
+}
+
+.voice-split.on .voice-split-main {
+  color: var(--mw-accent);
+}
+
+.voice-split-main {
+  display: grid;
+  place-items: center;
+  padding: 0 4px 0 8px;
+  color: var(--mw-text);
+}
+
+.voice-split-menu {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding: 0 4px;
+  color: var(--mw-text-muted);
+}
+
+.voice-split-menu:hover {
+  color: var(--mw-text);
+}
+
+.voice-menu-anchor {
+  position: relative;
+}
+
+.voice-menu-anchor .mw-popover {
+  min-width: 220px;
+  left: auto;
+  right: -8px;
+}
+
+/* Call panel, bottom left */
+
+/* Floats over the bottom of both bars, with a gap around it even in themes whose bars have none. Out of a call it is
+   just the avatar with the settings button under it; in a call it spans both bars, the avatar and settings button
+   keeping the left column. */
+.voice-panel {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: auto;
+  grid-template-areas: "avatar" "gear";
+  justify-items: center;
+  gap: 6px;
+  margin: max(var(--mw-gap), 6px);
+  padding: 8px 6px;
+  background: var(--mw-dark);
+  border-radius: var(--mw-radius);
+  clip-path: var(--mw-clip);
+  box-shadow: var(--mw-shadow-popup);
+  view-transition-name: user-box;
+}
+
+/* Out of a call it sits centered in the server bar: 36px avatar plus 4px padding on each side. */
+.voice-panel:not(.in-call) {
+  --idle-left: max(4px, calc((var(--mw-workspace-bar-width) - 44px) / 2));
+  width: 44px;
+  margin-left: var(--idle-left);
+  padding: 6px 4px;
+}
+
+/* No side padding here, or the gear makes the box wider than the 44px it is centered by. */
+.voice-panel:not(.in-call) .voice-panel-gear {
+  padding: 0;
+}
+
+:root[data-workspace-bar="floating"] .voice-panel:not(.in-call) {
+  margin-left: calc(var(--mw-gap) + var(--idle-left));
+}
+
+.voice-panel.in-call {
+  right: 0;
+  container: voice-panel / inline-size;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas: "avatar who" "gear call";
+  column-gap: 8px;
+  justify-items: stretch;
+}
+
+/* Kept at the picture's size: stretched to a taller row (the stacked layout in a narrow box), it carried the status
+   dot below the picture. */
+.voice-panel-avatar {
+  position: relative;
+  grid-area: avatar;
+  display: grid;
+  justify-self: center;
+  align-self: start;
+  border-radius: var(--mw-radius);
+  transition: transform var(--mw-duration) var(--mw-ease);
+  view-transition-name: user-avatar;
+}
+
+.voice-panel-avatar:hover {
+  transform: scale(1.06);
+}
+
+/* In a call it lines up with the bottom row of buttons. */
+.voice-panel-gear {
+  grid-area: gear;
+  align-self: end;
+  justify-self: center;
+  view-transition-name: user-gear;
+}
+
+.voice-panel-call {
+  grid-area: call;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+::view-transition-group(user-box),
+::view-transition-group(user-avatar),
+::view-transition-group(user-gear) {
+  animation-duration: var(--mw-duration);
+  animation-timing-function: var(--mw-ease);
+}
+
+/* The box's snapshots keep their size and stay anchored bottom left while the box grows or shrinks around them. */
+::view-transition-image-pair(user-box) {
+  overflow: hidden;
+}
+
+::view-transition-old(user-box),
+::view-transition-new(user-box) {
+  height: 100%;
+  object-fit: none;
+  object-position: left bottom;
+}
+
+.voice-panel-who {
+  grid-area: who;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.voice-panel-names {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.voice-panel-name {
+  font-size: 1.15em;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.voice-panel-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.voice-panel-channel {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--mw-accent);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.voice-panel-channel:hover {
+  text-decoration: underline;
+}
+
+/* --level (0 to 1) comes from the microphone meter. */
+/* The level shows like a meter, without a transition: one would run while anyone speaks, and each of its frames is
+   work for the page (mesh-test s14). */
+.voice-meter {
+  display: grid;
+  color: var(--mw-text-disabled);
+  opacity: calc(0.4 + var(--level, 0) * 0.6);
+}
+
+/* Speaking indicators change color by fading in a copy on top: an opacity transition runs without the page, a color
+   one makes the page draw every frame (mesh-test s14: a call of 8 drew every frame while anyone spoke). */
+.voice-meter > * {
+  grid-area: 1 / 1;
+}
+
+.voice-meter-lit {
+  color: var(--mw-accent);
+  opacity: 0;
+  transition: opacity var(--mw-duration) var(--mw-ease);
+}
+
+.voice-meter.speaking .voice-meter-lit {
+  opacity: 1;
+}
+
+/* Equal columns, whatever each button holds. The groups dissolve so every button is a cell of the same grid. */
+.voice-panel-controls {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 4px;
+}
+
+.voice-panel-group {
+  display: contents;
+}
+
+.voice-panel-controls .voice-split {
+  min-width: 0;
+}
+
+.voice-panel-controls .voice-split-main {
+  flex: 1;
+}
+
+/* Below one row's width: mic and headset on top, camera and screen share at the bottom next to the settings
+   button, hang up spanning both. */
+@container voice-panel (max-width: 300px) {
+  .voice-panel-status {
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+
+  /* Two equal columns in both rows, so the middle line runs straight; hang up spans both rows. */
+  .voice-panel-controls {
+    grid-auto-flow: row;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  }
+
+  .voice-panel-group.devices > * {
+    order: -1;
+  }
+
+  .voice-panel-group .voice-split-main {
+    padding: 0 2px 0 4px;
+  }
+
+  .voice-panel-group .voice-split-menu {
+    padding: 0 2px;
+  }
+
+  .voice-panel-controls .hang-up {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+    height: auto;
+    min-width: 64px;
+    --mw-icon-size: 1.85em;
+  }
+}
+
+.voice-error {
+  margin: 0;
+  font-size: 0.9em;
+}
+
+.voice-panel-connecting {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 0.9em;
+  color: var(--mw-text-muted);
+}
+
+/* Lobby and tiles */
+
+.voice-lobby {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  height: 100%;
+  padding: 24px;
+}
+
+.voice-lobby h2 {
+  margin: 0;
+  color: var(--mw-text-disabled);
+  font-size: 2em;
+  font-weight: 500;
+}
+
+.voice-join {
+  font-size: 1.15em;
+  padding: 0.5em 1.2em;
+}
+
+.voice-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+.voice-tiles.big {
+  align-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 24px;
+  overflow: hidden;
+}
+
+.shell.narrow .voice-tiles.big {
+  padding: calc(var(--mw-margin) / 2);
+}
+
+.voice-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 140px;
+  height: 110px;
+  background: var(--mw-dark);
+  border: var(--mw-border-width) solid transparent;
+  overflow: hidden;
+  transition: border-color var(--mw-duration) var(--mw-ease);
+}
+
+.voice-tile.large {
+  width: var(--tile-w, 260px);
+  height: var(--tile-h, 180px);
+  gap: min(8px, calc(var(--tile-h, 180px) / 20));
+}
+
+
+.voice-tile-name {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--mw-text-muted);
+}
+
+.voice-tile-name .mw-icon {
+  color: var(--mw-warning);
+}
+
+.voice-camera {
+  width: 100%;
+  height: calc(100% - 28px);
+  object-fit: cover;
+}
+
+/* Stage */
+
+.voice-stage {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--mw-light);
+}
+
+.voice-stage-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+}
+
+.voice-stage-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.voice-stage-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.15em;
+  color: var(--mw-text-muted);
+}
+
+.voice-connecting {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--mw-text-muted);
+  white-space: nowrap;
+}
+
+/* Stage top bar: every camera and shared screen as a live thumbnail; click one to show it large. */
+.voice-thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  max-width: 60%;
+  padding: 4px;
+  background: var(--mw-darker);
+}
+
+.voice-thumb {
+  position: relative;
+  display: grid;
+  border: var(--mw-border-width) solid transparent;
+}
+
+/* The speaking ring fades in on top (see .voice-meter-lit). A feed clips what overflows it, so its ring sits inside. */
+.voice-thumb::after,
+.voice-feed::after {
+  content: "";
+  position: absolute;
+  inset: calc(-1 * var(--mw-border-width));
+  border: var(--mw-border-width) solid var(--mw-accent);
+  border-radius: inherit;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--mw-duration) var(--mw-ease);
+}
+
+.voice-feed::after {
+  inset: 0;
+}
+
+.voice-thumb.speaking::after,
+.voice-feed.speaking:not(.active)::after {
+  opacity: 1;
+}
+
+.voice-stage-main {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: 1;
+  min-height: 0;
+  background: var(--mw-darker);
+}
+
+/* Fills the stage and letterboxes, so tall captures (portrait monitors) fit too. */
+.voice-screen {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.voice-screen.hidden {
+  display: none;
+}
+
+.voice-stage-note {
+  max-width: 420px;
+  text-align: center;
+}
+
+.voice-stage-controls {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px;
+}
+
+.voice-stage-controls .voice-button,
+.voice-stage-controls .voice-split {
+  height: 42px;
+}
+
+.voice-stage-controls .voice-button {
+  min-width: 56px;
+}
+
+.voice-stage-controls .voice-button.hang-up.wide {
+  flex: none;
+  min-width: 68px;
+}
+
+.voice-fullscreen {
+  position: absolute;
+  bottom: calc(var(--mw-margin) / 2);
+  right: calc(var(--mw-margin) / 2);
+  z-index: 2;
+  min-width: 42px;
+  height: 42px;
+}
+
+/* Narrow: the controls wrap. */
+.shell.narrow .voice-stage-controls {
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: calc(var(--mw-margin) / 2 + 4px);
+}
+
+.shell.narrow .voice-stage-controls .voice-button {
+  min-width: 44px;
+}
+
+.voice-stage:fullscreen .voice-stage-header {
+  padding-top: 12px;
+}
+
+/* voice/SpeakerName */
+.speaker-name {
+  position: relative;
+  color: var(--mw-text-muted);
+}
+
+/* The bright copy fades in on top while speaking (see .voice-meter-lit), cut off where the name is. */
+.speaker-name-lit {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  text-overflow: inherit;
+  color: var(--mw-text);
+  opacity: 0;
+  pointer-events: none;
+  user-select: none;
+  transition: opacity var(--mw-duration) var(--mw-ease);
+}
+
+.speaker-name.speaking .speaker-name-lit {
+  opacity: 1;
+}
+
+/* No connection to this member yet: the name pulses in the warning color (opacity only), smoothly for its first
+   seconds, then in two steps a second apart: a smooth endless pulse makes the window draw on every frame for as long
+   as a member stays unconnected. */
+.speaker-name.unconnected {
+  color: var(--mw-warning);
+  animation: speaker-unconnected 1.2s var(--mw-ease) 8 alternate, speaker-unconnected 2s steps(2, jump-none) 9.6s infinite;
+}
+
+.speaker-name.unconnected .speaker-name-lit {
+  color: var(--mw-warning);
+}
+
+@keyframes speaker-unconnected {
+  from { opacity: 0.4; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .speaker-name.unconnected {
+    animation: none;
+  }
+}
+
+/* Saving power (core/power.ts): no endless pulse, the warning color says it. */
+:root[data-power="saving"] .speaker-name.unconnected {
+  animation: none;
+}
+
+/* Participants under a voice channel in the sidebar */
+
+/* Columns shared by every row so avatars and state icons line up: avatar, name, state. */
+.voice-members {
+  display: grid;
+  grid-template-columns: auto minmax(0, auto) 1.15em;
+  justify-content: end;
+  column-gap: 4px;
+  margin: 0;
+  padding: 0 10px 2px;
+  list-style: none;
+}
+
+.voice-member {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  align-items: center;
+  font-size: 0.85em;
+  color: var(--mw-text-muted);
+  transition: color var(--mw-duration) var(--mw-ease);
+}
+
+/* A member still loading: blocks where the avatar and name go (Skeleton.css pulses them). */
+.voice-member-loading-avatar {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+}
+
+.voice-member-loading {
+  grid-column: 2;
+  width: 5em;
+  height: 0.8em;
+  justify-self: center;
+}
+
+/* Centered between the avatar and the state column; the column is as wide as the longest name. The line is trimmed to
+   the capitals and the baseline, so the letters (not the room the font keeps for descenders) are centered on the
+   avatar; the padding gives descenders back their room inside the clip. */
+.voice-member-name {
+  text-align: center;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-box: trim-both cap alphabetic;
+  padding-block: 0.25em;
+}
+
+.voice-member-name .speaker-name-lit {
+  text-box: inherit;
+  padding-block: inherit;
+}
+
+.voice-member .voice-state {
+  grid-column: 3;
+}
+
+/* Muted or deafened icon, or the speaking dot, in the same spot. */
+.voice-state {
+  display: inline-grid;
+  place-items: center;
+  width: 1.15em;
+  height: 1.15em;
+  color: var(--mw-warning);
+}
+
+/* Grows with the speaker's volume; only transform and opacity change, many times a second. */
+.voice-dot {
+  position: relative;
+  width: 0.6em;
+  height: 0.6em;
+  border-radius: 50%;
+  background: var(--mw-text-disabled);
+  transform: scale(0.5);
+  transition: transform var(--mw-duration) var(--mw-ease), background-color var(--mw-duration) var(--mw-ease);
+}
+
+/* The speaking color fades in on top (see .voice-meter-lit); muted for you, both are the warning color. */
+.voice-dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--mw-success);
+  opacity: 0;
+  transition: opacity var(--mw-duration) var(--mw-ease);
+}
+
+/* While speaking the size follows the level like a meter (see .voice-meter); it shrinks smoothly when speech stops. */
+.voice-dot.on {
+  transform: scale(calc(0.6 + var(--level, 0) * 0.9));
+  transition: background-color var(--mw-duration) var(--mw-ease);
+}
+
+.voice-dot.on::after {
+  opacity: 1;
+}
+
+.voice-dot.muted,
+.voice-dot.muted::after {
+  background: var(--mw-warning);
+}
+
+.voice-dot.muted:not(.on) {
+  transform: scale(0.6);
+}
+
+.voice-state-button {
+  padding: 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.voice-state-button:hover .voice-dot:not(.on) {
+  transform: scale(0.7);
+}
+
+/* Volume sliders (mic menu, member tiles) */
+.voice-volume {
+  display: grid;
+  grid-template-columns: var(--voice-volume-label, auto) 1fr 3.2em;
+  align-items: center;
+  gap: 8px;
+  min-width: 220px;
+}
+
+.voice-volume-label {
+  color: var(--mw-text-muted);
+  font-size: 0.9em;
+}
+
+.voice-volume input {
+  width: 100%;
+}
+
+.voice-volume-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.9em;
+}
+
+.mw-menu-extra {
+  padding: 8px 10px 4px;
+  border-top: var(--mw-border-width) solid var(--mw-darker);
+  margin-top: 4px;
+}
+
+.voice-feed {
+  position: relative;
+  display: grid;
+  width: 120px;
+  height: 68px;
+  padding: 0;
+  overflow: hidden;
+  border: var(--mw-border-width) solid transparent;
+  background: var(--mw-dark);
+  cursor: pointer;
+  transition: border-color var(--mw-duration) var(--mw-ease);
+}
+
+.voice-feed.active {
+  border-color: var(--mw-text);
+}
+
+.voice-feed-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.voice-feed-wait {
+  display: grid;
+  place-items: center;
+  color: var(--mw-text-disabled);
+}
+
+.voice-feed-label {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: calc(100% - 8px);
+  padding: 1px 5px;
+  overflow: hidden;
+  border-radius: var(--mw-radius);
+  background: var(--mw-darker);
+  font-size: 0.75em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.voice-show-all {
+  margin-left: 8px;
+  font-size: 0.85em;
+}
+
+.voice-tile-volume {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  opacity: 0;
+  transition: opacity var(--mw-duration) var(--mw-ease);
+}
+
+.voice-tile:hover .voice-tile-volume,
+.voice-tile-volume:focus-within {
+  opacity: 1;
+}
+
+.voice-volume-popover {
+  padding: 10px 12px;
+}
+
+/* Waiting for the camera or screen picker. */
+.voice-button:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+
+.voice-diagnostics {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+}
+
+.voice-diagnostics h3 {
+  margin: 8px 0 0;
+  font-size: 1em;
+  font-weight: 500;
+}
+
+/* Newest first, so what came just before a silence is in view; the last 60 are kept (voice/activity.ts). */
+.voice-call-events {
+  max-height: 16em;
+  overflow-y: auto;
+  margin: 0;
+  padding-left: var(--mw-margin);
+  font-family: var(--mw-font-code);
+  font-size: 0.85em;
+  color: var(--mw-text-muted);
+}
+
+/* Settings > Voice */
+/* Sliders, choices and the meter all share one width. */
+.voice-settings {
+  --voice-settings-width: 480px;
+}
+
+.voice-settings .voice-volume {
+  grid-template-columns: 7.5em minmax(0, 1fr) 3.2em;
+  max-width: var(--voice-settings-width);
+}
+
+.voice-settings h3 {
+  margin: 18px 0 6px;
+  font-size: 1em;
+  font-weight: 500;
+}
+
+.voice-settings-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: var(--voice-settings-width);
+}
+
+.voice-settings-choice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: var(--mw-border-width) solid transparent;
+  background: var(--mw-darker);
+  cursor: pointer;
+}
+
+.voice-settings-choice.selected {
+  border-color: var(--mw-accent);
+}
+
+.voice-settings-choice > input {
+  flex: none;
+  margin: 0;
+}
+
+.voice-settings-choice > span {
+  display: flex;
+  flex-direction: column;
+}
+
+.voice-settings-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0;
+}
+
+/* Push to talk: the chosen key, and the row that listens for the next one. */
+.voice-settings-key {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 6px;
+  max-width: var(--voice-settings-width);
+}
+
+.voice-settings-key-label {
+  margin-right: auto;
+}
+
+.voice-key-button {
+  min-width: 8em;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.voice-key-button.capturing {
+  border-color: var(--mw-accent);
+  color: var(--mw-accent);
+}
+
+.voice-sensitivity {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  max-width: var(--voice-settings-width);
+  gap: 6px;
+  align-items: center;
+}
+
+.voice-sensitivity.manual {
+  grid-template-columns: minmax(0, 1fr) 4em;
+}
+
+.voice-sensitivity-meter {
+  position: relative;
+  height: 12px;
+  overflow: hidden;
+  background: var(--mw-darker);
+}
+
+.voice-sensitivity.manual .voice-sensitivity-meter {
+  grid-column: 1 / -1;
+}
+
+.voice-sensitivity-fill {
+  position: absolute;
+  inset: 0;
+  background: var(--mw-text-disabled);
+  transform-origin: 0 50%;
+  transition: transform 60ms linear;
+}
+
+.voice-sensitivity-meter.speaking .voice-sensitivity-fill {
+  background: var(--mw-accent);
+}
+
+.voice-sensitivity-mark {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--mw-text);
+}
+
+.voice-sensitivity input {
+  width: 100%;
+  accent-color: var(--mw-accent);
+}
+
+.voice-sensitivity-value {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.9em;
+  text-align: right;
+}
+
+.voice-settings-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+/* Share picker: screens and windows with a picture of each, then sound options. */
+.voice-share {
+  width: min(460px, calc(100vw - 2 * var(--mw-margin)));
+}
+
+.voice-sources {
+  max-height: min(420px, 60vh);
+  overflow-y: auto;
+}
+
+.voice-source-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 8px;
+  padding: 0 8px 8px;
+}
+
+.voice-source {
+  display: grid;
+  gap: 4px;
+  padding: 4px;
+  min-width: 0;
+  background: var(--mw-light);
+  border: var(--mw-border-width) solid transparent;
+  color: var(--mw-text);
+  text-align: left;
+}
+
+.voice-source:hover,
+.voice-source:focus-visible {
+  border-color: var(--mw-accent);
+}
+
+.voice-source img,
+.voice-source-empty {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
+  background: var(--mw-darker);
+}
+
+.voice-source-empty {
+  display: grid;
+  place-items: center;
+  color: var(--mw-text-disabled);
+}
+
+.voice-source-name {
+  overflow: hidden;
+  font-size: 0.85em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Sound shared without a picture: a visualizer around the sharer's picture, filling the stage. */
+.voice-sound-share {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* The visualizer draws the ring on a square canvas sized to it (SoundVisualizer sets its size), centred here. */
+.voice-sound-share .voice-visualizer {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+}
+
+/* The ambient glow behind the ring, brightening with the bass: a layer whose opacity the visualizer sets (opacity is
+   composited), not a gradient painted on the canvas on every frame. */
+.voice-sound-share-glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, color-mix(in srgb, var(--mw-accent) 45%, transparent), transparent);
+  opacity: 0.22;
+  pointer-events: none;
+  will-change: opacity;
+}
+
+.voice-sound-share-center {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.voice-sound-share-footer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: var(--mw-margin);
+  display: grid;
+  justify-items: center;
+  gap: calc(var(--mw-margin) / 2);
+}
+
+/* Standing at the right edge, centered top to bottom. */
+.voice-sound-share-volume {
+  position: absolute;
+  top: 50%;
+  right: var(--mw-margin);
+  padding: calc(var(--mw-margin) / 2);
+  background: var(--mw-light);
+  transform: translateY(-50%);
+}
+
+.voice-sound-share-volume.hover {
+  z-index: 2;
+  opacity: 0;
+  transition: opacity var(--mw-duration) var(--mw-ease);
+}
+
+.voice-stage-main:hover .voice-sound-share-volume.hover,
+.voice-sound-share-volume.hover:focus-within {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .voice-sound-share-volume.hover {
+    opacity: 1;
+  }
+}
+
+.voice-volume.vertical {
+  grid-template-columns: auto;
+  justify-items: center;
+  min-width: 0;
+}
+
+/* The track's length stands up; the horizontal slider inside is turned to fill it. */
+.voice-volume-upright {
+  position: relative;
+  width: 16px;
+  height: 160px;
+}
+
+.voice-volume-upright input {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 160px;
+  transform: translate(-50%, -50%) rotate(-90deg);
+}
+
+/* Share: picture and sound toggles in one box. On ones are red, like the other button that ends something; starting
+   ones pulse. */
+.voice-share-button .voice-split-main,
+.voice-share-button .voice-split-menu {
+  transition: background-color var(--mw-duration) var(--mw-ease), color var(--mw-duration) var(--mw-ease);
+}
+
+.voice-share-button .on,
+.voice-share-button .on:hover {
+  height: 100%;
+  background: var(--mw-warning);
+  color: var(--mw-darker);
+}
+
+/* Smooth for its first seconds, then in steps (see .speaker-name.unconnected). */
+.voice-share-button .starting {
+  animation: voice-share-starting 1.2s var(--mw-ease) 8 alternate, voice-share-starting 2s steps(2, jump-none) 9.6s infinite;
+}
+
+@keyframes voice-share-starting {
+  from { opacity: 1; }
+  to { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voice-share-button .starting {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
+:root[data-power="saving"] .voice-share-button .starting {
+  animation: none;
+  opacity: 0.6;
+}
+
+/* The picture button takes the room left of the sound button, like the main part of the dropdown buttons. */
+.voice-share-button .voice-menu-anchor {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+
+/* The running share's menu with the other screens and windows in a panel on its right. */
+.voice-sharing {
+  display: flex;
+  align-items: flex-start;
+  max-width: calc(100vw - 2 * var(--mw-margin));
+}
+
+.voice-switch {
+  width: min(360px, 50vw);
+  border-left: var(--mw-border-width) solid var(--mw-border);
+}
+
+.voice-switch .voice-source-grid {
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+}
+
+/* A running share's popover (the picture button while sharing): stop it, then its stream quality. */
+.voice-quality {
+  display: grid;
+  width: min(300px, calc(100vw - 2 * var(--mw-margin)));
+  padding-bottom: calc(var(--mw-margin) / 2);
+}
+
+.voice-quality > * + * {
+  margin-top: calc(var(--mw-margin) / 2);
+}
+
+/* Menu items hide their icon unless selected (it is a check mark there); "Stop sharing" shows its own. */
+.voice-quality .mw-menu-item .mw-icon {
+  visibility: visible;
+}
+
+/* A note keeps its space inside its Collapse, so it opens and closes without a jump. */
+.voice-quality > .mw-collapse {
+  margin-top: 0;
+}
+
+.voice-quality-field {
+  display: grid;
+  grid-template-columns: 6.5em minmax(0, 1fr);
+  align-items: center;
+  gap: calc(var(--mw-margin) / 2);
+  padding: 0 calc(var(--mw-margin) / 2);
+}
+
+.voice-quality-field input {
+  width: 100%;
+}
+
+/* The bitrate slider's reading, under the slider (the empty first cell keeps it in the control's column). */
+.voice-quality-reading > :last-child {
+  color: var(--mw-text-muted);
+  font-size: 0.85em;
+  font-variant-numeric: tabular-nums;
+}
+
+.voice-quality > .voice-quality-line {
+  margin: calc(var(--mw-margin) / 2) 0 0;
+  padding: 0 calc(var(--mw-margin) / 2);
+  color: var(--mw-text-muted);
+  font-size: 0.9em;
+  font-variant-numeric: tabular-nums;
+}
+
+.voice-quality .mw-menu-note {
+  margin: calc(var(--mw-margin) / 2) calc(var(--mw-margin) / 2) 0;
+}
+
+.voice-visualizer {
+  display: block;
+  width: 100%;
+  height: 100%;
+  color: var(--mw-accent);
+}
+
+/* The sharer's picture fills the visualizer's ring, cut to its circle; scaled with the bass by the visualizer. */
+.voice-sound-share-avatar {
+  display: grid;
+  clip-path: circle(50%);
+  will-change: transform;
+}
+
+.voice-party-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--mw-text-muted);
+}
+
+.voice-party-thumb .voice-feed-wait {
+  color: var(--mw-accent);
+}

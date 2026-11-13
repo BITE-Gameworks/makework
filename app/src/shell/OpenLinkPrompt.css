@@ -1,0 +1,16 @@
+.open-link-prompt {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mw-margin);
+}
+
+.open-link-prompt .hint {
+  margin: 0;
+}
+
+.open-link-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: calc(var(--mw-margin) / 2);
+}

@@ -1,0 +1,282 @@
+.auth {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding: calc(var(--mw-margin) * 2);
+  overflow: auto;
+  background: var(--mw-light);
+}
+
+.auth-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: min(400px, 100%);
+  padding: calc(var(--mw-margin) * 7 / 3);
+  background: var(--mw-dark);
+  box-shadow: var(--mw-shadow-panel);
+  -webkit-app-region: no-drag;
+}
+
+.auth-title {
+  margin: 0;
+  color: var(--mw-accent);
+  font-size: 2em;
+  font-weight: 500;
+  text-align: center;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.auth-form h2 {
+  margin: 0;
+  font-size: 1.2em;
+  font-weight: 500;
+}
+
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.auth-field > span {
+  color: var(--mw-text-muted);
+  font-size: 0.9em;
+}
+
+.auth-field .mw-input.invalid {
+  border-color: var(--mw-warning);
+}
+
+.auth-submit,
+.auth-google {
+  justify-content: center;
+  padding: 0.55em 0.8em;
+}
+
+.auth-google {
+  background: var(--mw-darker);
+}
+
+.auth-google-logo {
+  width: 1.15em;
+  height: 1.15em;
+}
+
+.auth-error {
+  margin: 0;
+  color: var(--mw-warning);
+}
+
+/* "A new code is on its way" under a code field. */
+.auth-resent {
+  margin: 0;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--mw-text-disabled);
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  border-top: var(--mw-border-width) solid var(--mw-darker);
+}
+
+.auth-accounts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 240px;
+  overflow: auto;
+}
+
+.auth-account-entry {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.auth-account-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.auth-account-row > .auth-account {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Small "forget on this device" button; faint until the row is hovered or focused. */
+.auth-account-forget {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: var(--mw-border-width) solid transparent;
+  background: transparent;
+  color: var(--mw-text-muted);
+  cursor: pointer;
+  opacity: 0.35;
+  transition: opacity var(--mw-duration) var(--mw-ease);
+}
+
+.auth-account-row:hover .auth-account-forget,
+.auth-account-forget:focus-visible,
+.auth-account-forget.active {
+  opacity: 1;
+}
+
+.auth-account-forget:hover,
+.auth-account-forget.active {
+  color: var(--mw-warning);
+  border-color: var(--mw-warning);
+}
+
+.auth-account-forget:disabled {
+  cursor: default;
+}
+
+.auth-account {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border: var(--mw-border-width) solid transparent;
+  background: var(--mw-darker);
+  text-align: left;
+  cursor: pointer;
+}
+
+.auth-account:hover,
+.auth-account.selected {
+  border-color: var(--mw-accent);
+}
+
+.auth-account-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.auth-account-name > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.auth-remember {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--mw-text-muted);
+}
+
+.auth-switch,
+.auth-note {
+  margin: 0;
+  text-align: center;
+}
+
+.auth-note {
+  font-size: 0.85em;
+}
+
+.auth-link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--mw-link);
+  cursor: pointer;
+}
+
+.user-server-field .hint {
+  margin: 0;
+}
+
+.auth .user-server-field .hint {
+  text-align: center;
+}
+
+.user-server-form {
+  display: flex;
+  gap: 6px;
+  padding-top: 8px;
+}
+
+.user-server-form .mw-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.auth-forgot {
+  align-self: flex-start;
+  font-size: 0.9em;
+}
+
+.auth-code {
+  font-family: var(--mw-font-mono, monospace);
+  letter-spacing: 0.15em;
+}
+
+.auth-field-hint {
+  margin: -6px 0 0;
+}
+
+/* shell/PasswordRule.tsx, also in Settings > Account. */
+.password-rule {
+  margin: 0;
+  transition: color var(--mw-duration) var(--mw-ease);
+}
+
+.auth-form .password-rule {
+  margin-top: -6px;
+}
+
+.password-rule.short {
+  color: var(--mw-warning);
+}
+
+.auth-waiting {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px;
+  background: var(--mw-light);
+}
+
+.auth-waiting p {
+  margin: 0;
+}
+
+.auth-offline {
+  align-self: center;
+}
+
+.auth-agreement {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.auth-agreement legend {
+  margin-bottom: 4px;
+  padding: 0;
+}

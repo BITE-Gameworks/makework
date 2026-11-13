@@ -1,0 +1,1310 @@
+.design-body {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.design-stage {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Panels */
+
+/* A panel and its resize handle; the panel itself scrolls. */
+.design-side {
+  position: relative;
+  display: flex;
+  flex: none;
+  width: calc(var(--mw-channel-bar-width) * 0.95);
+  min-width: 0;
+}
+
+.design-panel {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  background: var(--mw-dark);
+  font-size: 0.9em;
+}
+
+.design-layers {
+  border-right: var(--mw-border-width) solid var(--mw-darker);
+}
+
+.design-properties {
+  border-left: var(--mw-border-width) solid var(--mw-darker);
+}
+
+.design-fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.design-section {
+  padding: calc(var(--mw-margin) / 2) calc(var(--mw-margin) / 2) var(--mw-margin);
+  border-bottom: var(--mw-border-width) solid var(--mw-darker);
+}
+
+.design-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 28px;
+  padding: 0 calc(var(--mw-margin) / 2);
+  color: var(--mw-text-muted);
+  font-weight: 600;
+}
+
+.design-section .design-section-title {
+  padding: 0;
+}
+
+.design-section-title > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.design-hint {
+  padding: 0 calc(var(--mw-margin) / 2);
+  color: var(--mw-text-disabled);
+}
+
+.design-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.design-align-row,
+.design-button-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px calc(var(--mw-margin) / 2);
+}
+
+.design-button-row {
+  padding: 4px 0 0;
+}
+
+.design-align-row {
+  justify-content: space-between;
+  border-bottom: var(--mw-border-width) solid var(--mw-darker);
+}
+
+.design-spacer {
+  flex: 1;
+}
+
+.design-properties .icon-button.on {
+  color: var(--mw-accent);
+}
+
+.design-field {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  border: var(--mw-border-width) solid transparent;
+  border-radius: var(--mw-radius);
+  background: var(--mw-darker);
+}
+
+.design-field:hover {
+  border-color: var(--mw-border);
+}
+
+.design-field:focus-within {
+  border-color: var(--mw-accent);
+}
+
+.design-field-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  min-width: 22px;
+  padding: 0 4px;
+  color: var(--mw-text-disabled);
+  cursor: ew-resize;
+  user-select: none;
+  touch-action: none;
+}
+
+.design-field-input {
+  width: 100%;
+  min-width: 0;
+  padding: 4px;
+  border: none;
+  border-radius: var(--mw-radius);
+  background: transparent;
+  color: var(--mw-text);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+}
+
+.design-text-input {
+  display: block;
+  width: 100%;
+  min-height: 3.5em;
+  margin-top: 4px;
+  border: var(--mw-border-width) solid transparent;
+  background: var(--mw-darker);
+  font-family: var(--mw-font-ui);
+  resize: vertical;
+}
+
+.design-text-input:focus {
+  border-color: var(--mw-accent);
+}
+
+.design-wide {
+  margin-top: 4px;
+}
+
+.design-grow {
+  flex: 1;
+}
+
+/* Dropdowns and the font field as compact as the number fields. */
+.design-panel .mw-select-button,
+.design-panel .mw-combobox .mw-input {
+  padding: 4px;
+}
+
+.design-field-input.hex {
+  flex: 1;
+  text-transform: uppercase;
+}
+
+.design-field-suffix {
+  padding-right: 4px;
+  color: var(--mw-text-disabled);
+}
+
+.design-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  color: var(--mw-text-muted);
+}
+
+.design-paint {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-top: 4px;
+}
+
+.design-color {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding-left: 4px;
+  border-radius: var(--mw-radius);
+  background: var(--mw-darker);
+}
+
+.design-color .design-field {
+  flex: none;
+  width: 3.6em;
+}
+
+.design-color .design-field-label {
+  min-width: 0;
+  padding: 0 2px;
+}
+
+.design-swatch {
+  position: relative;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mw-text) 25%, transparent);
+  background:
+    linear-gradient(color-mix(in srgb, var(--swatch) calc(var(--alpha) * 100%), transparent), color-mix(in srgb, var(--swatch) calc(var(--alpha) * 100%), transparent)),
+    repeating-conic-gradient(var(--mw-text-disabled) 0 25%, transparent 0 50%) 0 0 / 8px 8px;
+  cursor: pointer;
+}
+
+.design-color.linked {
+  min-height: 26px;
+}
+
+/* Paint rows hold a color and up to three buttons in a narrow panel. */
+.design-paint > .icon-button,
+.design-paint > .mw-popover-anchor > .icon-button {
+  flex: none;
+  width: 22px;
+}
+
+.design-color-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--mw-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.design-color-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.design-color-menu {
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.design-color-menu .mw-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.design-color-menu .mw-menu-item.on {
+  color: var(--mw-accent);
+}
+
+.design-palette-switch .mw-select-button {
+  max-width: 12em;
+  padding: 2px 6px;
+  background: transparent;
+}
+
+.design-swatch.mw-color-picker-trigger {
+  width: 18px;
+  height: 18px;
+  background:
+    linear-gradient(color-mix(in srgb, var(--swatch) calc(var(--alpha) * 100%), transparent), color-mix(in srgb, var(--swatch) calc(var(--alpha) * 100%), transparent)),
+    repeating-conic-gradient(var(--mw-text-disabled) 0 25%, transparent 0 50%) 0 0 / 8px 8px;
+}
+
+.design-shortcuts {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px 12px;
+  margin: 0;
+  padding: var(--mw-margin);
+  overflow-x: hidden;
+  overflow-y: auto;
+  color: var(--mw-text-muted);
+}
+
+.design-shortcuts dt {
+  color: var(--mw-text);
+  font-family: var(--mw-font-code);
+  font-size: 0.9em;
+  white-space: nowrap;
+}
+
+.design-shortcuts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.design-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 6px;
+}
+
+.design-stack + .design-stack {
+  padding-top: 6px;
+  border-top: var(--mw-border-width) solid var(--mw-darker);
+}
+
+.design-stack .design-paint {
+  margin-top: 0;
+}
+
+.design-corners {
+  display: flex;
+  align-items: flex-start;
+  gap: 2px;
+  margin-top: 4px;
+}
+
+.design-corners > .design-field,
+.design-corners > .design-grid {
+  flex: 1;
+  margin-top: 0;
+}
+
+/* Layers list */
+
+.design-layer {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding-left: calc(var(--depth) * 14px + 4px);
+  padding-right: 4px;
+  color: var(--mw-text-muted);
+  cursor: default;
+  user-select: none;
+}
+
+.design-layer.hover {
+  box-shadow: inset 0 0 0 var(--mw-border-width) var(--mw-accent);
+}
+
+.design-layer.selected {
+  background: color-mix(in srgb, var(--mw-accent) 22%, transparent);
+  color: var(--mw-text);
+}
+
+.design-layer.hidden .design-layer-name,
+.design-layer.hidden .mw-icon {
+  opacity: 0.5;
+}
+
+.design-layer-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.design-layer-rename {
+  flex: 1;
+  min-width: 0;
+  padding: 2px 4px;
+  border: var(--mw-border-width) solid var(--mw-accent);
+  background: var(--mw-darker);
+  color: var(--mw-text);
+  font: inherit;
+  outline: none;
+}
+
+.design-layer-toggle {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--mw-text-disabled);
+  cursor: pointer;
+}
+
+.design-layer-toggle .mw-icon {
+  transition: transform var(--mw-duration) var(--mw-ease);
+}
+
+.design-layer-toggle.open .mw-icon {
+  transform: rotate(90deg);
+}
+
+.design-layer-toggle.empty {
+  visibility: hidden;
+}
+
+.design-layer-actions {
+  display: flex;
+  opacity: 0;
+  transition: opacity var(--mw-duration) var(--mw-ease);
+}
+
+.design-layer:hover .design-layer-actions,
+.design-layer-actions:has(.on) {
+  opacity: 1;
+}
+
+.design-layer-actions .icon-button:not(.on) {
+  color: var(--mw-text-disabled);
+}
+
+.design-layer.drop-above::before,
+.design-layer.drop-below::before {
+  content: "";
+  position: absolute;
+  left: calc(var(--depth) * 14px + 4px);
+  right: 0;
+  height: 2px;
+  background: var(--mw-accent);
+  pointer-events: none;
+}
+
+.design-layer.drop-above::before {
+  top: -1px;
+}
+
+.design-layer.drop-below::before {
+  bottom: -1px;
+}
+
+.design-layer.drop-inside {
+  box-shadow: inset 0 0 0 calc(var(--mw-border-width) * 2) var(--mw-accent);
+}
+
+/* Canvas */
+
+.design-board {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  background-color: var(--mw-darker);
+  /* --page-ink: black or white for a page background the document sets; the theme's colors otherwise. */
+  background-image: radial-gradient(circle, color-mix(in srgb, var(--page-ink, var(--mw-border)) 20%, transparent) 1px, transparent 1.5px);
+  background-size: var(--grid) var(--grid);
+  cursor: default;
+  touch-action: none;
+  user-select: none;
+  outline: none;
+}
+
+.design-board.drawing {
+  cursor: crosshair;
+}
+
+.design-board.taken {
+  cursor: not-allowed;
+}
+
+.design-board.panning {
+  cursor: grab;
+}
+
+.design-board.grabbing {
+  cursor: grabbing;
+}
+
+.design-canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+}
+
+.design-canvas.animating {
+  transition: transform calc(var(--mw-duration) * 1.5) var(--mw-ease);
+}
+
+/* Layers draw with their own colors and fonts, never the theme's. */
+.design-node {
+  position: absolute;
+  left: 0;
+  top: 0;
+  box-sizing: border-box;
+  transform-origin: center;
+  animation: design-appear var(--mw-duration) var(--mw-ease);
+}
+
+@keyframes design-appear {
+  from {
+    opacity: 0;
+  }
+}
+
+.design-fill,
+.design-children {
+  position: absolute;
+  inset: 0;
+}
+
+.design-fill {
+  overflow: hidden;
+}
+
+.design-children.clip {
+  overflow: hidden;
+}
+
+/* Strokes sit above the content, and may reach outside the box. */
+.design-filter {
+  position: absolute;
+  pointer-events: none;
+}
+
+.design-strokes {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 1;
+  overflow: visible;
+  pointer-events: none;
+}
+
+/* Lines are thin, so they get a wider area to click. */
+.design-node.line::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(-6px / var(--zoom));
+  height: calc(12px / var(--zoom));
+}
+
+.design-text {
+  white-space: pre;
+}
+
+.design-text-box {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.design-text.wrap {
+  width: 100%;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.design-text-editing {
+  min-width: 1px;
+  outline: none;
+  cursor: text;
+  user-select: text;
+  caret-color: currentColor;
+}
+
+.design-node.editing {
+  outline: calc(1px / var(--zoom)) solid var(--mw-accent);
+}
+
+/* Paths are picked by their painted shape and a band along the line, not by their box. */
+.design-node.path {
+  pointer-events: none;
+}
+
+.design-node.path.editing {
+  outline: none;
+}
+
+.design-path {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+}
+
+.design-path path {
+  pointer-events: visiblePainted;
+}
+
+.design-path .design-path-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: calc(10px / var(--zoom));
+  pointer-events: stroke;
+}
+
+.design-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.design-image.ghost {
+  filter: blur(1px);
+  opacity: 0.75;
+}
+
+/* Overlay: selection, handles, guides and other members, in screen pixels. */
+
+.design-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.design-outline,
+.design-selection,
+.design-frame-label,
+.design-draw,
+.design-band,
+.design-guide {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+}
+
+.design-outline {
+  outline: 1px solid var(--mw-accent);
+}
+
+.design-outline.hover {
+  outline-width: 2px;
+}
+
+.design-outline.drop {
+  outline: 2px dashed var(--mw-accent);
+}
+
+.design-outline.other {
+  outline: 1px dashed var(--who);
+}
+
+.design-layer-holder {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--who);
+}
+
+/* Who has these layers: only they can change them until they let go. */
+.design-who {
+  position: absolute;
+  bottom: 100%;
+  left: -1px;
+  margin-bottom: 2px;
+  padding: 0 4px;
+  border-radius: var(--mw-radius);
+  background: var(--who);
+  font-size: 0.7em;
+  white-space: nowrap;
+}
+
+.design-draw-path {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.design-draw-path path,
+.design-draw-path polyline {
+  fill: none;
+  stroke: var(--mw-accent);
+  stroke-width: 1.5;
+}
+
+.design-draw-path .next {
+  stroke-dasharray: 4 3;
+  stroke-width: 1;
+}
+
+.design-draw-path .handle {
+  stroke-width: 1;
+}
+
+.design-draw-path circle {
+  fill: var(--mw-light);
+  stroke: var(--mw-accent);
+  stroke-width: 1;
+}
+
+.design-anchor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 8px;
+  height: 8px;
+  margin: -4px;
+  border: 1px solid var(--mw-accent);
+  background: var(--mw-light);
+  pointer-events: auto;
+  cursor: move;
+}
+
+.design-anchor.picked {
+  background: var(--mw-accent);
+}
+
+.design-anchor.handle {
+  border-radius: 50%;
+}
+
+.design-handle {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  margin: -4px;
+  border: 1px solid var(--mw-accent);
+  background: var(--mw-light);
+  pointer-events: auto;
+}
+
+.design-handle.nw { left: 0; top: 0; cursor: nwse-resize; }
+.design-handle.n { left: 50%; top: 0; cursor: ns-resize; }
+.design-handle.ne { left: 100%; top: 0; cursor: nesw-resize; }
+.design-handle.e { left: 100%; top: 50%; cursor: ew-resize; }
+.design-handle.se { left: 100%; top: 100%; cursor: nwse-resize; }
+.design-handle.s { left: 50%; top: 100%; cursor: ns-resize; }
+.design-handle.sw { left: 0; top: 100%; cursor: nesw-resize; }
+.design-handle.w { left: 0; top: 50%; cursor: ew-resize; }
+.design-handle.line-start { left: 0; top: 0; cursor: move; }
+.design-handle.line-end { left: 100%; top: 0; cursor: move; }
+
+.design-handle.rotate {
+  left: 50%;
+  top: -24px;
+  border-radius: 50%;
+  cursor: grab;
+}
+
+.design-selection.line .design-handle {
+  border-radius: 50%;
+}
+
+.design-size {
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  padding: 1px 6px;
+  border-radius: var(--mw-radius);
+  background: var(--mw-accent);
+  color: var(--mw-accent-text);
+  font-size: 0.75em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  transform: translate(-50%, 8px);
+}
+
+.design-frame-label span {
+  position: absolute;
+  bottom: 2px;
+  left: 0;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--page-ink, var(--mw-text-muted));
+  font-size: 0.8em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: auto;
+  cursor: default;
+}
+
+.design-frame-label.selected span {
+  color: var(--mw-accent);
+}
+
+.design-guide.x {
+  width: 1px;
+  background: var(--mw-warning);
+}
+
+.design-guide.y {
+  height: 1px;
+  background: var(--mw-warning);
+}
+
+.design-draw {
+  outline: 1px solid var(--mw-accent);
+  background: color-mix(in srgb, var(--mw-accent) 12%, transparent);
+}
+
+.design-draw.round {
+  border-radius: 50%;
+}
+
+.design-draw.line {
+  height: 1px;
+  outline: none;
+  background: var(--mw-accent);
+}
+
+.design-band {
+  border: var(--mw-border-width) dashed var(--mw-accent);
+  background: color-mix(in srgb, var(--mw-accent) 12%, transparent);
+}
+
+.design-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: var(--mw-margin);
+  color: var(--mw-text-disabled);
+  text-align: center;
+  pointer-events: none;
+}
+
+.design-drop-hint {
+  position: absolute;
+  inset: 8px;
+  display: grid;
+  place-items: center;
+  border: calc(var(--mw-border-width) * 2) dashed var(--mw-accent);
+  color: var(--mw-accent);
+  font-size: 1.3em;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--mw-duration) var(--mw-ease);
+}
+
+.design-board.dropping .design-drop-hint {
+  opacity: 1;
+}
+
+.design-help {
+  position: absolute;
+  right: calc(var(--mw-margin) / 2);
+  bottom: calc(var(--mw-margin) / 2);
+  background: var(--mw-dark);
+}
+
+.design-help.on {
+  color: var(--mw-accent);
+}
+
+.design-uploads {
+  position: absolute;
+  right: 8px;
+  bottom: 52px;
+  width: min(320px, calc(100% - 16px));
+}
+
+.design-readonly {
+  position: absolute;
+  left: 50%;
+  bottom: var(--mw-margin);
+  margin: 0;
+  padding: 4px 10px;
+  border-radius: var(--mw-radius);
+  background: var(--mw-dark);
+  color: var(--mw-text-muted);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+/* Icons panel: search, set filter, and a grid of results to click or drag onto the canvas. */
+.design-icons {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--mw-margin) / 2);
+  min-height: 0;
+  height: 100%;
+}
+
+.design-icons p {
+  margin: 0;
+}
+
+/* The channel bar's search box stretches along its row; here the row is a column. */
+.design-icons .channel-search {
+  flex: none;
+}
+
+.design-icon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+  gap: 4px;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.design-icon-result {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  background: var(--mw-dark);
+  border: var(--mw-border-width) solid transparent;
+  color: var(--mw-text);
+  cursor: grab;
+}
+
+.design-icon-result:hover:not(:disabled) {
+  border-color: var(--mw-accent);
+}
+
+.design-icon-mask,
+.design-icon-image {
+  width: 24px;
+  height: 24px;
+}
+
+.design-icon-mask {
+  background-color: currentColor;
+  mask: var(--icon) center / contain no-repeat;
+}
+
+.design-icon-image {
+  background: center / contain no-repeat;
+}
+
+/* Under the results: each icon set shown, with its license. */
+.design-icon-licenses {
+  flex: none;
+  max-height: 30%;
+  overflow-y: auto;
+  font-size: 0.85em;
+}
+
+.design-icon-licenses ul {
+  margin: 4px 0 6px;
+  padding: 0;
+  list-style: none;
+}
+
+.design-icon-licenses li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--mw-text-muted);
+}
+
+/* What the pen and point editing can do, over the top of the canvas. */
+.design-path-bar {
+  position: absolute;
+  top: calc(var(--mw-margin) / 2);
+  left: 50%;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--mw-margin) / 2);
+  max-width: calc(100% - var(--mw-margin) * 2);
+  padding: calc(var(--mw-margin) / 3) calc(var(--mw-margin) / 2);
+  background: var(--mw-dark);
+  color: var(--mw-text-muted);
+  font-size: 0.85em;
+  transform: translateX(-50%);
+  pointer-events: auto;
+}
+
+.design-path-bar .mw-button {
+  flex: none;
+  padding: 2px calc(var(--mw-margin) / 2);
+}
+
+.design-path-bar.hint {
+  pointer-events: none;
+}
+
+/* Palettes and colors, reordered by their grip. */
+.design-list-row {
+  position: relative;
+}
+
+.design-grip {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--mw-text-disabled);
+  cursor: grab;
+}
+
+.design-grip:hover,
+.design-grip:focus-visible {
+  color: var(--mw-text);
+}
+
+.design-list-row.drop-above::before,
+.design-list-row.drop-below::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--mw-accent);
+  pointer-events: none;
+}
+
+.design-list-row.drop-above::before {
+  top: -3px;
+}
+
+.design-list-row.drop-below::before {
+  bottom: -3px;
+}
+
+/* Design and Prototype tabs over the right panel */
+
+.design-side-column {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--mw-dark);
+}
+
+.design-tabs {
+  flex: none;
+  padding: 0 calc(var(--mw-margin) / 2);
+  border-bottom: var(--mw-border-width) solid var(--mw-darker);
+}
+
+.design-note {
+  margin: 4px 0 0;
+  color: var(--mw-text-muted);
+}
+
+.design-note.warning {
+  color: var(--mw-warning);
+}
+
+/* Components */
+
+.design-layer.component {
+  color: var(--mw-accent);
+}
+
+.design-component-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  color: var(--mw-text-muted);
+}
+
+.design-component-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--mw-text);
+  font: inherit;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+button.design-component-name {
+  cursor: pointer;
+}
+
+button.design-component-name:hover {
+  color: var(--mw-accent);
+}
+
+/* Prototype */
+
+.design-interaction + .design-interaction {
+  margin-top: calc(var(--mw-margin) / 2);
+  padding-top: calc(var(--mw-margin) / 2);
+  border-top: var(--mw-border-width) solid var(--mw-darker);
+}
+
+.design-play-row {
+  padding: calc(var(--mw-margin) / 2);
+}
+
+.design-play-row .mw-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.design-links {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.design-links g {
+  opacity: 0.4;
+}
+
+.design-links g.lit {
+  opacity: 1;
+}
+
+.design-links .line {
+  fill: none;
+  stroke: var(--mw-accent);
+  stroke-width: 1.5;
+}
+
+.design-links .head,
+.design-links circle {
+  fill: var(--mw-accent);
+}
+
+/* Play mode, over the whole design body */
+
+.design-player {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  background: var(--mw-darker);
+  outline: none;
+}
+
+.design-player-bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  padding: calc(var(--mw-margin) / 2) var(--mw-margin);
+  background: var(--mw-dark);
+}
+
+.design-player-frames {
+  min-width: 12em;
+}
+
+.design-player-stage {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  overflow: hidden;
+  padding: var(--mw-margin);
+}
+
+.design-player-stage.pointer {
+  cursor: pointer;
+}
+
+.design-player-screen {
+  position: relative;
+  flex: none;
+  overflow: hidden;
+}
+
+.design-player-slot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: hidden;
+}
+
+.design-player-slot.top {
+  z-index: 1;
+}
+
+.design-player-content {
+  --zoom: 1;
+  position: relative;
+  transform-origin: 0 0;
+}
+
+.design-player .design-node {
+  animation: none;
+}
+
+.design-player [data-hotspot] {
+  outline: 2px solid transparent;
+  transition: outline-color var(--mw-duration) var(--mw-ease);
+}
+
+.design-player-stage.hints [data-hotspot] {
+  outline-color: var(--mw-accent);
+}
+
+.design-variant-field {
+  margin-top: 4px;
+}
+
+.design-variant-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.design-variant-field .design-field-label,
+.design-variant-row .design-field-label {
+  justify-content: flex-start;
+  min-width: 5em;
+  cursor: default;
+}
+
+.design-player-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+
+.design-player-backdrop {
+  position: absolute;
+  inset: 0;
+}
+
+.design-player-backdrop.dark {
+  background: color-mix(in srgb, var(--mw-darker) 60%, transparent);
+}
+
+.design-player-overlay-place {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.design-player-overlay-box {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Gradient fills: the kind and opacity in the row, then the stops on a bar with the picked stop's color below. */
+.design-swatch.gradient {
+  background: var(--gradient), repeating-conic-gradient(var(--mw-text-disabled) 0 25%, transparent 0 50%) 0 0 / 8px 8px;
+  cursor: default;
+}
+
+.design-paint-kind {
+  flex: 1;
+  min-width: 0;
+}
+
+.design-gradient {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 4px 0 6px;
+}
+
+.design-gradient-bar {
+  position: relative;
+  height: 16px;
+  margin: 6px 7px;
+  background: var(--gradient), repeating-conic-gradient(var(--mw-text-disabled) 0 25%, transparent 0 50%) 0 0 / 8px 8px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mw-text) 25%, transparent);
+  cursor: copy;
+}
+
+.design-gradient-stop {
+  position: absolute;
+  top: -4px;
+  width: 14px;
+  height: 24px;
+  margin-left: -7px;
+  padding: 0;
+  border: 2px solid var(--mw-text-muted);
+  background:
+    linear-gradient(color-mix(in srgb, var(--swatch) calc(var(--alpha) * 100%), transparent), color-mix(in srgb, var(--swatch) calc(var(--alpha) * 100%), transparent)),
+    var(--mw-darker);
+  cursor: ew-resize;
+  touch-action: none;
+  transition: border-color var(--mw-duration) var(--mw-ease);
+}
+
+.design-gradient-stop.on {
+  border-color: var(--mw-accent);
+}

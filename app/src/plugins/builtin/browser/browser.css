@@ -1,0 +1,284 @@
+.browser-address {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+}
+
+.browser-address .mw-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.browser-address .mw-input.loading {
+  border-color: var(--mw-accent);
+}
+
+.browser-notes {
+  padding: 0 var(--mw-margin) calc(var(--mw-margin) / 2);
+}
+
+.browser-notes p {
+  margin: 0;
+}
+
+.browser-bookmarks {
+  display: flex;
+  gap: calc(var(--mw-margin) / 4);
+  padding: 0 var(--mw-margin) calc(var(--mw-margin) / 2);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.browser-bookmark {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  max-width: 16em;
+  padding: 2px 10px;
+  background: var(--mw-darker);
+  color: var(--mw-text-muted);
+  border: none;
+  cursor: pointer;
+  transition: color var(--mw-duration) var(--mw-ease);
+}
+
+.browser-bookmark span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.browser-bookmark:hover:not(:disabled) {
+  color: var(--mw-text);
+}
+
+.browser-stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--mw-margin) var(--mw-margin);
+  overflow: hidden;
+}
+
+.browser-frame {
+  position: relative;
+  flex: 0 0 auto;
+  overflow: hidden;
+  background: var(--mw-darker);
+}
+
+.browser-page {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.browser-mirror {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--mw-duration) var(--mw-ease);
+}
+
+.browser-mirror.showing {
+  opacity: 1;
+  background: var(--mw-darker);
+}
+
+.browser-mirror .replayer-wrapper,
+.browser-mirror iframe {
+  border: 0;
+}
+
+/* As tall as this member's own view (rrweb sizes it like the host's), so the page fills it. */
+.browser-mirror iframe {
+  height: var(--page-height);
+}
+
+/* The host's page is laid out pageWidth wide; the mirror scales it like the page itself. */
+.browser-mirror .replayer-wrapper {
+  transform: scale(var(--scale));
+  transform-origin: 0 0;
+}
+
+/* The host's video over the mirror's element of it (videoShare.ts). */
+.browser-video {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  object-fit: fill;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--mw-duration) var(--mw-ease);
+}
+
+.browser-video.showing {
+  opacity: 1;
+}
+
+/* The element's own video, letterboxed in its box like the page shows it. */
+.browser-video.whole {
+  object-fit: contain;
+}
+
+.browser-mirror .replayer-mouse {
+  display: none;
+}
+
+/* Takes every pointer event over the page, so the host can play it and viewers can forward it. */
+.browser-input {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  outline: none;
+}
+
+.browser-input.watching {
+  cursor: not-allowed;
+}
+
+.browser-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: var(--mw-margin);
+  color: var(--mw-text-disabled);
+  text-align: center;
+  pointer-events: none;
+}
+
+.browser-frame .remote-cursors {
+  z-index: 3;
+}
+
+.browser-extensions-panel {
+  display: grid;
+  gap: var(--mw-margin);
+  padding: var(--mw-margin);
+}
+
+.browser-extensions-panel p {
+  margin: 0;
+}
+
+.browser-extension-add {
+  display: flex;
+  gap: calc(var(--mw-margin) / 2);
+}
+
+.browser-extension-add input {
+  min-width: 0;
+  flex: 1;
+}
+
+.browser-extension-list {
+  display: grid;
+  gap: calc(var(--mw-margin) / 2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.browser-extension-item {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--mw-margin) / 2);
+  padding: calc(var(--mw-margin) / 2);
+}
+
+.browser-extension-item > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.browser-extension-item .hint {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.browser-history-panel {
+  display: grid;
+  gap: var(--mw-margin);
+  padding: var(--mw-margin);
+}
+
+.browser-history-panel p {
+  margin: 0;
+}
+
+.browser-history-panel > .mw-button {
+  justify-self: start;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--mw-margin) / 2);
+}
+
+.browser-history-list {
+  display: grid;
+  gap: calc(var(--mw-margin) / 4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.browser-history-item {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  padding: calc(var(--mw-margin) / 2);
+  border: none;
+  background: var(--mw-darker);
+  color: var(--mw-text-muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.browser-history-item:hover:not(:disabled) {
+  color: var(--mw-text);
+}
+
+.browser-history-item:disabled {
+  cursor: default;
+}
+
+.browser-history-item > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Where another member clicked, in their color. */
+.browser-click {
+  position: absolute;
+  left: -12px;
+  top: -12px;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--who);
+  border-radius: 50%;
+  animation: browser-click calc(var(--mw-duration) * 3) var(--mw-ease) forwards;
+}
+
+@keyframes browser-click {
+  from {
+    opacity: 1;
+    scale: 0.4;
+  }
+  to {
+    opacity: 0;
+    scale: 1.4;
+  }
+}

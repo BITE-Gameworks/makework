@@ -1,0 +1,173 @@
+# Builds the desktop app for every platform: AppImage, deb (Ubuntu, Mint, Debian), rpm (Fedora) and a Flatpak bundle
+# on Linux, the NSIS installer on Windows, and a dmg for Intel and for Apple Silicon Macs. A pushed tag `v1.2.3` builds
+# version 1.2.3 and puts the files in a draft GitHub release; started by hand (Actions > release > Run workflow) it only
+# keeps them as the run's artifacts. The node, user server and TURN server go along as
+# makework-node.tar.gz, makework-user-server.tar.gz and makework-turn-server.tar.gz. Nothing is code signed (macOS gets an ad-hoc signature, which Apple Silicon needs).
+#
+# Every job installs without install scripts and then builds only the ad blocker's native part (Rust is preinstalled
+# on the runners): the other install scripts are the node's (mediasoup) and Electron's own download, which packaging
+# doesn't use.
+name: release
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+    working-directory: app
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Tools for rpm and Flatpak
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm flatpak flatpak-builder
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          # flatpak-builder's sandbox (bwrap) needs user namespaces, which Ubuntu 24.04 keeps from unprivileged programs.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - name: Version from the tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: npm version "${GITHUB_REF_NAME#v}" --no-git-tag-version --allow-same-version
+      - name: Install
+        run: |
+          npm ci --ignore-scripts
+          npm rebuild adblock-rs
+      - run: npm run build:web
+      # electron-builder installs the Flatpak runtime, SDK and Electron base app (--user) the first time.
+      - run: npx electron-builder --linux AppImage deb rpm flatpak --x64 --publish never
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: linux
+          if-no-files-found: error
+          path: |
+            app/release/*.AppImage
+            app/release/*.deb
+            app/release/*.rpm
+            app/release/*.flatpak
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Version from the tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: npm version "${GITHUB_REF_NAME#v}" --no-git-tag-version --allow-same-version
+      - name: Install
+        run: |
+          npm ci --ignore-scripts
+          npm rebuild adblock-rs
+      - run: npm run build:web
+      - run: npx electron-builder --win nsis --x64 --publish never
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: windows
+          if-no-files-found: error
+          path: app/release/*.exe
+
+  mac:
+    strategy:
+      matrix:
+        include:
+          # Intel needs an Intel runner: the ad blocker's native part is built for the machine it is built on.
+          - runner: macos-15-intel
+            arch: x64
+          - runner: macos-15
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Version from the tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: npm version "${GITHUB_REF_NAME#v}" --no-git-tag-version --allow-same-version
+      - name: Install
+        run: |
+          npm ci --ignore-scripts
+          npm rebuild adblock-rs
+      - run: npm run build:web
+      - run: npx electron-builder --mac dmg --${{ matrix.arch }} --publish never
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: mac-${{ matrix.arch }}
+          if-no-files-found: error
+          path: app/release/*.dmg
+
+  # One archive for every system: `npm install` on the node's computer fetches its native part.
+  node:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Version from the tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: npm version "${GITHUB_REF_NAME#v}" --no-git-tag-version --allow-same-version
+      - run: npm ci --ignore-scripts
+      - run: npm run build:node
+      - run: tar -czf makework-node.tar.gz --transform 's,^dist-node,makework-node,' dist-node
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: node
+          if-no-files-found: error
+          path: app/makework-node.tar.gz
+
+  servers:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+      - run: node scripts/pack-servers.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: servers
+          if-no-files-found: error
+          path: app/dist-servers/*.tar.gz
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [linux, windows, mac, node, servers]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          path: packages
+          merge-multiple: true
+      # The update check reads this from makework.dev/download, so it goes up with the files it announces.
+      - name: Version file for the download page
+        run: echo "{\"version\":\"${GITHUB_REF_NAME#v}\"}" > packages/latest.json
+      - name: Draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" packages/* --repo "$GITHUB_REPOSITORY" --draft --generate-notes --title "MakeWork ${GITHUB_REF_NAME#v}"

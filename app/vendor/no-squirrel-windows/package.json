@@ -1,0 +1,7 @@
+{
+  "name": "electron-builder-squirrel-windows",
+  "version": "26.15.3",
+  "description": "Stands in for electron-builder's Squirrel.Windows target, which MakeWork doesn't build (Windows uses NSIS). See README.md.",
+  "main": "index.js",
+  "license": "MIT"
+}

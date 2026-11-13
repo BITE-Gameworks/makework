@@ -1,0 +1,59 @@
+{
+  "name": "Explore MakeWork",
+  "description": "A guided tour with an example of every built-in plugin and a couple of bots.",
+  "welcome": "welcome",
+  "categories": [
+    {
+      "name": "Start here",
+      "channels": [
+        { "name": "welcome", "type": "chat", "file": "channels/welcome.zip" },
+        { "name": "guide", "type": "docs", "file": "channels/guide.zip" }
+      ]
+    },
+    {
+      "name": "Talk",
+      "channels": [
+        { "name": "general", "type": "chat", "file": "channels/general.zip" },
+        { "name": "lounge", "type": "voice", "file": "channels/lounge.zip" },
+        { "name": "bot-playground", "type": "chat", "file": "channels/bot-playground.zip" }
+      ]
+    },
+    {
+      "name": "Plan",
+      "channels": [
+        { "name": "roadmap", "type": "tasks", "file": "channels/roadmap.zip" },
+        { "name": "budget", "type": "sheets", "file": "channels/budget.zip" },
+        { "name": "flows", "type": "diagram", "file": "channels/flows.zip" }
+      ]
+    },
+    {
+      "name": "Make",
+      "channels": [
+        { "name": "handbook", "type": "docs", "file": "channels/handbook.zip" },
+        { "name": "website", "type": "design", "file": "channels/website.zip" },
+        { "name": "mood-board", "type": "design", "file": "channels/mood-board.zip" },
+        { "name": "shared-files", "type": "files", "file": "channels/shared-files.zip" }
+      ]
+    },
+    {
+      "name": "Code and web",
+      "channels": [
+        { "name": "hello-world", "type": "git", "file": "channels/hello-world.zip" },
+        { "name": "research", "type": "browser", "file": "channels/research.zip" }
+      ]
+    },
+    {
+      "name": "Workspace",
+      "channels": [
+        { "name": "workspace-handbook", "type": "docs", "file": "channels/workspace-handbook.zip" }
+      ]
+    }
+  ],
+  "bots": [
+    { "user_id": 2, "type": "reply", "nickname": "Echo", "channel": "bot-playground", "enabled": true, "config": {} },
+    {
+      "user_id": 3, "type": "announcer", "nickname": "Town Crier", "channel": "bot-playground", "enabled": false,
+      "config": { "message": "Stand-up starts in 10 minutes in the lounge. :coffee:", "repeat": 86400 }
+    }
+  ]
+}

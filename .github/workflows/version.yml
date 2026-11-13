@@ -1,0 +1,47 @@
+# Raises the third number of the app version on every push to main; the first two are raised by hand
+# (`npm run bump_version`). The commit is made with GITHUB_TOKEN, whose pushes start no workflows, so this can't loop.
+# It has no "[skip ci]": that would also stop the release build for a tag put on this commit.
+name: version
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+# One at a time, so two quick pushes each get their own number.
+concurrency:
+  group: version
+  cancel-in-progress: false
+
+jobs:
+  raise:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: main
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+      - name: Raise the version
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          git fetch --depth=1 origin "$BEFORE" || true
+          node scripts/bump_version.mjs patch --since "$BEFORE"
+      - name: Commit it
+        run: |
+          git diff --quiet && exit 0
+          version="$(node -p "require('./package.json').version")"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Version $version"
+          for attempt in 1 2 3; do
+            git push origin HEAD:main && exit 0
+            git pull --rebase origin main
+          done
+          exit 1

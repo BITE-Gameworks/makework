@@ -1,0 +1,16 @@
+{
+  "name": "makework-mesh-harness",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Drives containerized MakeWork clients over CDP for the multi-instance mesh integration test.",
+  "type": "module",
+  "scripts": {
+    "check": "node --check run.mjs && node --check lib/cdp.mjs && node --check lib/driver.mjs && node --check lib/metrics.mjs && node --check lib/podman.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "playwright-core": "1.63.0"
+  }
+}

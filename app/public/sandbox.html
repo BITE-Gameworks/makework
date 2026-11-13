@@ -1,0 +1,13 @@
+<!doctype html>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:">
+<script>
+  // A plugin view's document (plugins/SandboxFrame.tsx). This page's policy stays in force after document.open.
+  addEventListener("message", (event) => {
+    const message = event.data;
+    if (event.source !== parent || !message || message.mw !== 1 || message.type !== "document") return;
+    document.open();
+    document.write(message.html);
+    document.close();
+  });
+  parent.postMessage({ mw: 1, type: "shell" }, "*");
+</script>

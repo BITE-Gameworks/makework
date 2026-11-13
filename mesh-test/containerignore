@@ -1,0 +1,20 @@
+# Build context is the repository root (see up.sh). Only app/ and mesh-test/ files the Containerfile copies are needed.
+.git
+.claude
+archive
+user-server
+turn-worker
+design
+examples
+**/node_modules
+**/*.log
+app/dist
+app/release
+app/*.tsbuildinfo
+app/.env
+app/.env.local
+app/.vscode
+mesh-test/results
+mesh-test/run
+mesh-test/infra/certs
+mesh-test/harness

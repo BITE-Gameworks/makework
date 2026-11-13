@@ -1,0 +1,8 @@
+{
+  "id": "example.bots",
+  "name": "Bot examples",
+  "version": "1.0.1",
+  "description": "Example Reply, Announcer and Tester bot types.",
+  "author": "MakeWork examples",
+  "icon": "icon.svg"
+}

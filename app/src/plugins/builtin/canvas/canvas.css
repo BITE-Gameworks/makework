@@ -1,0 +1,113 @@
+.canvas-selection,
+.canvas-handle,
+.canvas-size {
+  position: absolute;
+}
+
+.canvas-selection {
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+
+.canvas-handle {
+  width: 8px;
+  height: 8px;
+  margin: -4px;
+  border: 1px solid var(--mw-accent);
+  background: var(--mw-light);
+  pointer-events: auto;
+}
+
+.canvas-handle.nw { left: 0; top: 0; cursor: nwse-resize; }
+.canvas-handle.n { left: 50%; top: 0; cursor: ns-resize; }
+.canvas-handle.ne { left: 100%; top: 0; cursor: nesw-resize; }
+.canvas-handle.e { left: 100%; top: 50%; cursor: ew-resize; }
+.canvas-handle.se { left: 100%; top: 100%; cursor: nwse-resize; }
+.canvas-handle.s { left: 50%; top: 100%; cursor: ns-resize; }
+.canvas-handle.sw { left: 0; top: 100%; cursor: nesw-resize; }
+.canvas-handle.w { left: 0; top: 50%; cursor: ew-resize; }
+
+.canvas-handle.rotate {
+  left: 50%;
+  top: -24px;
+  border-radius: 50%;
+  cursor: grab;
+}
+
+.canvas-size {
+  left: 50%;
+  top: 100%;
+  padding: 1px 6px;
+  border-radius: var(--mw-radius);
+  background: var(--mw-accent);
+  color: var(--mw-accent-text);
+  font-size: 0.75em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  transform: translate(-50%, 8px);
+}
+
+.canvas-export {
+  display: flex;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.canvas-export .mw-select {
+  flex: none;
+  width: 4.6em;
+}
+
+.canvas-export .mw-select-button {
+  padding: 4px;
+}
+
+.canvas-export > .icon-button {
+  flex: none;
+  width: 22px;
+}
+
+.canvas-export-suffix {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  padding: 4px;
+  border: none;
+  border-radius: var(--mw-radius);
+  background: var(--mw-darker);
+  color: var(--mw-text);
+  font: inherit;
+  outline: none;
+}
+
+.canvas-export-button {
+  justify-content: center;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.canvas-zoom-bar {
+  position: absolute;
+  left: calc(var(--mw-margin) / 2);
+  bottom: calc(var(--mw-margin) / 2);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.canvas-zoom {
+  min-width: 52px;
+  padding: 0 4px;
+  border: none;
+  background: none;
+  color: var(--mw-text-muted);
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+
+.canvas-zoom:hover {
+  color: var(--mw-text);
+}

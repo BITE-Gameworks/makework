@@ -1,0 +1,945 @@
+/* Workspace settings (most layout comes from the Settings classes in shell.css). */
+
+.workspace-short {
+  width: 80px !important;
+}
+
+.roles-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  margin-top: var(--mw-margin);
+}
+
+.roles-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: none;
+  width: 200px;
+}
+
+.roles-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--mw-dark);
+  border: var(--mw-border-width) solid transparent;
+  text-align: left;
+}
+
+.roles-item:hover {
+  border-color: var(--mw-accent);
+}
+
+.roles-item.selected {
+  border-color: var(--mw-accent);
+  color: var(--mw-accent);
+}
+
+.roles-item-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.role-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.role-editor {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.role-editor h3,
+.settings-section h3 {
+  margin: 8px 0 0;
+  font-size: 1em;
+  font-weight: 500;
+}
+
+.role-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.role-check input {
+  margin-top: 0.2em;
+  accent-color: var(--mw-accent);
+}
+
+.role-check.disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.role-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.workspace-members {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: var(--mw-margin) 0;
+  padding: 0;
+  list-style: none;
+}
+
+.workspace-member {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 10px;
+  padding: 6px 8px;
+  background: var(--mw-dark);
+}
+
+.workspace-member-names {
+  display: flex;
+  flex-direction: column;
+  width: 180px;
+  line-height: 1.25;
+}
+
+.bot-settings {
+  max-width: 100%;
+}
+
+.bot-layout {
+  display: grid;
+  grid-template-columns: minmax(12rem, 0.75fr) minmax(0, 1.8fr);
+  gap: var(--mw-margin);
+  min-height: 28rem;
+}
+
+.bot-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mw-margin);
+  min-width: 0;
+}
+
+.bot-list {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--mw-margin) / 3);
+  flex: 1;
+}
+
+.bot-list-item {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--mw-margin) / 2);
+  width: 100%;
+  min-width: 0;
+  padding: calc(var(--mw-margin) / 2);
+  color: var(--mw-text);
+  text-align: left;
+  background: var(--mw-dark);
+  cursor: pointer;
+}
+
+.bot-list-item.selected {
+  background: var(--mw-light);
+}
+
+.bot-list-name {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.bot-list-name > * {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bot-status {
+  width: 0.6em;
+  height: 0.6em;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--mw-success);
+}
+
+.bot-status.disabled {
+  background: var(--mw-text-disabled);
+}
+
+.bot-detail {
+  min-width: 0;
+}
+
+.bot-card {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--mw-margin) / 2);
+  min-width: 0;
+  padding: var(--mw-margin);
+  background: var(--mw-dark);
+}
+
+.bot-card-header,
+.bot-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: calc(var(--mw-margin) / 2);
+}
+
+.bot-card-title {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.bot-name {
+  font-weight: bold;
+}
+
+.bot-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--mw-margin) / 3);
+}
+
+.bot-config {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  align-items: end;
+  gap: calc(var(--mw-margin) / 2) var(--mw-margin);
+  min-width: 0;
+}
+
+.bot-config .account-field {
+  min-width: 0;
+}
+
+.bot-config .account-field > * {
+  max-width: 100%;
+}
+
+.bot-config .mw-input,
+.bot-add .account-field .mw-input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.bot-add {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--mw-margin) / 2);
+  width: 100%;
+  min-width: 0;
+  margin-top: 0;
+  padding: calc(var(--mw-margin) / 2);
+  background: var(--mw-dark);
+}
+
+.bot-add-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  gap: calc(var(--mw-margin) / 2);
+}
+
+.bot-add-row > * {
+  min-width: 0;
+}
+
+.bot-add .account-field {
+  min-width: 0;
+}
+
+@media (max-width: 760px) {
+  .bot-layout {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+  }
+
+  .bot-list {
+    max-height: 16rem;
+    overflow-y: auto;
+  }
+}
+
+.workspace-owner {
+  color: var(--mw-accent);
+  font-size: 0.85em;
+}
+
+.workspace-member-roles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+}
+
+.workspace-member-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.role-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 6px;
+  background: var(--mw-light);
+  font-size: 0.9em;
+}
+
+.role-chip-remove {
+  display: grid;
+  color: var(--mw-text-muted);
+}
+
+.role-chip-remove:hover {
+  color: var(--mw-warning);
+}
+
+.role-add .mw-select-button {
+  padding: 2px 6px;
+  font-size: 0.9em;
+}
+
+.workspace-invite {
+  padding: 6px 10px;
+  background: var(--mw-darker);
+  font-family: var(--mw-font-code);
+  user-select: all;
+  word-break: break-all;
+}
+
+.invite-create,
+.invite-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mw-margin);
+}
+
+/* A set width, not its content's: a paragraph or field appearing in one box never resizes the others. Inside each
+   box, fields and paragraphs share one width: 280px, the width of settings' text fields (.account-field .mw-input). */
+.invite-create {
+  width: calc(280px + 2 * var(--mw-margin));
+  max-width: 100%;
+}
+
+.invite-create > .mw-button {
+  align-self: flex-start;
+}
+
+/* One box per field: its control and the paragraph that says what it is for. */
+.invite-field {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--mw-margin) / 3);
+  padding: var(--mw-margin);
+  background: var(--mw-dark);
+}
+
+.invite-field > p,
+.invite-field > .settings-check {
+  margin: 0;
+}
+
+/* The custom date slides open under the dropdown. The gap above it is inside the sliding part, so it opens
+   smoothly instead of jumping by the gap first. */
+.invite-field > .mw-collapse {
+  margin-top: calc(var(--mw-margin) / -3);
+}
+
+.invite-field > .mw-collapse .account-field {
+  padding-top: calc(var(--mw-margin) / 3);
+}
+
+.invite-field .account-field > .mw-input,
+.invite-field .account-field > .mw-select {
+  width: 100%;
+}
+
+.invite-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mw-margin);
+  padding: var(--mw-margin);
+  background: var(--mw-darker);
+  flex-wrap: wrap;
+}
+
+.invite-row > div {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--mw-margin) / 3);
+  flex: 1;
+  min-width: 0;
+}
+
+.invite-row .mw-button {
+  flex-shrink: 0;
+}
+
+/* The code of the invite just made, in its own row: a field on the row's darker background. */
+.invite-row .workspace-invite {
+  background: var(--mw-dark);
+}
+
+.profile-bio {
+  width: 420px;
+  max-width: 100%;
+  resize: vertical;
+  font: inherit;
+}
+
+.history-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: var(--mw-margin) 0;
+}
+
+.history-archive {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: calc(var(--mw-margin) / 2);
+  margin: var(--mw-margin) 0;
+  padding: var(--mw-margin);
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.history-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0 10px;
+  padding: 6px 8px;
+  background: var(--mw-dark);
+}
+
+.history-line.refused {
+  opacity: 0.75;
+}
+
+.history-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.history-refused {
+  font-size: 0.9em;
+}
+
+.history-line time {
+  flex: none;
+  font-size: 0.85em;
+}
+
+.move-member {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.move-member-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  max-width: 360px;
+  padding-top: 6px;
+}
+
+.move-member-panel .hint {
+  margin: 0;
+}
+
+.workspace-icon-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.workspace-icon-preview {
+  cursor: default;
+}
+
+/* Workspace settings > Channels: categories with their channels indented under them. */
+.access-list {
+  width: 240px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.access-channel {
+  margin-left: calc(var(--mw-margin) / 2);
+}
+
+.access-count {
+  margin-left: auto;
+  color: var(--mw-text-disabled);
+  font-size: 0.85em;
+}
+
+.access-editor {
+  flex: 1;
+  min-width: 0;
+  max-width: 640px;
+}
+
+.node-names {
+  width: 220px;
+}
+
+.node-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--mw-text-disabled);
+  transition: background-color var(--mw-duration) var(--mw-ease);
+}
+
+.node-dot.online {
+  background: var(--mw-success);
+}
+
+.node-facts {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 14em;
+  min-width: 0;
+  gap: 2px;
+  color: var(--mw-text-muted);
+  font-size: 0.9em;
+  overflow-wrap: anywhere;
+}
+
+.node-facts > * {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.nodes-globe {
+  display: flex;
+  justify-content: center;
+}
+
+.nodes-globe canvas {
+  cursor: grab;
+  touch-action: none;
+}
+
+.nodes-globe canvas:active {
+  cursor: grabbing;
+}
+
+/* The crowd card: beside its badge on the globe (placed by NodesGlobe), a few rows while hovered, all of them and
+   scrolling once clicked. */
+.nodes-globe-stage {
+  position: relative;
+}
+
+.nodes-globe-card {
+  position: absolute;
+  left: 0;
+  top: 0;
+  min-width: 180px;
+  max-width: 260px;
+  max-height: 60%;
+  overflow: hidden;
+  padding: calc(var(--mw-margin) / 2);
+  background: var(--mw-dark);
+  border: 1px solid var(--mw-light);
+  box-shadow: var(--mw-shadow-popup);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--mw-duration) var(--mw-ease);
+}
+
+.nodes-globe-card.shown {
+  opacity: 1;
+}
+
+.nodes-globe-card.pinned {
+  overflow: auto;
+  pointer-events: auto;
+}
+
+.nodes-globe-card-title {
+  margin: 0 0 calc(var(--mw-margin) / 2);
+  font-weight: 600;
+}
+
+.nodes-globe-card > .hint {
+  margin: calc(var(--mw-margin) / 2) 0 0;
+}
+
+.node-located {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Members who sent no place: a compact avatars row in the node list, under their first node or as one row for
+   those who use no node; click lists their names. */
+.node-without {
+  display: flex;
+  flex-basis: 100%;
+}
+
+.node-without-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.node-without-avatars {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.node-without-avatars .mw-avatar {
+  box-shadow: none;
+}
+
+.node-without-item {
+  display: flex;
+  align-items: center;
+  padding: 2px 8px;
+}
+
+.node-without-names {
+  display: flex;
+  flex-direction: column;
+  min-width: 160px;
+}
+
+.node-located li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.node-credit {
+  font-size: 0.85em;
+}
+
+/* The whole width: the nodes on the left, the members' globe on the right (below when there is no room). */
+.settings-section.nodes-settings {
+  max-width: none;
+}
+
+.nodes-settings h3 {
+  margin: var(--mw-margin) 0 0;
+}
+
+/* The lists, and the globe beside them when there is room (below them otherwise). */
+.nodes-layout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--mw-margin);
+}
+
+.nodes-lists {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 3 1 420px;
+  min-width: 0;
+}
+
+/* Copies of each file: label, - n +, and what it means on its own line. */
+.nodes-copies {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--mw-margin) / 2);
+}
+
+.nodes-copies strong {
+  min-width: 1.5em;
+  text-align: center;
+}
+
+.nodes-copies .hint {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.nodes-map {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 2 1 300px;
+  min-width: 260px;
+}
+
+.nodes-lists > *,
+.nodes-map > * {
+  margin: 0;
+}
+
+.node-help-toggle {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: var(--mw-margin);
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--mw-link);
+  cursor: pointer;
+}
+
+.node-help-toggle:hover {
+  text-decoration: underline;
+}
+
+.mw-disclosure.node-help-toggle {
+  color: var(--mw-link);
+}
+
+.node-inline-link {
+  display: inline;
+  margin: 0;
+  font: inherit;
+}
+
+.node-add {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--mw-margin) / 2);
+  margin-top: var(--mw-margin);
+}
+
+.node-add h3,
+.node-add p {
+  margin: 0;
+}
+
+.node-add-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--mw-margin) / 2);
+}
+
+.node-add-form input:first-child {
+  flex: 2 1 16em;
+  min-width: 0;
+  font-family: var(--mw-font-code);
+}
+
+.node-add-form input:nth-child(2) {
+  flex: 1 1 10em;
+  min-width: 0;
+}
+
+.node-add-step {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--mw-margin) / 2);
+}
+
+/* The path field goes under the text when both don't fit, so the text keeps the column's width. */
+.node-page {
+  flex-wrap: wrap;
+}
+
+.node-page input {
+  width: 12em;
+  max-width: 100%;
+}
+
+.node-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mw-margin);
+  margin: 10px 0 0;
+  padding-left: 1.4em;
+}
+
+.node-steps li > span {
+  display: block;
+}
+
+.node-steps li::marker {
+  color: var(--mw-text-muted);
+}
+
+.node-command {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.node-command code {
+  flex: 1;
+  min-width: 0;
+}
+
+.node-steps code:not(.workspace-invite) {
+  color: var(--mw-text);
+}
+
+.node-ports {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: calc(var(--mw-margin) / 2) 0;
+  padding-left: 1.2em;
+}
+
+.bot-log {
+  max-height: 12em;
+  margin: 0;
+  overflow: auto;
+  padding: calc(var(--mw-margin) / 2);
+  background: var(--mw-darker);
+  font-size: 0.85em;
+  white-space: pre-wrap;
+}
+
+.bot-permissions, .bot-memory { display: flex; flex-direction: column; gap: calc(var(--mw-margin) / 2); padding: calc(var(--mw-margin) / 2) 0; }
+.bot-permission { display: flex; align-items: center; gap: calc(var(--mw-margin) / 2); }
+.bot-channels { display: flex; flex-direction: column; max-height: 160px; overflow-y: auto; gap: calc(var(--mw-margin) / 4); }
+
+.bot-credentials {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--mw-margin) / 3);
+  margin-bottom: var(--mw-margin);
+}
+
+.bot-credential {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--mw-margin) / 3);
+}
+
+.bot-credential > span {
+  min-width: 8rem;
+}
+
+.bot-list-item.child {
+  margin-left: calc(var(--mw-margin) * 1.5);
+  width: calc(100% - var(--mw-margin) * 1.5);
+}
+
+.emoji-settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--mw-margin) / 2);
+  margin-top: var(--mw-margin);
+}
+
+.emoji-settings-row {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--mw-margin) / 2);
+  padding: calc(var(--mw-margin) / 2);
+}
+
+.emoji-settings-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  object-fit: contain;
+}
+
+.emoji-settings-name {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.emoji-settings-row .mw-button.danger {
+  color: var(--mw-danger);
+}
+
+.workspace-member-search {
+  width: min(320px, 100%);
+}
+
+.workspace-member-prompts {
+  flex-basis: 100%;
+}
+
+.move-member-actions {
+  display: flex;
+  gap: calc(var(--mw-margin) / 2);
+}
+
+.history-line-prompt {
+  flex-basis: 100%;
+}
+
+.history-more {
+  margin-top: var(--mw-margin);
+}
+
+.workspace-leave {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--mw-margin) / 2);
+  margin-top: calc(var(--mw-margin) * 2);
+  padding-top: var(--mw-margin);
+  border-top: var(--mw-border-width) solid var(--mw-dark);
+}
+
+.workspace-leave .workspace-member-actions {
+  justify-content: flex-start;
+}

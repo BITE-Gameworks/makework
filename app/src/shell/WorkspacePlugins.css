@@ -1,0 +1,36 @@
+.workspace-plugin-list {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--mw-margin) / 2);
+  padding: 0;
+  list-style: none;
+}
+
+.workspace-plugin-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: calc(var(--mw-margin) / 2);
+  padding: calc(var(--mw-margin) / 2);
+  background: var(--mw-dark);
+}
+
+.workspace-plugin-item > :nth-child(n + 3) {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+
+.workspace-plugin-item p {
+  margin: 2px 0 0;
+}
+
+.workspace-plugin-item > .workspace-plugin-settings {
+  justify-self: stretch;
+}
+
+.workspace-plugin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: calc(var(--mw-margin) / 4);
+}

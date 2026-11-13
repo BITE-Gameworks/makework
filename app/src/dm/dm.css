@@ -1,0 +1,158 @@
+.messages-button {
+  margin-bottom: calc(var(--mw-margin) / 2);
+}
+
+.dm-new {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.dm-new .mw-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.dm-note {
+  margin: 0 0 6px;
+  font-size: 0.9em;
+}
+
+.dm-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.dm-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border: var(--mw-border-width) solid transparent;
+  color: var(--mw-text-muted);
+  text-align: left;
+  transition: border-color var(--mw-duration) var(--mw-ease), background-color var(--mw-duration) var(--mw-ease);
+}
+
+.dm-row:hover {
+  background: var(--mw-dark);
+  color: var(--mw-text);
+}
+
+.dm-row.active {
+  border-color: var(--mw-accent);
+  color: var(--mw-text);
+}
+
+.dm-row.unread .dm-row-name {
+  color: var(--mw-text);
+  font-weight: 700;
+}
+
+.dm-row-avatar {
+  position: relative;
+  flex: none;
+  display: flex;
+}
+
+.dm-row-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.dm-row-name,
+.dm-row-last {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.dm-row-last {
+  color: var(--mw-text-disabled);
+  font-size: 0.85em;
+}
+
+.dm-handle {
+  margin-left: 6px;
+  color: var(--mw-text-disabled);
+  font-size: 0.8em;
+}
+
+.dm-status {
+  display: inline-flex;
+}
+
+.dm-retry {
+  font-size: 0.85em;
+  color: var(--mw-warning);
+}
+
+.chat-message.dm-failed {
+  border-color: var(--mw-warning);
+}
+
+.dm-friends-row {
+  margin-bottom: 6px;
+}
+
+.friends-page {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--mw-margin) / 2);
+  height: 100%;
+  padding: var(--mw-margin);
+  overflow-y: auto;
+}
+
+.friends-page h2 {
+  margin: 0;
+  color: var(--mw-accent);
+  font-weight: 500;
+}
+
+.friends-page p {
+  margin: 0;
+}
+
+.friends-add {
+  display: flex;
+  gap: 6px;
+  max-width: 520px;
+}
+
+.friends-add .mw-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.friends-setting label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.friends-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 720px;
+}
+
+.friends-section h3 {
+  margin: calc(var(--mw-margin) / 2) 0 0;
+  font-size: 1em;
+  font-weight: 500;
+}
+
+.friends-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--mw-dark);
+}

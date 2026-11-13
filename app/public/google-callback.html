@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="dark light" />
+<title>Signing in - MakeWork</title>
+<link rel="stylesheet" href="sign-in.css" />
+<main>
+  <div class="spinner" aria-hidden="true"></div>
+  <h1>Signing in with Google</h1>
+  <p>This window closes by itself. If it doesn't, close it and go back to MakeWork.</p>
+  <div class="brand">MakeWork</div>
+</main>
+<script>
+  // Hands Google's answer back to the app window, then closes.
+  const channel = new BroadcastChannel("makework-google");
+  channel.postMessage({ hash: location.hash });
+  channel.close();
+  history.replaceState(null, "", location.pathname);
+  window.close();
+</script>
+</html>

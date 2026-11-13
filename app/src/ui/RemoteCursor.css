@@ -1,0 +1,49 @@
+.remote-cursor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  transition: transform 60ms linear;
+}
+
+.remote-cursor svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+  fill: var(--who);
+  stroke: var(--mw-darker);
+  stroke-width: 1;
+}
+
+.remote-cursor-name {
+  position: absolute;
+  left: 14px;
+  top: 16px;
+  padding: 1px 6px;
+  border-radius: var(--mw-radius);
+  background: var(--who);
+  color: var(--mw-darker);
+  font-size: 0.75em;
+  white-space: nowrap;
+}
+
+.remote-cursors {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* A bot's face sits at the cursor's bottom right corner, its name after it. */
+.remote-cursor-avatar {
+  position: absolute;
+  left: 10px;
+  top: 12px;
+  display: block;
+  line-height: 0;
+}
+
+.remote-cursor-name.with-avatar {
+  left: 38px;
+  top: 22px;
+}

@@ -1,0 +1,61 @@
+.mw-progress {
+  display: block;
+  height: 3px;
+  overflow: hidden;
+  background: var(--mw-darker);
+}
+
+.mw-progress-fill {
+  display: block;
+  height: 100%;
+  background: var(--mw-accent);
+  transform-origin: left;
+  transition: transform var(--mw-duration) var(--mw-ease);
+}
+
+.mw-transfer {
+  display: block;
+  opacity: 0;
+  transition: opacity var(--mw-duration) var(--mw-ease);
+}
+
+.mw-transfer.visible {
+  opacity: 1;
+}
+
+.mw-transfer.done .mw-progress-fill {
+  background: var(--mw-success);
+}
+
+.mw-uploads {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 6px 8px;
+  list-style: none;
+  background: var(--mw-dark);
+}
+
+.mw-upload {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 2px 8px;
+  --mw-icon-size: 16px;
+}
+
+.mw-upload-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mw-upload .icon-button {
+  width: 22px;
+  height: 22px;
+}
+
+.mw-upload .mw-progress {
+  grid-column: 1 / -1;
+}

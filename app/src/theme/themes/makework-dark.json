@@ -1,0 +1,39 @@
+{
+  "id": "makework-dark",
+  "name": "MakeWork Dark",
+  "author": "MakeWork",
+  "scheme": "dark",
+  "colors": {
+    "accent": "#2f78e4",
+    "accentText": "#000000",
+    "text": "#ecf6ff",
+    "textMuted": "#acbdcd",
+    "textDisabled": "#a1a9b1",
+    "border": "#3d52ae",
+    "link": "#24daff",
+    "warning": "#e44b2e",
+    "success": "#4ce1a0",
+    "danger": "#e53935",
+    "light": "#0b0e28",
+    "dark": "#08071d",
+    "darker": "#020203"
+  },
+  "border": { "width": 2 },
+  "shadow": { "panel": "none", "popup": "0 6px 20px rgba(0, 0, 0, 0.6)" },
+  "fonts": {
+    "ui": "system-ui, 'Segoe UI', Roboto, 'Noto Sans', sans-serif",
+    "heading": "'Comfortaa Variable', system-ui, sans-serif",
+    "code": "ui-monospace, 'Cascadia Code', 'DejaVu Sans Mono', monospace",
+    "size": 14,
+    "files": []
+  },
+  "shape": { "corners": "rounded", "size": 2 },
+  "layout": {
+    "serverBar": { "width": 52, "mode": "docked" },
+    "channelBar": { "width": 235, "mode": "docked" },
+    "gap": 4,
+    "margin": 12
+  },
+  "icons": { "set": "lucide", "overrides": {} },
+  "sounds": {}
+}

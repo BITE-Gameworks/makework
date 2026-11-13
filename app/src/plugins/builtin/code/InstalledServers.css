@@ -1,0 +1,26 @@
+.code-servers {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--mw-margin) / 2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.code-server-row {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--mw-margin) / 2);
+  min-height: 2em;
+}
+
+.code-server-name {
+  min-width: 8em;
+  color: var(--mw-text);
+}
+
+.code-server-state {
+  flex: 1;
+  color: var(--mw-text-muted);
+  min-width: 0;
+}

@@ -1,0 +1,13 @@
+# Wrangler state (account id and email, local databases)
+.wrangler/
+
+# Tool caches written when something runs from the repository root.
+node_modules/
+
+# SonarQube scanner state and the coverage report it reads.
+.scannerwork/
+app/coverage/
+
+# Local editor and agent settings.
+.claude/settings.local.json
+.directory

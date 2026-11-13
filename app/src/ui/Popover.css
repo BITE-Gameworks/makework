@@ -1,0 +1,153 @@
+/* The anchor (the popover's parent) needs position: relative. */
+.mw-popover {
+  position: absolute;
+  z-index: 30;
+  left: 0;
+  top: calc(100% + 6px);
+  min-width: 180px;
+  padding: 6px;
+  background: var(--mw-dark);
+  border: 1px solid var(--mw-light);
+  box-shadow: var(--mw-shadow-popup);
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity var(--mw-duration) var(--mw-ease), transform var(--mw-duration) var(--mw-ease);
+}
+
+.mw-popover.above {
+  top: auto;
+  bottom: calc(100% + 6px);
+  transform: translateY(4px);
+}
+
+.mw-popover.end {
+  left: auto;
+  right: 0;
+}
+
+.mw-popover.visible {
+  opacity: 1;
+  transform: none;
+}
+
+.mw-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 8px;
+  text-align: left;
+  white-space: nowrap;
+  color: var(--mw-text-muted);
+}
+
+.mw-menu-item:hover {
+  background: var(--mw-light);
+  color: var(--mw-text);
+}
+
+.mw-menu-item .mw-icon {
+  visibility: hidden;
+}
+
+.mw-menu-item.selected {
+  color: var(--mw-accent);
+}
+
+.mw-menu-item.selected .mw-icon {
+  visibility: visible;
+}
+
+.mw-menu-heading {
+  padding: 4px 8px;
+  color: var(--mw-text-disabled);
+  font-size: 0.85em;
+}
+
+.mw-menu-item:disabled {
+  color: var(--mw-text-disabled);
+  background: none;
+  cursor: default;
+}
+
+.mw-menu-note {
+  max-width: 260px;
+  margin: 0 8px 6px;
+  color: var(--mw-text-disabled);
+  font-size: 0.85em;
+  white-space: normal;
+}
+
+/* Right-click menu: placed at the pointer with a transform, so it fades only. */
+.mw-context-menu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 40;
+  transition: opacity var(--mw-duration) var(--mw-ease);
+}
+
+.mw-context-menu.resizing {
+  overflow: hidden;
+}
+
+.mw-context-menu .mw-menu-item .mw-icon {
+  visibility: visible;
+}
+
+.mw-menu-icon {
+  display: inline-grid;
+  width: 1.15em;
+}
+
+.mw-menu-item.danger {
+  color: var(--mw-warning);
+}
+
+.mw-menu-separator {
+  height: 1px;
+  margin: 4px 2px;
+  background: var(--mw-light);
+}
+
+.mw-menu-swatch {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  margin-right: -2px;
+  border-radius: 50%;
+}
+
+.mw-menu-chevron {
+  display: inline-grid;
+  margin-left: auto;
+  padding-left: 12px;
+}
+
+/* A submenu's entries, indented under the entry that opens it. */
+.mw-submenu {
+  max-height: 40vh;
+  padding-left: 1.15em;
+  overflow-y: auto;
+}
+
+.mw-menu-content {
+  padding: 6px 10px;
+}
+
+/* A menu row rendered inside a content block (ConfirmItem/RenameItem) spans the menu like the plain rows. */
+.mw-menu-content:has(> .mw-menu-item:first-child) {
+  padding: 0;
+}
+
+/* Rename field inside a right-click menu (shell/channelMenu.tsx). */
+.menu-rename {
+  display: flex;
+  gap: 4px;
+  padding: 4px 8px;
+}
+
+.menu-rename .mw-input {
+  flex: 1;
+  min-width: 0;
+}

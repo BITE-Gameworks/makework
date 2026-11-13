@@ -1,0 +1,45 @@
+{
+  "id": "makework-frostfall",
+  "name": "Frostfall",
+  "author": "MakeWork",
+  "extends": "makework-dark",
+  "scheme": "dark",
+  "border": {
+    "width": 1
+  },
+  "fonts": {
+    "ui": "'Barlow Condensed', 'Futura Condensed', 'Arial Narrow', sans-serif",
+    "size": 16
+  },
+  "colors": {
+    "accent": "#3fb6ff",
+    "accentText": "#03121c",
+    "text": "#e6eef2",
+    "textMuted": "#9fb1bb",
+    "textDisabled": "#62737d",
+    "border": "#4f7e99",
+    "link": "#6cc8ff",
+    "warning": "#d1574a",
+    "success": "#6fae8a",
+    "danger": "#dc4b44",
+    "light": "#141a1e",
+    "dark": "#0c1013",
+    "darker": "#05080a"
+  },
+  "shadow": {
+    "panel": "0 0 30px rgba(0, 8, 14, 0.9)",
+    "popup": "0 0 24px rgba(63, 182, 255, 0.28)"
+  },
+  "shape": {
+    "corners": "square",
+    "size": 0
+  },
+  "layout": {
+    "gap": 6,
+    "margin": 16
+  },
+  "icons": {
+    "set": "runic",
+    "overrides": {}
+  }
+}

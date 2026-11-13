@@ -1,0 +1,131 @@
+.plugin-settings {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  gap: 0 var(--mw-margin);
+  max-width: 1200px;
+  padding: 24px;
+}
+
+.plugin-toolbar,
+.plugin-settings > p,
+.plugin-settings > .warning {
+  grid-column: 1 / -1;
+}
+
+.plugin-installed {
+  grid-column: 2;
+  grid-row: 3 / span 2;
+}
+
+.plugin-toolbar {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--mw-margin) / 2);
+}
+
+.plugin-toolbar h2 {
+  flex: 1;
+  margin: 0;
+  color: var(--mw-accent);
+  font-weight: 500;
+}
+
+.plugin-list {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--mw-margin) / 2);
+  padding: 0;
+  list-style: none;
+}
+
+.plugin-card {
+  display: flex;
+  gap: calc(var(--mw-margin) / 2);
+  padding: calc(var(--mw-margin) / 2);
+  background: var(--mw-dark);
+  transition: opacity var(--mw-duration) var(--mw-ease);
+  flex-wrap: wrap;
+}
+
+.plugin-card-settings {
+  flex-basis: 100%;
+  min-width: 0;
+}
+
+.plugin-settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--mw-margin) / 2);
+  padding-top: calc(var(--mw-margin) / 2);
+}
+
+.plugin-settings-heading {
+  margin: calc(var(--mw-margin) / 2) 0 0;
+  color: var(--mw-text-muted);
+  font-weight: 500;
+}
+
+.plugin-setting .hint {
+  margin: 2px 0 0;
+}
+
+.plugin-secret {
+  display: flex;
+  gap: calc(var(--mw-margin) / 2);
+}
+
+.plugin-secret .mw-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.plugin-card.disabled {
+  opacity: 0.55;
+}
+
+.plugin-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.plugin-info h3 {
+  margin: 0 0 2px;
+  font-weight: 500;
+}
+
+.plugin-info p {
+  margin: 2px 0;
+}
+
+.plugin-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: calc(var(--mw-margin) / 2);
+}
+
+.plugin-settings-toggle {
+  margin-top: auto;
+}
+
+.plugin-section-title {
+  margin: var(--mw-margin) 0 calc(var(--mw-margin) / 2);
+  color: var(--mw-text-muted);
+  font-weight: 500;
+}
+
+@media (max-width: 760px) {
+  .plugin-settings {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .plugin-toolbar,
+  .plugin-settings > p,
+  .plugin-settings > .warning,
+  .plugin-installed {
+    grid-column: 1;
+    grid-row: auto;
+  }
+}

@@ -1,0 +1,651 @@
+/* Narrow layouts follow the sheet's own width (@container sheet), so a small window with the sidebars open gets them too. */
+.mw-sheets {
+  container: sheet / inline-size;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: var(--mw-text);
+}
+
+.mw-sheets-toolbar,
+.mw-sheets-formula,
+.mw-sheets-tabs {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--mw-margin) / 3);
+  padding: calc(var(--mw-margin) / 2) var(--mw-margin);
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.mw-sheets-toolbar {
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--mw-border);
+}
+
+.mw-sheets-toolbar > button,
+.mw-sheets-tabs button,
+.mw-sheets-calendar button {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--mw-margin) / 3);
+  padding: calc(var(--mw-margin) / 3) calc(var(--mw-margin) / 2);
+  color: var(--mw-text);
+}
+
+.mw-sheets-toolbar > button.active,
+.mw-sheets-calendar button.on,
+.mw-sheets-tab.active {
+  color: var(--mw-accent);
+  border-color: var(--mw-accent);
+}
+
+.mw-sheets-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--mw-margin) / 4);
+}
+
+/* Narrow: the groups' buttons flow with the rest of the toolbar instead of running off its right edge. */
+@container sheet (max-width: 640px) {
+  .mw-sheets-toolbar-group {
+    display: contents;
+  }
+}
+
+@container sheet (max-width: 640px) {
+  .mw-sheets-toolbar-divider {
+    display: none;
+  }
+}
+
+.mw-sheets-toolbar .mw-sheets-format-button {
+  position: relative;
+  min-width: 2rem;
+  min-height: 2rem;
+  padding: calc(var(--mw-margin) / 4);
+  color: var(--mw-text);
+}
+
+.mw-sheets-toolbar .mw-sheets-format-button.on {
+  color: var(--mw-accent);
+}
+
+.mw-sheets-toolbar-divider {
+  width: 1px;
+  height: 1.5rem;
+  margin-inline: calc(var(--mw-margin) / 4);
+  background: var(--mw-border);
+}
+
+.mw-sheets-toolbar-anchor {
+  display: inline-flex;
+}
+
+.mw-sheets-color-bar {
+  position: absolute;
+  right: 5px;
+  bottom: 3px;
+  left: 5px;
+  height: 3px;
+  border-radius: var(--mw-corner);
+}
+
+.mw-sheets-formula {
+  min-height: 2.25rem;
+  border-bottom: 1px solid var(--mw-border);
+}
+
+.mw-sheets-formula code {
+  min-width: 4rem;
+  color: var(--mw-text-muted);
+}
+
+@container sheet (max-width: 640px) {
+  .mw-sheets-formula code {
+    min-width: 2.5rem;
+  }
+}
+
+.mw-sheets-formula input,
+.mw-sheets-popover input,
+.mw-sheets-tab-wrap input,
+.mw-sheets-cell input,
+.mw-sheets-calendar-grid input {
+  min-width: 0;
+  color: inherit;
+  background: var(--mw-darker);
+  border: 1px solid var(--mw-border);
+  border-radius: var(--mw-radius);
+  padding: calc(var(--mw-margin) / 3);
+}
+
+.mw-sheets-formula input {
+  flex: 1;
+}
+
+.mw-sheets-scroller {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  position: relative;
+  outline: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.mw-sheets-grid-space {
+  position: relative;
+  isolation: isolate;
+  --sheet-column-width: 128px;
+  --sheet-row-height: 28px;
+  --sheet-row-head: 52px;
+  --sheet-column-head: 30px;
+}
+
+/* Zero-size sticky strips holding the column and row headers (and the add buttons) at the scroller's edges. */
+.mw-sheets-head-strip {
+  position: sticky;
+  width: 0;
+  height: 0;
+  overflow: visible;
+}
+
+.mw-sheets-head-strip.top {
+  top: 0;
+  z-index: 8;
+}
+
+.mw-sheets-head-strip.left {
+  left: 0;
+  z-index: 7;
+}
+
+.mw-sheets-grid-corner,
+.mw-sheets-col-head,
+.mw-sheets-row-head {
+  position: sticky;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--mw-darker);
+  border: 1px solid var(--mw-border);
+  color: var(--mw-text-muted);
+}
+
+.mw-sheets-grid-corner {
+  position: sticky;
+  left: 0;
+  top: 0;
+  width: var(--sheet-row-head);
+  height: var(--sheet-column-head);
+  z-index: 9;
+}
+
+.mw-sheets-col-head {
+  position: absolute;
+  top: 0;
+  width: var(--sheet-column-width);
+  height: var(--sheet-column-head);
+  z-index: 4;
+  overflow: visible;
+}
+
+.mw-sheets-row-head {
+  position: absolute;
+  left: 0;
+  width: var(--sheet-row-head);
+  height: var(--sheet-row-height);
+  z-index: 2;
+  overflow: visible;
+}
+
+.mw-sheets-resize {
+  position: absolute;
+  z-index: 2;
+  display: block;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  opacity: 0;
+  touch-action: none;
+}
+
+.mw-sheets-resize:hover,
+.mw-sheets-resize:focus-visible,
+.mw-sheets-resize:active {
+  background: var(--mw-accent);
+  opacity: 0.7;
+}
+
+.mw-sheets-resize-col {
+  top: 0;
+  right: -3px;
+  bottom: 0;
+  width: 7px;
+  cursor: col-resize;
+}
+
+.mw-sheets-resize-row {
+  right: 0;
+  bottom: -3px;
+  left: 0;
+  height: 7px;
+  cursor: row-resize;
+}
+
+.mw-sheets-cell {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  width: var(--sheet-column-width);
+  height: var(--sheet-row-height);
+  border: 1px solid color-mix(in srgb, var(--mw-border) 45%, transparent);
+  background: var(--mw-dark);
+  padding: 0 calc(var(--mw-margin) / 3);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.mw-sheets-cell.in-range {
+  isolation: isolate;
+}
+
+.mw-sheets-cell.in-range::before,
+.mw-sheets-calendar-cell.in-range::before {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  content: "";
+  background: var(--mw-text);
+  opacity: 0.14;
+  pointer-events: none;
+}
+
+.mw-sheets-cell.selected {
+  z-index: 1;
+  outline: 2px solid var(--mw-accent);
+  outline-offset: -2px;
+  box-shadow: inset 0 0 0 2px var(--mw-accent);
+}
+
+.mw-sheets-cell.selected::before,
+.mw-sheets-calendar-cell.selected::before {
+  opacity: 0.22;
+}
+
+.mw-sheets-cell > *,
+.mw-sheets-calendar-cell > * {
+  position: relative;
+  z-index: 1;
+}
+
+.mw-sheets-cell.locked {
+  outline: 2px solid var(--mw-warning);
+  outline-offset: -2px;
+}
+
+.mw-sheets-cell.conflict,
+.mw-sheets-calendar-cell.conflict {
+  outline: calc(var(--mw-border-width) * 2) solid var(--mw-warning);
+  outline-offset: calc(var(--mw-border-width) * -2);
+}
+
+.mw-sheets-cell.remote-range {
+  border-color: var(--mw-text-muted);
+}
+
+.mw-sheets-cell input {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  user-select: text;
+  -webkit-user-select: text;
+  background: transparent;
+  color: inherit;
+}
+
+.mw-sheets-cell .mw-select {
+  min-width: 0;
+  width: 100%;
+}
+
+.mw-sheets-cell .mw-select-button {
+  min-height: 0;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  justify-content: flex-start;
+}
+
+.mw-sheets-checkbox {
+  display: flex;
+  color: var(--mw-text);
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+.mw-sheets-lock {
+  position: absolute;
+  right: 0;
+  top: 0;
+  z-index: 1;
+  color: var(--mw-warning);
+  background: var(--mw-dark);
+}
+
+.mw-sheets-tabs {
+  flex-wrap: wrap;
+  overflow: visible;
+  border-top: 1px solid var(--mw-border);
+}
+
+.mw-sheets-tab-strip {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--mw-margin) / 3);
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.mw-sheets-tab-wrap {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.mw-sheets-tab-wrap input {
+  width: 10rem;
+}
+
+.mw-sheets-lock-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(var(--mw-margin) / 3);
+  color: var(--mw-text-muted);
+}
+
+.mw-sheets-lock-toggle:disabled {
+  opacity: 0.5;
+}
+
+.mw-sheets-calendar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--mw-margin) / 3);
+  margin-left: auto;
+}
+
+.mw-sheets-transfer .mw-icon {
+  display: none;
+}
+
+/* Narrow: Import / export shrinks to its icon, and the footer wraps with the month first. */
+@container sheet (max-width: 640px) {
+  .mw-sheets-transfer .mw-icon {
+    display: block;
+  }
+}
+
+@container sheet (max-width: 640px) {
+  .mw-sheets-transfer span {
+    display: none;
+  }
+}
+
+@container sheet (max-width: 640px) {
+  .mw-sheets-tabs {
+    flex-wrap: wrap;
+  }
+}
+
+@container sheet (max-width: 640px) {
+  .mw-sheets-calendar {
+    flex: 1 1 100%;
+    margin-left: 0;
+  }
+}
+
+@container sheet (max-width: 640px) {
+  .mw-sheets-calendar > span {
+    order: -1;
+    margin-right: auto;
+  }
+}
+
+.mw-sheets-size-control {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.mw-sheets-popover {
+  display: grid;
+  gap: calc(var(--mw-margin) / 2);
+  min-width: 14rem;
+  max-width: min(30rem, calc(100vw - 2 * var(--mw-margin)));
+}
+
+.mw-sheets-popover-content {
+  display: grid;
+  gap: calc(var(--mw-margin) / 2);
+  min-width: 14rem;
+  max-width: min(30rem, calc(100vw - 2 * var(--mw-margin)));
+}
+
+.mw-sheets-popover label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--mw-margin) / 2);
+}
+
+.mw-sheets-popover input {
+  width: 8rem;
+}
+
+.mw-sheets-rule {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--mw-margin) / 2);
+}
+
+.mw-sheets-popover small {
+  color: var(--mw-text-muted);
+}
+
+.mw-sheets-edge-add {
+  position: absolute;
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--mw-text);
+  background: var(--mw-darker);
+  border-color: var(--mw-border);
+}
+
+.mw-sheets-add-column {
+  width: var(--sheet-column-width);
+  height: var(--sheet-column-head);
+}
+
+.mw-sheets-add-row {
+  width: var(--sheet-row-head);
+  height: var(--sheet-row-height);
+}
+
+.mw-sheets-error {
+  margin: var(--mw-margin);
+  color: var(--mw-warning);
+}
+
+.mw-sheets-cursor-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+}
+
+.mw-sheets-calendar-grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-auto-rows: minmax(max-content, 1fr);
+  overflow: auto;
+  padding: calc(var(--mw-margin) / 2);
+}
+
+.mw-sheets-calendar-grid section {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--mw-margin) / 4);
+  overflow: hidden;
+  border: 1px solid var(--mw-border);
+  padding: calc(var(--mw-margin) / 3);
+}
+
+.mw-sheets-calendar-grid section.outside {
+  opacity: 0.5;
+}
+
+.mw-sheets-calendar-grid section.today {
+  outline: 2px solid var(--mw-accent);
+}
+
+.mw-sheets-calendar-grid section.picked > strong {
+  color: var(--mw-accent);
+}
+
+/* Narrow: one day per row, this month only, so each day's name and cells have room. */
+@container sheet (max-width: 640px) {
+  .mw-sheets-calendar-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: max-content;
+    gap: calc(var(--mw-margin) / 2);
+  }
+}
+
+@container sheet (max-width: 640px) {
+  .mw-sheets-calendar-grid section {
+    grid-column: auto !important;
+    grid-row: auto !important;
+    min-height: auto;
+  }
+}
+
+@container sheet (max-width: 640px) {
+  .mw-sheets-calendar-grid section.outside {
+    display: none;
+  }
+}
+
+/* A day's short name in the month grid, the long one in the list. */
+.mw-sheets-calendar-grid .day-long {
+  display: none;
+}
+
+@container sheet (max-width: 640px) {
+  .mw-sheets-calendar-grid .day-long {
+    display: inline;
+  }
+
+  .mw-sheets-calendar-grid .day-short {
+    display: none;
+  }
+}
+
+.mw-sheets-calendar-grid section > strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+}
+
+.mw-sheets-calendar-grid input {
+  width: 100%;
+}
+
+.mw-sheets-calendar-cell {
+  position: relative;
+  min-width: 0;
+  min-height: 1.8rem;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid var(--mw-border);
+  border-radius: var(--mw-radius);
+  background: var(--mw-dark);
+  color: var(--mw-text);
+}
+
+.mw-sheets-calendar-cell.in-range {
+  isolation: isolate;
+}
+
+.mw-sheets-calendar-cell.selected {
+  z-index: 1;
+  box-shadow: inset 0 0 0 2px var(--mw-accent);
+}
+
+.mw-sheets-calendar-cell,
+.mw-sheets-calendar-cell * {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.mw-sheets-calendar-cell input {
+  width: 100%;
+  min-height: 1.8rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  text-align: inherit;
+  cursor: text;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.mw-sheets-calendar-cell .mw-select {
+  min-width: 0;
+  width: 100%;
+}
+
+.mw-sheets-context-options {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--mw-margin) / 3);
+  padding: calc(var(--mw-margin) / 2);
+}
+
+.mw-sheets-context-options label {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--mw-margin) / 4);
+}
+
+.mw-sheets-context-options input {
+  min-width: 12rem;
+  color: var(--mw-text);
+  background: var(--mw-darker);
+  border: 1px solid var(--mw-border);
+  border-radius: var(--mw-radius);
+  padding: calc(var(--mw-margin) / 3);
+}

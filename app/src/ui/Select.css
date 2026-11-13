@@ -1,0 +1,100 @@
+.mw-select {
+  display: inline-flex;
+  min-width: 0;
+}
+
+.mw-select-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  padding: 0.3em 0.5em;
+  border: var(--mw-border-width) solid transparent;
+  background: var(--mw-darker);
+  color: var(--mw-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mw-select-button:hover:not(:disabled) {
+  border-color: var(--mw-border);
+}
+
+.mw-select-button:focus-visible,
+.mw-select-button[aria-expanded="true"] {
+  border-color: var(--mw-accent);
+  outline: none;
+}
+
+.mw-select-button:disabled {
+  color: var(--mw-text-disabled);
+  cursor: default;
+}
+
+.mw-select-button > .mw-icon:last-child {
+  flex: none;
+  color: var(--mw-text-muted);
+  transition: transform var(--mw-duration) var(--mw-ease);
+}
+
+.mw-select-button[aria-expanded="true"] > .mw-icon:last-child {
+  transform: rotate(180deg);
+}
+
+.mw-select-value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mw-select-value.placeholder {
+  color: var(--mw-text-disabled);
+}
+
+.mw-select-search {
+  width: 100%;
+  margin-bottom: calc(var(--mw-margin) / 4);
+}
+
+.mw-select-list {
+  display: flex;
+  flex-direction: column;
+  max-height: min(320px, 60vh);
+  overflow-y: auto;
+}
+
+.mw-select-list .mw-menu-item:focus-visible {
+  background: var(--mw-light);
+  color: var(--mw-text);
+  outline: none;
+}
+
+.mw-select-list .mw-menu-item[aria-selected="true"] .mw-icon {
+  visibility: visible;
+}
+
+.mw-combobox {
+  display: flex;
+  min-width: 0;
+}
+
+.mw-combobox .mw-input {
+  width: 100%;
+  min-width: 0;
+}
+
+.mw-select-list .mw-menu-item.active {
+  background: var(--mw-light);
+  color: var(--mw-text);
+}
+
+.mw-select-swatch {
+  width: 0.65em;
+  height: 0.65em;
+  flex: none;
+  border-radius: 50%;
+}

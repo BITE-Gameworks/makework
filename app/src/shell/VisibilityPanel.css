@@ -1,0 +1,53 @@
+.visibility-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.visibility-panel p {
+  margin: 0;
+}
+
+.visibility-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.visibility-subject {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.channel-access {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.channel-access p {
+  margin: 0;
+}
+
+/* One row per rule: who, view, edit, remove; the dropdowns line up in columns. */
+.access-rules {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: 4px 6px;
+}
+
+.access-head {
+  color: var(--mw-text-disabled);
+  font-size: 0.85em;
+}
+
+.access-empty {
+  grid-column: 1 / -1;
+}

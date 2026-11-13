@@ -1,0 +1,14 @@
+/* The web app's sign-in popups (github-callback.html, google-callback.html), in MakeWork Dark and Light. */
+:root { --bg: #020203; --card: #08071d; --text: #ecf6ff; --muted: #acbdcd; --accent: #2f78e4; --border: #3d52ae; }
+@media (prefers-color-scheme: light) {
+  :root { --bg: #dfe4f4; --card: #ffffff; --text: #0b0e28; --muted: #3c4766; --accent: #2a6ad8; --border: #6574c0; }
+}
+* { box-sizing: border-box; }
+body { display: grid; place-items: center; min-height: 100vh; margin: 0; padding: 16px; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, sans-serif; }
+main { display: flex; flex-direction: column; align-items: center; gap: 12px; width: min(400px, 100%); padding: 32px 24px; border: 2px solid var(--border); border-radius: 2px; background: var(--card); text-align: center; }
+h1 { margin: 4px 0 0; font-size: 1.3rem; }
+p { margin: 0; color: var(--muted); }
+.brand { margin-top: 12px; color: var(--accent); font-weight: 700; letter-spacing: 0.02em; }
+.spinner { width: 40px; height: 40px; border: 3px solid color-mix(in srgb, var(--accent) 25%, transparent); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 3s; } }

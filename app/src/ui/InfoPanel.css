@@ -1,0 +1,134 @@
+.info-panel {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--mw-margin) * 0.75);
+  padding-top: calc(var(--mw-margin) / 2);
+}
+
+.info-header {
+  --info-accent: var(--mw-accent);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: calc(var(--mw-margin) / 2);
+  padding-top: 28px;
+  overflow: hidden;
+  background: var(--mw-light);
+}
+
+/* A band of the thing's color behind the top of its picture. */
+.info-header::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 56px;
+  background: color-mix(in srgb, var(--info-accent) 35%, transparent);
+}
+
+.info-media {
+  position: relative;
+  display: flex;
+}
+
+.info-media > .icon-tile {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border: 3px solid var(--mw-light);
+  background: var(--mw-darker);
+  color: var(--mw-accent);
+}
+
+.info-media .mw-avatar {
+  box-shadow: 0 0 0 3px var(--mw-light);
+}
+
+.info-titles {
+  min-width: 0;
+}
+
+.info-title {
+  margin: 0;
+  overflow: hidden;
+  font-size: 1.25em;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.info-subtitle {
+  color: var(--mw-text-muted);
+  font-size: 0.9em;
+}
+
+.info-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  color: var(--mw-text-muted);
+}
+
+.info-row-text {
+  flex: 1;
+  min-width: 0;
+  color: var(--mw-text);
+}
+
+.info-row .mw-button {
+  flex: none;
+}
+
+.info-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.info-section h3 {
+  margin: 0;
+  color: var(--mw-text-disabled);
+  font-size: 0.8em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.info-section p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.info-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.info-people {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A button (its menu opens by click, Enter and Space), as wide as the list plus its own inset. */
+.info-person {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-sizing: border-box;
+  width: calc(100% + 8px);
+  padding: 2px 4px;
+  margin: 0 -4px;
+  text-align: start;
+  cursor: pointer;
+}
+
+.info-person:hover {
+  background: var(--mw-light);
+}

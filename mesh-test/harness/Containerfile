@@ -1,0 +1,11 @@
+# The orchestrator: drives every client over CDP (playwright-core, no browsers downloaded) and controls the
+# client containers through the rootless podman API socket mounted at $PODMAN_SOCK.
+FROM docker.io/library/node:22-bookworm-slim
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 NODE_ENV=production
+WORKDIR /harness
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+COPY . .
+# `podman run mwt-harness s1 ...` and `podman run mwt-harness node /harness/run.mjs s1 ...` both work: run.mjs
+# drops a leading "node /harness/run.mjs".
+ENTRYPOINT ["node", "/harness/run.mjs"]

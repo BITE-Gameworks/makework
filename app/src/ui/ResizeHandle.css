@@ -1,0 +1,35 @@
+/* The panel it resizes needs position: relative. */
+.mw-resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 2;
+  width: 5px;
+  cursor: col-resize;
+  -webkit-app-region: no-drag;
+  transition: background-color var(--mw-duration) var(--mw-ease);
+}
+
+.mw-resize-handle.left {
+  left: 0;
+}
+
+.mw-resize-handle.right {
+  right: 0;
+}
+
+.mw-resize-handle.top {
+  top: 0;
+  right: 0;
+  bottom: auto;
+  left: 0;
+  width: auto;
+  height: 5px;
+  cursor: row-resize;
+}
+
+.mw-resize-handle:hover,
+.mw-resize-handle:focus-visible {
+  outline: none;
+  background: var(--mw-accent);
+}

@@ -1,0 +1,52 @@
+{
+  "id": "makework-nier",
+  "name": "Near White",
+  "author": "MakeWork",
+  "extends": "makework-dark",
+  "scheme": "light",
+  "colors": {
+    "accent": "#4e4b42",
+    "accentText": "#dad4bb",
+    "text": "#454138",
+    "textMuted": "#6b665a",
+    "textDisabled": "#948f80",
+    "border": "#57544a",
+    "link": "#3f5f6b",
+    "warning": "#b4533e",
+    "success": "#5b7a4a",
+    "danger": "#a94438",
+    "light": "#dad4bb",
+    "dark": "#cdc8b0",
+    "darker": "#bab5a1"
+  },
+  "border": {
+    "width": 1
+  },
+  "shadow": {
+    "panel": "4px 4px 0 rgba(78, 75, 66, 0.25)",
+    "popup": "6px 6px 0 rgba(78, 75, 66, 0.35)"
+  },
+  "fonts": {
+    "ui": "'FOT-Rodin Pro', 'Noto Sans JP', 'Noto Sans CJK JP', 'Helvetica Neue', Arial, sans-serif"
+  },
+  "shape": {
+    "corners": "square",
+    "size": 0
+  },
+  "layout": {
+    "serverBar": {
+      "width": 52,
+      "mode": "floating"
+    },
+    "channelBar": {
+      "width": 240,
+      "mode": "floating"
+    },
+    "gap": 10,
+    "margin": 16
+  },
+  "icons": {
+    "set": "phosphor",
+    "overrides": {}
+  }
+}

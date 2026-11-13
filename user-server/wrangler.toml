@@ -1,0 +1,20 @@
+name = "makework-user-server"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+
+# Create the database once with `npx wrangler d1 create makework-users` and put its id here.
+[[d1_databases]]
+binding = "DB"
+database_name = "makework-users"
+database_id = "889739ff-0288-4998-a1f5-7035a5d22287"
+migrations_dir = "migrations"
+
+[vars]
+NAME = "MakeWork accounts"
+MAIL_FROM = "accounts@makework.dev"
+# Where feedback and crash reports sent from the app go. Without it this server refuses them.
+FEEDBACK_TO = "hello@makework.dev"
+# Where the web app is served from: a GitHub sign-in started in a browser gets its answer back only there.
+APP_ORIGINS = "https://app.makework.dev,https://makework.dev,http://localhost:1420"
+# Secrets, not vars (`npx wrangler secret put <NAME>`): RECOVERY_SECRET, RESEND_API_KEY, and for GitHub sign-in
+# GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET.

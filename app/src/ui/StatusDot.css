@@ -1,0 +1,20 @@
+.mw-status-dot {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 0.65em;
+  height: 0.65em;
+  border: 2px solid var(--mw-light);
+  border-radius: 50%;
+  background: var(--mw-text-disabled);
+}
+
+.mw-status-dot.online { background: var(--mw-success); }
+.mw-status-dot.away { background: var(--mw-warning); }
+.mw-status-dot.dnd { background: var(--mw-danger); }
+
+.status-avatar {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}

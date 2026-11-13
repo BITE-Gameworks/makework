@@ -1,0 +1,350 @@
+.docs-body {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* The export side panel: a checkbox per page, indented like the tree. */
+.docs-export {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--mw-margin) / 2);
+  height: 100%;
+  min-height: 0;
+  padding: calc(var(--mw-margin) / 2);
+}
+
+.docs-export-tools {
+  display: flex;
+  gap: 4px;
+}
+
+.docs-export-list {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.docs-export-list label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0 3px calc(var(--depth, 0) * 16px);
+  cursor: pointer;
+}
+
+.docs-export-list label span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* The page tree and its resize handle; the tree scrolls. */
+.docs-side {
+  position: relative;
+  display: flex;
+  flex: none;
+  width: calc(var(--mw-channel-bar-width) * 0.95);
+  border-right: var(--mw-border-width) solid var(--mw-darker);
+}
+
+.docs-tree {
+  flex: 1;
+  min-width: 0;
+  padding: calc(var(--mw-margin) / 2) 0;
+  overflow-y: auto;
+  background: var(--mw-dark);
+}
+
+.docs-hint {
+  margin: 0;
+  padding: 0 var(--mw-margin);
+  color: var(--mw-text-disabled);
+}
+
+.docs-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  padding-left: calc(var(--depth) * 14px + calc(var(--mw-margin) / 2));
+  padding-right: 4px;
+  color: var(--mw-text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.docs-row:hover {
+  color: var(--mw-text);
+}
+
+.docs-row.open {
+  background: color-mix(in srgb, var(--mw-accent) 22%, transparent);
+  color: var(--mw-text);
+}
+
+.docs-row-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.docs-row-add {
+  width: 22px;
+  height: 22px;
+  opacity: 0;
+  transition: opacity var(--mw-duration) var(--mw-ease);
+}
+
+.docs-row:hover .docs-row-add,
+.docs-row-add:focus-visible {
+  opacity: 1;
+}
+
+.docs-toggle {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--mw-text-disabled);
+  cursor: pointer;
+}
+
+.docs-toggle .mw-icon {
+  transition: transform var(--mw-duration) var(--mw-ease);
+}
+
+.docs-toggle.expanded .mw-icon {
+  transform: rotate(90deg);
+}
+
+.docs-toggle.empty {
+  visibility: hidden;
+}
+
+.docs-rename {
+  flex: 1;
+  min-width: 0;
+  padding: 2px 4px;
+  border: var(--mw-border-width) solid var(--mw-accent);
+  background: var(--mw-darker);
+  color: var(--mw-text);
+  font: inherit;
+  outline: none;
+}
+
+.docs-row.drop-above::before,
+.docs-row.drop-below::before {
+  content: "";
+  position: absolute;
+  left: calc(var(--depth) * 14px + 8px);
+  right: 0;
+  height: 2px;
+  background: var(--mw-accent);
+  pointer-events: none;
+}
+
+.docs-row.drop-above::before {
+  top: -1px;
+}
+
+.docs-row.drop-below::before {
+  bottom: -1px;
+}
+
+.docs-row.drop-inside {
+  box-shadow: inset 0 0 0 calc(var(--mw-border-width) * 2) var(--mw-accent);
+}
+
+/* The open page. */
+.docs-page {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* The page title, kept wide enough to read: the tools wrap instead. */
+.docs-heading {
+  display: flex;
+  flex: 1 1 16em;
+  align-items: center;
+  gap: 8px;
+  min-width: min(100%, 16em);
+}
+
+/* Narrow: the page title gets a row of its own. */
+.shell.narrow .docs-heading {
+  flex-basis: 100%;
+}
+
+.shell.narrow .docs-meta {
+  display: none;
+}
+
+.shell.narrow .docs-title {
+  flex: 1;
+  max-width: none;
+}
+
+.docs-title {
+  flex: 0 0 auto;
+  field-sizing: content;
+  min-width: 4em;
+  max-width: min(28em, 100%);
+  padding: 2px 4px;
+  border: var(--mw-border-width) solid transparent;
+  background: none;
+  color: var(--mw-text);
+  font: inherit;
+  font-size: 1.15em;
+  font-weight: 500;
+  outline: none;
+}
+
+.docs-title:hover:not(:disabled) {
+  border-color: var(--mw-border);
+}
+
+.docs-title:focus {
+  border-color: var(--mw-accent);
+}
+
+.docs-meta {
+  overflow: hidden;
+  color: var(--mw-text-disabled);
+  font-size: 0.85em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.docs-content {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  gap: var(--mw-margin);
+  padding: calc(var(--mw-margin) / 2) var(--mw-margin) var(--mw-margin);
+}
+
+.docs-content > * {
+  flex: 1;
+  min-width: 0;
+}
+
+/* The editor fills its pane, alone or beside the preview. */
+.docs-editor-pane {
+  position: relative;
+  display: flex;
+}
+
+.docs-editor-pane .docs-live {
+  flex: 1;
+  min-width: 0;
+}
+
+.docs-content.split .docs-editor-pane {
+  flex: none;
+  width: 50%;
+  min-width: 180px;
+  max-width: 75%;
+}
+
+.docs-content.split .docs-preview {
+  flex: 1;
+}
+
+.docs-editor {
+  resize: none;
+  padding: calc(var(--mw-margin) / 2);
+  font-family: var(--mw-font-code);
+  line-height: 1.5;
+  tab-size: 2;
+}
+
+.docs-preview {
+  overflow-y: auto;
+  line-height: 1.6;
+}
+
+.docs-content:not(.split) .docs-preview {
+  max-width: 820px;
+}
+
+.docs-empty {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--mw-margin);
+  color: var(--mw-text-disabled);
+}
+
+/* The editor with other members' carets drawn over it. */
+.docs-live {
+  position: relative;
+  display: flex;
+  min-height: 0;
+}
+
+.docs-live .docs-editor {
+  flex: 1;
+  min-width: 0;
+}
+
+.docs-carets {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.docs-conflicts {
+  position: absolute;
+  z-index: 2;
+  right: calc(var(--mw-margin) / 2);
+  bottom: calc(var(--mw-margin) / 2);
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--mw-margin) / 4);
+  pointer-events: none;
+}
+
+.docs-conflict {
+  padding: calc(var(--mw-margin) / 4) calc(var(--mw-margin) / 2);
+  border: var(--mw-border-width) solid var(--mw-warning);
+  background: color-mix(in srgb, var(--mw-warning) 20%, var(--mw-dark));
+  color: var(--mw-text);
+}
+
+.docs-caret {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--who);
+  transition: transform 80ms linear;
+}
+
+.docs-caret-name {
+  position: absolute;
+  left: 0;
+  bottom: 100%;
+  padding: 0 4px;
+  border-radius: var(--mw-radius);
+  background: var(--who);
+  color: var(--mw-darker);
+  font-size: 0.7em;
+  white-space: nowrap;
+}

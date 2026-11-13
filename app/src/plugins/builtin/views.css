@@ -1,0 +1,110 @@
+/* Shared by the built-in channel views. */
+
+.view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+/* Tool groups that don't fit wrap onto another line instead of running off the view. */
+.view-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  padding: 10px var(--mw-margin);
+  min-height: 48px;
+}
+
+/* Undo, redo and history sit in the same corner in every view. */
+.view-history {
+  order: 100;
+  margin-left: auto;
+}
+
+/* Never squeezed below its text: the tools wrap instead. */
+.view-title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1 0 auto;
+  max-width: 100%;
+  margin: 0;
+  font-size: 1.15em;
+  font-weight: 400;
+  color: var(--mw-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* A group wider than the view wraps its own buttons too. */
+.view-tools {
+  display: flex;
+  flex-wrap: wrap;
+  max-width: 100%;
+  gap: 2px;
+  padding: 2px;
+  background: var(--mw-darker);
+}
+
+.view-tools .icon-button.on {
+  color: var(--mw-accent);
+}
+
+.view-note {
+  padding: var(--mw-margin);
+  color: var(--mw-text-disabled);
+}
+
+.view-error {
+  margin: 0 var(--mw-margin) 8px;
+  color: var(--mw-warning);
+}
+
+.view-input {
+  min-width: 0;
+  padding: 0.1em 0.4em;
+}
+
+/* Name and type of a new text or code file. */
+.new-file-form { display: flex; flex-direction: column; gap: calc(var(--mw-margin) / 2); padding: calc(var(--mw-margin) / 2) var(--mw-margin); }
+
+/* Narrow screens (ui/narrowPanes.tsx): a view's side pane covers its content from one side while open. Its body
+   needs `position: relative`. */
+.narrow-pane {
+  position: absolute !important;
+  top: 0;
+  bottom: 0;
+  z-index: 6;
+  width: min(88%, 360px) !important;
+  background: var(--mw-dark);
+  box-shadow: var(--mw-shadow-panel);
+  visibility: hidden;
+  transition: transform var(--mw-duration) var(--mw-ease), visibility 0s linear var(--mw-duration);
+}
+
+/* A closed pane waits just outside its body, which must not scroll to it. */
+.shell.narrow :has(> .narrow-pane) {
+  overflow: clip;
+}
+
+.narrow-pane-left {
+  left: 0;
+  transform: translateX(-100%);
+}
+
+.narrow-pane-right {
+  right: 0;
+  transform: translateX(100%);
+}
+
+.narrow-pane.open {
+  transform: none;
+  visibility: visible;
+  transition: transform var(--mw-duration) var(--mw-ease);
+}
+
+.shell.narrow .view-header {
+  justify-content: space-between;
+}

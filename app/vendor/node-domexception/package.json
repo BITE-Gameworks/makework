@@ -1,0 +1,7 @@
+{
+  "name": "node-domexception",
+  "version": "1.0.0",
+  "description": "Stands in for the deprecated node-domexception (fetch-blob, under mediasoup's node-fetch): Node has DOMException built in. See README.md.",
+  "main": "index.js",
+  "license": "MIT"
+}

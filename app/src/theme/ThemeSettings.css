@@ -1,0 +1,164 @@
+.theme-settings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  padding: 24px;
+  min-height: 100%;
+}
+
+.theme-controls {
+  flex: 0 1 320px;
+  min-width: 260px;
+}
+
+.theme-controls h2,
+.theme-controls h3 {
+  margin: 16px 0 8px;
+  color: var(--mw-accent);
+  font-weight: 500;
+}
+
+.theme-controls .row,
+.theme-preview .row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.theme-controls .mw-select {
+  width: 100%;
+}
+
+.hint {
+  color: var(--mw-text-disabled);
+}
+
+.theme-error {
+  color: var(--mw-warning);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+  color: var(--mw-text-muted);
+}
+
+.color-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.color-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--mw-text-muted);
+}
+
+.theme-color-picker.mw-color-picker-trigger {
+  width: 28px;
+  height: 22px;
+}
+
+.color-field span {
+  min-width: 0;
+}
+
+.theme-preview {
+  flex: 1 1 560px;
+  min-width: 0;
+}
+
+.preview-app {
+  position: relative;
+  display: flex;
+  height: 480px;
+  overflow: hidden;
+  background: var(--mw-light);
+  border: 1px solid var(--mw-dark);
+}
+
+/* The real bars and call panel, minus what only the one in the shell may have. */
+.preview-app .sidebars {
+  height: 100%;
+}
+
+.preview-app .voice-panel,
+.preview-app .voice-panel-avatar,
+.preview-app .voice-panel-gear {
+  view-transition-name: none;
+}
+
+.preview-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.preview-main .chat-scroll {
+  flex: 1;
+  min-height: 0;
+}
+
+.preview-controls {
+  margin-top: 12px;
+}
+
+.preview-inline {
+  align-items: center;
+}
+
+.preview-inline input[type="range"] {
+  width: 160px;
+}
+
+.muted {
+  color: var(--mw-text-disabled);
+}
+
+.warning {
+  color: var(--mw-warning);
+}
+
+.success {
+  color: var(--mw-success);
+}
+
+.disabled {
+  color: var(--mw-text-disabled);
+}
+
+.preview-swatches {
+  display: flex;
+  gap: 6px;
+  margin: 12px 0;
+}
+
+.swatch {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--mw-text-disabled);
+}
+
+.preview-icons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: var(--mw-text-muted);
+}
+
+.pack-icons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px;
+  margin-bottom: 8px;
+  background: var(--mw-dark);
+  color: var(--mw-text-muted);
+}

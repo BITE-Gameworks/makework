@@ -1,0 +1,329 @@
+.files {
+  position: relative;
+}
+
+.files-path {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.shell.narrow .files-path {
+  flex-basis: 100%;
+}
+
+.files-crumb {
+  padding: 2px 6px;
+  border: var(--mw-border-width) dashed transparent;
+  background: none;
+  color: var(--mw-text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.files-crumb:hover,
+.files-crumb.current {
+  color: var(--mw-accent);
+}
+
+.files-crumb-sep {
+  color: var(--mw-text-disabled);
+}
+
+.files-new-folder {
+  padding: 0 var(--mw-margin) 8px;
+}
+
+.files-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Marks the end of the shown entries: more come as it nears the view (ui/progressive.ts). */
+.files-more {
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+.files-items {
+  margin: 0;
+  padding: 0 var(--mw-margin) var(--mw-margin);
+  list-style: none;
+}
+
+.files-items.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.files-items.list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.files-item {
+  position: relative;
+  background: var(--mw-dark);
+  border: var(--mw-border-width) dashed transparent;
+  transition: border-color var(--mw-duration) var(--mw-ease), background-color var(--mw-duration) var(--mw-ease);
+}
+
+.files-item:hover {
+  border-color: var(--mw-border);
+}
+
+.files-item.drop-target,
+.files-crumb.drop-target {
+  border-color: var(--mw-accent);
+}
+
+.files-open {
+  display: grid;
+  width: 100%;
+  padding: 6px;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.files-open[aria-disabled="true"] {
+  cursor: default;
+}
+
+.grid .files-open {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 6px;
+}
+
+.grid .files-thumb {
+  grid-column: 1 / -1;
+  aspect-ratio: 4 / 3;
+  margin-bottom: 4px;
+}
+
+.files-thumb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: var(--mw-darker);
+  color: var(--mw-text-muted);
+  --mw-icon-size: 32px;
+}
+
+.folder .files-thumb {
+  color: var(--mw-accent);
+}
+
+.files-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.files-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--mw-text);
+}
+
+.files-size,
+.files-meta {
+  color: var(--mw-text-disabled);
+  font-size: 0.85em;
+  white-space: nowrap;
+}
+
+/* The size slot holds short values only ("1.2 MB", "Folder", "Saved"). Anything longer, like a transfer's status
+   ("Uploading to the node 42%"), goes in the meta line, which is cut off when it doesn't fit: in the size slot it
+   made a grid card's content wider than the card. */
+.files-meta {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* A status: its text is cut off first, the check before it and the percentage after it stay whole. */
+.files-status {
+  display: flex;
+  align-items: center;
+  gap: 0.35em;
+}
+
+.files-status > * {
+  flex: none;
+}
+
+.files-status > .files-status-text {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.grid .files-size {
+  align-self: center;
+}
+
+.grid .files-meta {
+  grid-column: 1 / -1;
+}
+
+.list .files-open {
+  grid-template-columns: 28px minmax(0, 1fr) 90px minmax(0, 220px);
+  align-items: center;
+  gap: 10px;
+  padding: 4px 120px 4px 6px;
+}
+
+.list .files-thumb {
+  width: 28px;
+  height: 28px;
+  --mw-icon-size: 18px;
+}
+
+.list .files-size {
+  text-align: right;
+}
+
+/* Ghosted files exist only as details until opened or downloaded. */
+.ghost .files-thumb {
+  background: repeating-linear-gradient(-45deg, var(--mw-darker) 0 6px, transparent 6px 12px);
+}
+
+.ghost .files-name {
+  color: var(--mw-text-muted);
+}
+
+.files-rename {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: 30px;
+}
+
+.list .files-rename {
+  left: 44px;
+  right: auto;
+  bottom: auto;
+  top: 50%;
+  transform: translateY(-50%);
+  width: min(50%, 320px);
+}
+
+.files-rename input {
+  width: 100%;
+}
+
+.files-actions {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  background: var(--mw-dark);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--mw-duration) var(--mw-ease);
+}
+
+/* Level with the row's 28px thumb, also while a delete prompt makes the item taller. */
+.list .files-actions {
+  top: 4px;
+}
+
+.files-item:hover .files-actions,
+.files-actions:focus-within {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Still being copied in: always shows its cancel button. */
+.files-item.uploading .files-open {
+  cursor: default;
+}
+
+.files-item.transferring .files-actions,
+.files-item.uploading .files-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Copy-in, download and send progress under the file (its text is in the meta line). */
+.files-item .mw-progress,
+.files-item .mw-transfer {
+  grid-column: 1 / -1;
+}
+
+.files-item .mw-progress {
+  margin-top: 4px;
+}
+
+.files-meta .mw-icon {
+  --mw-icon-size: 12px;
+  color: var(--mw-success);
+  vertical-align: -1px;
+}
+
+.files-actions .confirming {
+  color: var(--mw-warning);
+}
+
+.files-confirm {
+  padding: 0 6px;
+}
+
+.files-confirm .mw-confirm {
+  margin: 0 0 6px;
+}
+
+/* Grid cards are narrow: the buttons share the full width, side by side or stacked. */
+.grid .files-confirm .mw-confirm-buttons {
+  width: 100%;
+}
+
+.grid .files-confirm .mw-button {
+  flex: 1 1 auto;
+  justify-content: center;
+}
+
+/* An entry a link pointed at. */
+.files-item.flash {
+  border-color: var(--mw-accent);
+  border-style: solid;
+}
+
+.files-synced {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--mw-accent);
+  color: var(--mw-accent-text);
+  --mw-icon-size: 12px;
+}
+
+.ghost .files-thumb img {
+  opacity: 0.6;
+}
+
+/* The text editor over the files view. */
+.files-editor { position: absolute; inset: 0; z-index: 5; background: var(--mw-dark); }
+
+/* "Show hosting": the nodes keeping each file, colored by what each said (p2p/nodes.ts `contentHosting`, asked over
+   `node-holds`); a node that hasn't said, or isn't reached, is dimmed. */
+.files-hosting { display: flex; flex-wrap: wrap; gap: calc(var(--mw-margin) / 3); }
+.hosting-badge, .hosting-more, .hosting-pieces { font-size: 0.8em; padding: 0 calc(var(--mw-margin) / 3); background: var(--mw-dark); }
+.hosting-badge.holds { color: var(--mw-success); }
+.hosting-badge.healing { color: var(--mw-warning); }
+.hosting-badge.missing { color: var(--mw-danger); }
+.hosting-badge.unknown, .hosting-badge.offline { opacity: 0.6; }

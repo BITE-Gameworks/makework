@@ -1,0 +1,23 @@
+{
+  "id": "makework-light",
+  "name": "MakeWork Light",
+  "author": "MakeWork",
+  "extends": "makework-dark",
+  "scheme": "light",
+  "colors": {
+    "accent": "#2a6ad8",
+    "accentText": "#ffffff",
+    "text": "#0b0e28",
+    "textMuted": "#3c4766",
+    "textDisabled": "#7a849c",
+    "border": "#6574c0",
+    "link": "#0077b6",
+    "warning": "#c8371d",
+    "success": "#16935e",
+    "danger": "#c62828",
+    "light": "#ffffff",
+    "dark": "#eef1fb",
+    "darker": "#dfe4f4"
+  },
+  "shadow": { "panel": "0 2px 8px rgba(11, 14, 40, 0.12)", "popup": "0 6px 20px rgba(11, 14, 40, 0.2)" }
+}

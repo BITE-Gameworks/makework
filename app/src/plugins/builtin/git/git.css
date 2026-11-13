@@ -1,0 +1,1543 @@
+.git-progress,
+.git-token {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 8px;
+  margin: 0 var(--mw-margin) 8px;
+  padding: 6px calc(var(--mw-margin) / 2);
+  background: var(--mw-dark);
+}
+
+.git-progress .mw-progress {
+  grid-column: 1 / -1;
+}
+
+.git-token {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.git-token-reason {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--mw-warning);
+}
+
+.git-confirm {
+  padding: 0 var(--mw-margin);
+}
+
+.git-setup {
+  max-width: 640px;
+  padding: 8px var(--mw-margin) 24px;
+}
+
+.git-setup h3 {
+  margin: 0 0 4px;
+}
+
+.git-setup-form,
+.git-setup-token {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.git-setup-form label:not(.git-check) {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.git-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.git-setup-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.git-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.git-source .mw-icon {
+  --mw-icon-size: calc(var(--mw-font-size) * 1.3);
+}
+
+.git-source {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 var(--mw-margin) 8px;
+  white-space: nowrap;
+}
+
+.git-source-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.git-source a {
+  color: var(--mw-link);
+}
+
+.git-columns {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  gap: var(--mw-margin);
+  padding: 0 var(--mw-margin) var(--mw-margin);
+}
+
+.git-branches {
+  display: flex;
+  flex: 0 0 220px;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 0;
+  overflow-y: auto;
+  background: var(--mw-dark);
+}
+
+.git-branch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  /* Content on the inset line: half the margin in from the box's edge. */
+  padding: 4px calc(var(--mw-margin) / 2 - var(--mw-border-width));
+  border: var(--mw-border-width) solid transparent;
+  background: none;
+  color: var(--mw-text-muted);
+  text-align: left;
+  cursor: pointer;
+  --mw-icon-size: 14px;
+}
+
+.git-branch:hover {
+  color: var(--mw-text);
+}
+
+.git-branch.active {
+  border-color: var(--mw-accent);
+  color: var(--mw-accent);
+}
+
+.git-branch-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.git-default {
+  font-size: 0.8em;
+}
+
+.git-commits {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.git-commit-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Fixed-height rows with nothing between them, so the graph's lines join up. */
+.git-commit-line {
+  display: grid;
+  /* Fixed author and date columns, right-aligned, so names and dates form straight edges. */
+  grid-template-columns: auto auto minmax(0, 1fr) 150px 84px;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 32px;
+  padding: 0 calc(var(--mw-margin) / 2);
+  border: none;
+  background: none;
+  color: var(--mw-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.git-commit-line:hover {
+  background: color-mix(in srgb, var(--mw-dark) 70%, transparent);
+}
+
+.git-commit.selected .git-commit-line {
+  background: var(--mw-dark);
+  box-shadow: inset 2px 0 0 var(--mw-accent);
+}
+
+.git-sha {
+  color: var(--mw-text-muted);
+  font-size: 0.9em;
+}
+
+.git-subject,
+.git-author {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.git-author,
+.git-date {
+  text-align: right;
+}
+
+.git-date {
+  font-size: 0.85em;
+  white-space: nowrap;
+}
+
+/* Branch names on the commits they point at, in their lane's color. */
+.git-label {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 0 6px;
+  border: var(--mw-border-width) solid var(--lane-color);
+  color: var(--lane-color);
+  font-size: 0.8em;
+  line-height: 1.5;
+  vertical-align: 1px;
+}
+
+.git-label.default {
+  background: var(--lane-color);
+  color: var(--mw-darker);
+}
+
+.git-details {
+  padding: 4px 4px 16px;
+}
+
+.git-details-labels {
+  margin: 0 0 6px;
+}
+
+.git-details-subject {
+  margin: 0 0 8px;
+  font-size: 1.05em;
+}
+
+.git-body-text {
+  margin: 0 0 12px;
+  white-space: pre-wrap;
+  font-family: inherit;
+  color: var(--mw-text-muted);
+}
+
+.git-details-meta {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 12px;
+  margin: 0;
+}
+
+.git-details-meta dt {
+  color: var(--mw-text-disabled);
+}
+
+.git-details-meta dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.git-parent {
+  margin: 0 4px 4px 0;
+  padding: 0.1em 0.5em;
+}
+
+.git-more {
+  margin: 8px 4px;
+}
+
+@media (max-width: 720px) {
+  .git-columns {
+    flex-direction: column;
+  }
+
+  .git-branches {
+    flex-basis: auto;
+    max-height: 30%;
+  }
+}
+
+/* Commit graph: lane colors come from the theme's accent, turned around the color wheel. */
+.git-c0 { --lane-color: var(--mw-accent); }
+.git-c1 { --lane-color: oklch(from var(--mw-accent) l max(c, 0.12) calc(h + 47)); }
+.git-c2 { --lane-color: oklch(from var(--mw-accent) l max(c, 0.12) calc(h + 94)); }
+.git-c3 { --lane-color: oklch(from var(--mw-accent) l max(c, 0.12) calc(h + 141)); }
+.git-c4 { --lane-color: oklch(from var(--mw-accent) l max(c, 0.12) calc(h + 188)); }
+.git-c5 { --lane-color: oklch(from var(--mw-accent) l max(c, 0.12) calc(h + 235)); }
+.git-c6 { --lane-color: oklch(from var(--mw-accent) l max(c, 0.12) calc(h + 282)); }
+.git-c7 { --lane-color: oklch(from var(--mw-accent) l max(c, 0.12) calc(h + 329)); }
+
+.git-graph {
+  display: block;
+  flex: none;
+  overflow: visible;
+}
+
+.git-line {
+  fill: none;
+  stroke: var(--lane-color);
+  stroke-width: 2;
+}
+
+/* Continues into history that isn't imported yet. */
+.git-line.fade {
+  stroke-dasharray: 2 3;
+  opacity: 0.5;
+}
+
+.git-dot {
+  fill: var(--lane-color);
+}
+
+.git-dot.merge {
+  fill: var(--mw-darker);
+  stroke: var(--lane-color);
+  stroke-width: 2;
+}
+
+/* The release page: fields on the left, binaries on the right. */
+.git-release {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 var(--mw-margin) var(--mw-margin);
+  overflow-y: auto;
+}
+
+.git-release-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.git-release-head h3 {
+  margin: 0;
+  font-size: 1.05em;
+}
+
+/* Publish sits under the fields, the files column beside both: what opens there (a build editor) never moves it. */
+.git-release-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas: "fields files" "actions files";
+  grid-template-rows: auto 1fr;
+  gap: var(--mw-margin);
+}
+
+.git-release-fields {
+  grid-area: fields;
+}
+
+.git-release-files {
+  grid-area: files;
+}
+
+.git-release-columns > .git-release-actions {
+  grid-area: actions;
+  align-self: start;
+}
+
+.git-release-fields,
+.git-release-files,
+.git-builder {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.git-release-fields label,
+.git-builder label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.git-release-body > span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.git-release-body textarea {
+  resize: vertical;
+  font-family: inherit;
+}
+
+.git-release-checks {
+  display: flex;
+  gap: var(--mw-margin);
+}
+
+.git-release-files h4 {
+  margin: 0;
+}
+
+.git-builder {
+  padding: calc(var(--mw-margin) / 2);
+  background: var(--mw-dark);
+}
+
+.git-builder-folder {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+
+.git-builder-folder .git-source-text {
+  flex: 1;
+}
+
+/* What a build runs, before it runs. */
+.git-build-summary {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--mw-margin) / 2);
+}
+
+.git-build-summary p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.git-build-heading {
+  font-weight: 600;
+}
+
+.git-build-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding-left: var(--mw-margin);
+  font-size: 0.85em;
+}
+
+.git-build-steps code {
+  font-family: var(--mw-font-code);
+  overflow-wrap: anywhere;
+}
+
+/* A build configuration's fields; a textarea for the commands, folders side by side when there is room. */
+.git-build-editor {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--mw-margin) / 2);
+  padding: calc(var(--mw-margin) / 2);
+  background: var(--mw-darker);
+}
+
+.git-build-editor textarea {
+  resize: vertical;
+}
+
+.git-build-folders {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--mw-margin) / 2);
+}
+
+.git-build-folders label {
+  flex: 1 1 12em;
+  min-width: 0;
+}
+
+.git-setup-buttons .hint {
+  align-self: center;
+}
+
+.git-build-log-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.git-build-log-wrap .mw-button {
+  align-self: flex-start;
+}
+
+.git-command {
+  font-family: var(--mw-font-code);
+}
+
+.git-build-log {
+  max-height: 220px;
+  margin: 0;
+  padding: calc(var(--mw-margin) / 2);
+  overflow: auto;
+  background: var(--mw-darker);
+  font-family: var(--mw-font-code);
+  font-size: 0.8em;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.git-release-pick {
+  align-self: flex-start;
+  cursor: pointer;
+}
+
+.git-release-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.git-release-file {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 2px 8px;
+  padding: 4px calc(var(--mw-margin) / 2);
+  background: var(--mw-dark);
+}
+
+.git-release-file .mw-progress {
+  grid-column: 1 / -1;
+}
+
+.git-release-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.git-release-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--mw-margin);
+}
+
+.git-release-done a {
+  color: var(--mw-link);
+}
+
+@media (max-width: 900px) {
+  .git-release-columns {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "fields" "files" "actions";
+    grid-template-rows: auto;
+  }
+}
+
+/* The pane beside the history: a commit with its diff, or blame. */
+.git-pane {
+  position: relative;
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--mw-dark);
+}
+
+/* Narrow (core/ui.ts `narrow`): the pane covers the history; Close brings it back. */
+.shell.narrow .git-columns {
+  position: relative;
+}
+
+.shell.narrow .git-pane {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  width: auto !important;
+}
+
+.git-pane-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: calc(var(--mw-margin) / 2) calc(var(--mw-margin) / 2) 0 var(--mw-margin);
+}
+
+.git-pane-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: 1em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.git-pane-body {
+  flex: 1;
+  min-height: 0;
+  padding: calc(var(--mw-margin) / 2) var(--mw-margin) var(--mw-margin);
+  overflow: auto;
+}
+
+.git-pane-section {
+  margin: var(--mw-margin) 0 calc(var(--mw-margin) / 2);
+  color: var(--mw-text-muted);
+  font-size: 0.9em;
+  text-transform: uppercase;
+}
+
+/* Diffs */
+.git-diff-summary {
+  margin: 0 0 calc(var(--mw-margin) / 2);
+}
+
+.git-diff-stats {
+  flex-shrink: 0;
+  font-family: var(--mw-font-code);
+  font-size: 0.9em;
+}
+
+.git-add-count { color: var(--mw-success); }
+.git-del-count { color: var(--mw-warning); }
+
+.git-diff-file {
+  margin-bottom: calc(var(--mw-margin) / 2);
+  overflow: hidden;
+  background: var(--mw-darker);
+}
+
+.git-diff-file-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px 4px 4px;
+}
+
+.git-diff-toggle {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 2px 4px;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.git-diff-path {
+  overflow: hidden;
+  font-family: var(--mw-font-code);
+  font-size: 0.92em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.git-status {
+  flex-shrink: 0;
+  width: 1.4em;
+  font-family: var(--mw-font-code);
+  font-weight: 600;
+  text-align: center;
+}
+
+.git-status-added { color: var(--mw-success); }
+.git-status-deleted { color: var(--mw-warning); }
+.git-status-modified { color: var(--mw-accent); }
+.git-status-renamed { color: var(--mw-link); }
+
+.git-diff-unfold {
+  margin: 0 8px 8px;
+}
+
+.git-diff-lines,
+.git-blame-code {
+  min-width: max-content;
+  font-family: var(--mw-font-code);
+  font-size: 0.88em;
+  line-height: 1.45;
+}
+
+.git-diff-lines {
+  padding-bottom: 4px;
+  overflow-x: auto;
+}
+
+.git-diff-line {
+  display: grid;
+  grid-template-columns: 3.6em 3.6em 1.4em 1fr;
+}
+
+.git-blame-code .git-diff-line {
+  grid-template-columns: 3.6em 1fr;
+}
+
+.git-diff-line code {
+  padding-right: var(--mw-margin);
+  white-space: pre;
+}
+
+.git-diff-no {
+  padding-right: 0.8em;
+  color: var(--mw-text-disabled);
+  text-align: right;
+  user-select: none;
+}
+
+.git-diff-sign {
+  color: var(--mw-text-muted);
+  user-select: none;
+}
+
+.git-diff-line.add { background: color-mix(in srgb, var(--mw-success) 14%, transparent); }
+.git-diff-line.del { background: color-mix(in srgb, var(--mw-warning) 14%, transparent); }
+.git-diff-line.add .git-diff-sign { color: var(--mw-success); }
+.git-diff-line.del .git-diff-sign { color: var(--mw-warning); }
+
+.git-diff-line.hunk {
+  color: var(--mw-text-muted);
+  background: color-mix(in srgb, var(--mw-accent) 8%, transparent);
+}
+
+.git-diff-line.note {
+  color: var(--mw-text-disabled);
+  font-style: italic;
+}
+
+/* Blame: who wrote each run of lines */
+.git-blame-lines {
+  overflow-x: auto;
+}
+
+.git-blame-run {
+  display: grid;
+  grid-template-columns: minmax(12em, 16em) 1fr;
+  border-top: var(--mw-border-width) solid var(--mw-border);
+}
+
+.git-blame-who {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+  padding: 2px 8px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-size: 0.85em;
+  text-align: left;
+  cursor: pointer;
+}
+
+.git-blame-who:hover {
+  background: var(--mw-darker);
+}
+
+.git-blame-author {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Tabs for a channel with a working copy on this device (the settings tab row, at the view's margin). */
+.git-tabs {
+  padding: 0 var(--mw-margin);
+  margin-bottom: calc(var(--mw-margin) / 2);
+}
+
+.git-tabs + * {
+  margin-top: 0;
+}
+
+.git-changes,
+.git-branch-manager,
+.git-files {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: calc(var(--mw-margin) / 2);
+  min-height: 0;
+  padding: 0 var(--mw-margin) var(--mw-margin);
+}
+
+/* Changes: the file list beside the selected file's diff, the commit form under both. */
+.git-changes-columns,
+.git-files {
+  display: flex;
+  flex: 1;
+  gap: var(--mw-margin);
+  min-height: 0;
+}
+
+.git-files {
+  flex-direction: row;
+}
+
+.git-changes-list,
+.git-files-list {
+  display: flex;
+  flex: 0 0 clamp(220px, 32%, 420px);
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--mw-dark);
+}
+
+.git-changes-head,
+.git-files-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: calc(var(--mw-margin) / 2);
+  border-bottom: var(--mw-border-width) solid var(--mw-border);
+}
+
+.git-changes-head .git-check {
+  flex: 1;
+}
+
+.git-files-tools .mw-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.git-change {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 calc(var(--mw-margin) / 2);
+}
+
+.git-change.shown,
+.git-change:hover {
+  background: var(--mw-darker);
+}
+
+.git-change-name,
+.git-file-name,
+.git-stash-name {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.git-file-names {
+  flex: 1;
+  margin: 0;
+  padding: 4px 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.git-file-name {
+  width: 100%;
+  padding: 3px calc(var(--mw-margin) / 2);
+  overflow: hidden;
+  font-family: var(--mw-font-code);
+  font-size: 0.9em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.git-file-name:hover,
+.git-file-name.active {
+  background: var(--mw-darker);
+}
+
+.git-file-name.active {
+  color: var(--mw-accent);
+}
+
+.git-changes-diff,
+.git-files-blame {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+}
+
+.git-commit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.git-commit-form textarea {
+  resize: vertical;
+}
+
+.git-commit-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--mw-margin);
+}
+
+.git-typed-confirm label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+/* Branches */
+.git-local-branches {
+  margin: 0;
+  padding: 4px 0;
+  overflow-y: auto;
+  list-style: none;
+  background: var(--mw-dark);
+}
+
+.git-local-branch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 4px calc(var(--mw-margin) / 2);
+}
+
+.git-local-branch.current .git-branch-name {
+  color: var(--mw-accent);
+  font-weight: 600;
+}
+
+.git-track {
+  font-size: 0.85em;
+}
+
+.git-branch-confirm {
+  flex-basis: 100%;
+}
+
+.git-new-branch-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.git-new-branch-fields .mw-input {
+  flex: 1;
+  min-width: 200px;
+}
+
+/* Push */
+.git-push {
+  margin: 0 var(--mw-margin) calc(var(--mw-margin) / 2);
+  padding: calc(var(--mw-margin) / 2) var(--mw-margin);
+  background: var(--mw-dark);
+}
+
+.git-push-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.git-push-head h4 {
+  flex: 1;
+  margin: 0;
+}
+
+.git-push-commits {
+  max-height: 160px;
+  margin: 4px 0 8px;
+  padding-left: 1.2em;
+  overflow-y: auto;
+  font-size: 0.9em;
+}
+
+/* "The remote has changes" while the channel is open. */
+.git-remote-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 var(--mw-margin) calc(var(--mw-margin) / 2);
+  padding: 6px 6px 6px calc(var(--mw-margin) / 2);
+  background: color-mix(in srgb, var(--mw-accent) 12%, var(--mw-dark));
+}
+
+.git-remote-note span {
+  flex: 1;
+}
+
+/* Fetch / Pull / Push for the checked-out branch, in the view header. */
+.git-sync {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 2px 2px 8px;
+  background: var(--mw-dark);
+}
+
+.git-sync-branch {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 220px;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* What the last action did. */
+.git-status-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 var(--mw-margin) calc(var(--mw-margin) / 2);
+  padding: 6px 6px 6px calc(var(--mw-margin) / 2);
+  background: var(--mw-dark);
+  border-left: 3px solid var(--mw-text-muted);
+}
+
+.git-status-line > span {
+  flex: 1;
+}
+
+.git-status-line.ok { border-left-color: var(--mw-success); }
+.git-status-line.error { border-left-color: var(--mw-warning); }
+
+/* This computer's graph: origin's branches outlined, the checked-out branch marked, commits not here yet dimmed. */
+.git-label.remote {
+  border-style: dashed;
+}
+
+.git-label.head {
+  font-weight: 700;
+}
+
+.git-commit.incoming .git-commit-line {
+  opacity: 0.6;
+}
+
+.git-mark {
+  margin-right: 6px;
+  font-size: 0.85em;
+  white-space: nowrap;
+}
+
+.git-branch-section {
+  margin: 8px 10px 2px;
+  color: var(--mw-text-muted);
+  font-size: 0.8em;
+  text-transform: uppercase;
+}
+
+.git-branch .git-track {
+  flex-shrink: 0;
+  font-size: 0.8em;
+}
+
+.git-source .mw-button {
+  margin-left: auto;
+}
+
+.git-new-branch-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 var(--mw-margin) calc(var(--mw-margin) / 2);
+  padding: calc(var(--mw-margin) / 2);
+  background: var(--mw-dark);
+}
+
+.git-new-branch-inline .mw-input {
+  flex: 1;
+  min-width: 180px;
+}
+
+/* Signing in for a repository: another saved host connection, MakeWork's own GitHub connection (a code to enter on
+   github.com) or a pasted token. */
+.git-token-form,
+.git-token-pick,
+.git-signin {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+
+.git-token-form .mw-input {
+  flex: 1 1 200px;
+}
+
+.git-token-form .git-token-name {
+  flex: 0 1 180px;
+}
+
+.git-token > .mw-collapse {
+  grid-column: 1 / -1;
+}
+
+.git-token-pick .mw-select {
+  flex: 0 1 260px;
+  min-width: 160px;
+}
+
+.git-signin {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.git-signin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.git-signin-code {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.git-signin-code code {
+  font-size: 1.6em;
+  letter-spacing: 0.12em;
+  user-select: all;
+}
+
+.git-signin-wait {
+  animation: git-signin-wait 1.6s var(--mw-ease) infinite alternate;
+}
+
+@keyframes git-signin-wait {
+  from { opacity: 1; }
+  to { opacity: 0.5; }
+}
+
+.git-status-line > .mw-button {
+  flex: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .git-signin-wait { animation: none; }
+}
+
+:root[data-power="saving"] .git-signin-wait { animation: none; }
+
+/* Stashes: changes put aside, under the commit form; the toolbar shows how many there are. */
+.git-stashes {
+  margin-top: calc(var(--mw-margin) / 2);
+  padding: 6px calc(var(--mw-margin) / 2);
+  background: var(--mw-dark);
+}
+
+.git-stash + .git-stash {
+  border-top: 1px solid var(--mw-border);
+}
+
+.git-stash-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.git-stash-message {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.git-stash-name .muted {
+  flex: none;
+}
+
+/* Its own box, as wide as the icon and the number beside it. */
+.git-sync-stashes {
+  flex: none;
+  white-space: nowrap;
+}
+
+.git-sync-stash-count {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Resolving a merge's conflicts (MergeResolver.tsx): the conflicted files beside one file's conflicts, each with its
+   two sides line by line and the result under them; the merge's message and Finish merge below. */
+.git-merge {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: calc(var(--mw-margin) / 2);
+  min-height: 0;
+  padding: 0 var(--mw-margin) var(--mw-margin);
+}
+
+.git-merge-head {
+  display: flex;
+  align-items: center;
+  gap: var(--mw-margin);
+}
+
+.git-merge-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.git-merge-columns {
+  display: flex;
+  flex: 1;
+  gap: var(--mw-margin);
+  min-height: 0;
+}
+
+.git-merge-files-panel {
+  position: relative;
+  display: flex;
+  flex: 0 0 clamp(200px, 28%, 360px);
+  min-height: 0;
+}
+
+.git-merge-files {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 4px 0;
+  overflow-y: auto;
+  background: var(--mw-dark);
+}
+
+.git-merge-file-state {
+  display: flex;
+  color: var(--mw-text-muted);
+}
+
+.git-merge-file-state.done {
+  color: var(--mw-success);
+}
+
+.git-merge-file-note {
+  flex: none;
+  font-size: 0.85em;
+}
+
+.git-merge-view,
+.git-merge-file-view,
+.git-merge-lines {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: calc(var(--mw-margin) / 2);
+  min-width: 0;
+  min-height: 0;
+}
+
+.git-merge-scroll {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: calc(var(--mw-margin) / 2);
+  min-height: 0;
+  overflow: auto;
+}
+
+.git-merge-file-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.git-merge-file-head h4 {
+  margin: 0;
+}
+
+.git-merge-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.git-merge-tools > .muted {
+  flex: 1;
+}
+
+/* Lines no conflict touches; the ones merged by themselves carry their side's color at the edge. */
+.git-merge-plain {
+  flex: none;
+  border-left: calc(var(--mw-border-width) * 2) solid transparent;
+}
+
+.git-merge-plain.receiving { border-left-color: var(--mw-accent); }
+.git-merge-plain.incoming { border-left-color: var(--mw-link); }
+.git-merge-plain.both { border-left-color: var(--mw-text-disabled); }
+
+.git-merge-plain-label {
+  display: block;
+  padding-left: calc(var(--mw-margin) / 2);
+  font-size: 0.85em;
+}
+
+.git-merge-plain .git-diff-lines {
+  padding-bottom: 0;
+}
+
+.git-merge-plain .git-diff-line,
+.git-merge-result-lines .git-diff-line {
+  grid-template-columns: 1fr;
+  padding-left: calc(var(--mw-margin) / 2);
+}
+
+/* An empty line keeps its height. */
+.git-merge-plain .git-diff-line,
+.git-merge-result-lines .git-diff-line,
+.git-merge-cell {
+  min-height: 1lh;
+}
+
+.git-merge-unfold {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 2px calc(var(--mw-margin) / 2);
+  border: 0;
+  background: color-mix(in srgb, var(--mw-accent) 8%, transparent);
+  color: var(--mw-text-muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  --mw-icon-size: 12px;
+}
+
+.git-merge-unfold:hover {
+  color: var(--mw-text);
+}
+
+/* A conflict: undecided ones are outlined in the warning color until the member chose. */
+.git-merge-conflict {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  border: var(--mw-border-width) solid var(--mw-border);
+  background: var(--mw-darker);
+  transition: border-color var(--mw-duration) var(--mw-ease);
+}
+
+.git-merge-conflict.undecided {
+  border-color: var(--mw-warning);
+}
+
+.git-merge-conflict-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: calc(var(--mw-margin) / 2);
+  border-bottom: var(--mw-border-width) solid var(--mw-border);
+}
+
+.git-merge-conflict-title {
+  font-weight: 600;
+}
+
+.git-merge-undecided {
+  color: var(--mw-warning);
+  font-size: 0.85em;
+}
+
+.git-merge-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.git-merge-choices .mw-button.active {
+  color: var(--mw-accent);
+}
+
+/* The two sides, lined up row by row; long lines wrap so both stay in view. */
+.git-merge-sides {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  min-width: 0;
+  padding-bottom: 0;
+}
+
+.git-merge-side-head {
+  padding: 4px calc(var(--mw-margin) / 2);
+  border-bottom: var(--mw-border-width) solid var(--mw-border);
+}
+
+.git-merge-side-head:nth-child(2),
+.git-merge-cell.incoming {
+  border-left: var(--mw-border-width) solid var(--mw-border);
+}
+
+.git-merge-cell {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+  padding: 0 calc(var(--mw-margin) / 2);
+  cursor: pointer;
+  transition: opacity var(--mw-duration) var(--mw-ease);
+}
+
+.git-merge-cell.empty {
+  cursor: default;
+}
+
+.git-merge-cell input {
+  flex: none;
+  margin: 0.3em 0 0;
+}
+
+.git-merge-cell code,
+.git-merge-result-lines code {
+  flex: 1;
+  min-width: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.git-merge-cell.receiving:not(.shared, .empty) { background: color-mix(in srgb, var(--mw-accent) 12%, transparent); }
+.git-merge-cell.incoming:not(.shared, .empty) { background: color-mix(in srgb, var(--mw-link) 12%, transparent); }
+
+/* Each side's color at its edge (as on the lines merged by themselves), so stacked sides stay apart. */
+.git-merge-side-head:nth-child(1),
+.git-merge-cell.receiving:not(.empty) {
+  box-shadow: inset calc(var(--mw-border-width) * 2) 0 var(--mw-accent);
+}
+
+.git-merge-side-head:nth-child(2),
+.git-merge-cell.incoming:not(.empty) {
+  box-shadow: inset calc(var(--mw-border-width) * 2) 0 var(--mw-link);
+}
+
+.git-merge-cell.off,
+.git-merge-sides.edited .git-merge-cell {
+  opacity: 0.45;
+}
+
+.git-merge-sides.edited .git-merge-cell {
+  cursor: default;
+}
+
+.git-merge-result {
+  padding: calc(var(--mw-margin) / 2);
+  border-top: var(--mw-border-width) solid var(--mw-border);
+}
+
+.git-merge-result-head {
+  margin: 0 0 4px;
+  color: var(--mw-text-muted);
+  font-size: 0.8em;
+  font-weight: normal;
+  text-transform: uppercase;
+}
+
+.git-merge-result-lines {
+  min-width: 0;
+}
+
+.git-merge-edit {
+  width: 100%;
+  font-family: var(--mw-font-code);
+  font-size: 0.88em;
+  resize: vertical;
+}
+
+/* A file taken as a whole: one card per side. */
+.git-merge-card {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  border: var(--mw-border-width) solid var(--mw-border);
+  background: var(--mw-darker);
+  transition: border-color var(--mw-duration) var(--mw-ease);
+}
+
+.git-merge-card.active {
+  border-color: var(--mw-accent);
+}
+
+.git-merge-card-pick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: calc(var(--mw-margin) / 2);
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.git-merge-card.active .git-merge-card-pick {
+  color: var(--mw-accent);
+}
+
+.git-merge-card-title {
+  flex: 1;
+}
+
+.git-merge-finish {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.git-merge-finish .mw-input {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+@media (max-width: 720px) {
+  .git-merge-columns {
+    flex-direction: column;
+  }
+
+  .git-merge-files-panel {
+    flex-basis: auto;
+    max-height: 30%;
+  }
+
+  .git-merge-sides {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .git-merge-side-head:nth-child(2),
+  .git-merge-cell.incoming {
+    border-left: 0;
+  }
+}

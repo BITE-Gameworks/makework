@@ -1,0 +1,20 @@
+{
+  "id": "example.notes-view",
+  "name": "Notes view",
+  "version": "1.0.1",
+  "description": "A simple view for notes channels that keeps every note as a row in the workspace.",
+  "author": "MakeWork examples",
+  "icon": "icon.svg",
+  "data": {
+    "tables": {
+      "example_notes_view_notes": {
+        "columns": {
+          "note": "text",
+          "author_id": "user"
+        },
+        "channel": true,
+        "authored": "author_id"
+      }
+    }
+  }
+}

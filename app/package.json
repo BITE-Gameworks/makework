@@ -1,0 +1,263 @@
+{
+  "name": "makework",
+  "version": "1.0.3",
+  "description": "MakeWork client",
+  "homepage": "https://github.com/BITE-Gameworks/makework",
+  "type": "module",
+  "scripts": {
+    "dev:web": "vite",
+    "dev:desktop": "node electron/dev.js",
+    "build:web": "tsc --noEmit -p tsconfig.build.json && vite build",
+    "build:browser": "tsc --noEmit -p tsconfig.build.json && vite build --mode browser",
+    "build:desktop": "npm run build:web && electron-builder",
+    "build:linux": "npm run build:web && electron-builder --linux AppImage deb rpm --x64 --publish never",
+    "build:deb": "npm run build:web && electron-builder --linux deb --x64 --publish never",
+    "build:rpm": "npm run build:web && electron-builder --linux rpm --x64 --publish never",
+    "build:flatpak": "npm run build:web && electron-builder --linux flatpak --x64 --publish never",
+    "build:win": "npm run build:web && electron-builder --win nsis --x64 --publish never",
+    "build:mac": "npm run build:web && electron-builder --mac dmg --publish never",
+    "build:android": "node scripts/android.mjs",
+    "build:node": "vite build --config vite.node.config.ts && node scripts/node-package.mjs",
+    "node": "npm run build:node --silent && node dist-node/makework-node.mjs",
+    "preview": "vite preview",
+    "lint": "node scripts/lint.mjs",
+    "bump_version": "node scripts/bump_version.mjs",
+    "show-version": "node -p \"require('./package.json').version\"",
+    "pack-servers": "node scripts/pack-servers.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage",
+    "pack-plugins": "node scripts/pack-plugins.mjs",
+    "postinstall": "node scripts/clean-modules.mjs"
+  },
+  "license": "GPL-3.0-only",
+  "devDependencies": {
+    "@capacitor/android": "8.6.0",
+    "@capacitor/cli": "8.6.0",
+    "@capacitor/core": "8.6.0",
+    "@capacitor/local-notifications": "8.3.1",
+    "@ffmpeg/core": "0.12.10",
+    "@ffmpeg/ffmpeg": "0.12.15",
+    "@fontsource-variable/comfortaa": "^5.3.0",
+    "@iconify-json/game-icons": "^1.2.4",
+    "@sapphi-red/web-noise-suppressor": "^0.4.1",
+    "@trystero-p2p/core": "file:vendor/trystero-core",
+    "@types/d3-geo": "^3.1.1",
+    "@types/topojson-client": "^3.1.5",
+    "@vitest/coverage-v8": "^5.0.3",
+    "electron": "^44.5.1",
+    "electron-builder": "^26.15.3",
+    "electron-builder-squirrel-windows": "file:vendor/no-squirrel-windows",
+    "lucide-static": "^1.52.0",
+    "maxmind": "^5.0.7",
+    "mediasoup": "^3.29.0",
+    "node-domexception": "file:vendor/node-domexception",
+    "resedit": "^1.7.2",
+    "solid-js": "^1.9.3",
+    "solid-transition-group": "^0.3.0",
+    "trystero": "^0.26.0",
+    "typescript": "~6.0.3",
+    "vite": "^8.0.16",
+    "vite-plugin-solid": "^2.11.12",
+    "vitest": "^5.0.3",
+    "werift": "^0.25.0"
+  },
+  "main": "electron/main.js",
+  "desktopName": "makework.desktop",
+  "author": "gvvim",
+  "build": {
+    "appId": "com.makework.app",
+    "productName": "MakeWork",
+    "protocols": [
+      {
+        "name": "MakeWork link",
+        "schemes": [
+          "makework"
+        ]
+      }
+    ],
+    "electronFuses": {
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "onlyLoadAppFromAsar": true
+    },
+    "directories": {
+      "output": "release",
+      "buildResources": "resources"
+    },
+    "files": [
+      "dist/**",
+      "electron/main.js",
+      "electron/installed.js",
+      "electron/background.js",
+      "electron/quitCheck.js",
+      "electron/launcherIcon.js",
+      "electron/windowsShortcut.js",
+      "electron/ico.js",
+      "electron/preload.cjs",
+      "electron/files.js",
+      "electron/text.js",
+      "electron/loopback.js",
+      "electron/signInPage.js",
+      "electron/release.js",
+      "electron/gitOps.js",
+      "electron/mirror.js",
+      "electron/shareAudio.js",
+      "electron/sharedBrowser.js",
+      "electron/webLookup.js",
+      "electron/mediaSource.js",
+      "electron/videoTools.js",
+      "electron/codeTools.js",
+      "electron/commandApproval.js",
+      "electron/lspInstall.js",
+      "electron/adblock.js",
+      "electron/adblockBuild.cjs",
+      "electron/browserPreload.cjs",
+      "electron/storage.js",
+      "resources/icon.png",
+      "package.json",
+      "!node_modules/adblock-rs/{target,src,benches,fuzz,data,js/src,js/test}/**",
+      "!node_modules/adblock-rs/{Cargo.*,rust-toolchain.toml,js/Cargo.toml}"
+    ],
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb",
+        "rpm"
+      ],
+      "category": "Network",
+      "maintainer": "gvvim",
+      "icon": "resources/icons",
+      "syncDesktopName": true
+    },
+    "deb": {
+      "recommends": [
+        "git"
+      ]
+    },
+    "rpm": {
+      "fpm": [
+        "--rpm-rpmbuild-define=_build_id_links none"
+      ]
+    },
+    "flatpak": {
+      "runtime": "org.freedesktop.Platform",
+      "runtimeVersion": "25.08",
+      "sdk": "org.freedesktop.Sdk",
+      "base": "org.electronjs.Electron2.BaseApp",
+      "baseVersion": "25.08",
+      "finishArgs": [
+        "--share=ipc",
+        "--share=network",
+        "--socket=x11",
+        "--socket=wayland",
+        "--socket=pulseaudio",
+        "--device=all",
+        "--filesystem=home",
+        "--talk-name=org.freedesktop.Notifications",
+        "--talk-name=org.kde.StatusNotifierWatcher",
+        "--talk-name=org.freedesktop.secrets",
+        "--talk-name=org.kde.kwalletd6",
+        "--talk-name=org.kde.kwalletd5"
+      ],
+      "modules": [
+        {
+          "name": "git",
+          "make-args": [
+            "NO_TCLTK=1",
+            "NO_GETTEXT=1",
+            "NO_PERL=1",
+            "NO_PYTHON=1",
+            "NO_RUST=1",
+            "INSTALL_SYMLINKS=1"
+          ],
+          "make-install-args": [
+            "NO_TCLTK=1",
+            "NO_GETTEXT=1",
+            "NO_PERL=1",
+            "NO_PYTHON=1",
+            "NO_RUST=1",
+            "INSTALL_SYMLINKS=1"
+          ],
+          "cleanup": [
+            "/share/gitweb"
+          ],
+          "sources": [
+            {
+              "type": "archive",
+              "url": "https://www.kernel.org/pub/software/scm/git/git-2.56.0.tar.xz",
+              "sha256": "26c56c296b38c0695b26fa95f475f1d01704d2d38e73465ca30b0b2f5dc789d3"
+            }
+          ]
+        }
+      ]
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "artifactName": "${productName}-Setup-${version}.${ext}"
+    },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.social-networking",
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "identity": "-",
+      "hardenedRuntime": false,
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "MakeWork uses the microphone for calls.",
+        "NSCameraUsageDescription": "MakeWork uses the camera for calls."
+      }
+    }
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.133.0",
+    "@e965/xlsx": "^0.20.3",
+    "@fontsource-variable/fira-code": "^5.3.0",
+    "@fontsource/barlow-condensed": "^5.3.0",
+    "@fontsource/rajdhani": "^5.3.0",
+    "@lydell/node-pty": "1.1.0",
+    "@material-symbols/svg-400": "^0.47.6",
+    "@noble/ciphers": "^2.4.0",
+    "@noble/curves": "^1.9.7",
+    "@noble/hashes": "^2.4.0",
+    "@phosphor-icons/core": "^2.1.1",
+    "@xterm/addon-fit": "0.11.0",
+    "@xterm/xterm": "6.0.0",
+    "d3-geo": "^3.1.1",
+    "fflate": "^0.8.3",
+    "mediasoup-client": "^3.24.5",
+    "monaco-editor": "0.57.0",
+    "rrweb": "^2.1.7",
+    "topojson-client": "^3.1.0",
+    "uqr": "^0.1.3",
+    "world-atlas": "^2.0.2",
+    "y-monaco": "0.1.6",
+    "y-protocols": "1.0.7",
+    "yjs": "^13.6.33"
+  },
+  "optionalDependencies": {
+    "adblock-rs": "0.13.3"
+  },
+  "overrides": {
+    "@trystero-p2p/core": "$@trystero-p2p/core",
+    "@electron/asar": "4.3.1",
+    "global-agent": "4.1.3",
+    "node-domexception": "$node-domexception",
+    "dompurify": "3.4.17",
+    "electron-builder-squirrel-windows": "file:vendor/no-squirrel-windows",
+    "glob@>=9.0.0 <14.0.2": "14.0.4",
+    "minimatch@>=7.0.0 <11.0.1": "11.0.5"
+  },
+  "allowScripts": {
+    "adblock-rs@0.13.3": true,
+    "mediasoup@3.29.0": true
+  }
+}

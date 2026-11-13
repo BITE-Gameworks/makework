@@ -1,0 +1,9 @@
+.plugin-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2.5em;
+  height: 2.5em;
+  background: var(--mw-darker);
+  color: var(--mw-text);
+}

@@ -1,0 +1,53 @@
+{
+  "id": "makework-cyber",
+  "name": "Cyber",
+  "author": "MakeWork",
+  "extends": "makework-dark",
+  "scheme": "dark",
+  "colors": {
+    "accent": "#ff4f45",
+    "accentText": "#000000",
+    "text": "#6ef2f5",
+    "textMuted": "#3fa9ad",
+    "textDisabled": "#2a5c5f",
+    "border": "#8c2b28",
+    "link": "#ff6a5e",
+    "warning": "#fcee0a",
+    "success": "#1ded83",
+    "danger": "#ff4f45",
+    "light": "#121417",
+    "dark": "#0b0d0f",
+    "darker": "#040506"
+  },
+  "border": {
+    "width": 1
+  },
+  "shadow": {
+    "panel": "0 0 14px rgba(94, 246, 255, 0.15)",
+    "popup": "0 0 18px rgba(255, 79, 69, 0.3)"
+  },
+  "fonts": {
+    "ui": "Rajdhani, 'Arial Narrow', sans-serif",
+    "size": 16
+  },
+  "shape": {
+    "corners": "cut",
+    "size": 10
+  },
+  "layout": {
+    "serverBar": {
+      "width": 52,
+      "mode": "floating"
+    },
+    "channelBar": {
+      "width": 240,
+      "mode": "floating"
+    },
+    "gap": 8,
+    "margin": 16
+  },
+  "icons": {
+    "set": "sharp",
+    "overrides": {}
+  }
+}

@@ -1,0 +1,32 @@
+.git-connections {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--mw-margin) / 2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.git-connection-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--mw-margin) / 2);
+  min-height: 2em;
+}
+
+.git-connection-row > .mw-icon {
+  color: var(--mw-text-muted);
+}
+
+.git-connection-name {
+  flex: 0 1 16em;
+  min-width: 8em;
+}
+
+.git-connection-host {
+  flex: 1;
+  min-width: 0;
+  color: var(--mw-text-muted);
+  overflow-wrap: anywhere;
+}

@@ -1,0 +1,34 @@
+.mw-link-chip,
+.md a.mw-link-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 0 6px;
+  vertical-align: bottom;
+  background: color-mix(in srgb, var(--mw-accent) 16%, transparent);
+  color: var(--mw-accent);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--mw-duration) var(--mw-ease);
+}
+
+.mw-link-chip:hover {
+  background: color-mix(in srgb, var(--mw-accent) 30%, transparent);
+}
+
+.mw-link-chip.missing {
+  background: var(--mw-darker);
+  color: var(--mw-text-disabled);
+  text-decoration: line-through;
+}
+
+.mw-link-chip .mw-icon {
+  --mw-icon-size: 0.95em;
+}
+
+.mw-link-chip-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

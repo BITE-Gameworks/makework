@@ -1,0 +1,90 @@
+.mw-avatar {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: var(--mw-avatar-size);
+  height: var(--mw-avatar-size);
+  overflow: hidden;
+  background: color-mix(in srgb, var(--mw-avatar-color) 16%, var(--mw-darker));
+}
+
+.mw-avatar img,
+.mw-avatar svg {
+  width: 100%;
+  height: 100%;
+}
+
+.mw-avatar img {
+  object-fit: cover;
+}
+
+.mw-avatar svg {
+  fill: var(--mw-avatar-color);
+}
+
+/* Bots: no tile, the robot shows as it is. Its glow fades in on hover (opacity only). */
+.mw-avatar-bot {
+  position: relative;
+  display: inline-grid;
+  flex: none;
+  width: var(--mw-avatar-size);
+  height: var(--mw-avatar-size);
+  background: transparent;
+}
+
+.mw-avatar-bot::before {
+  content: "";
+  position: absolute;
+  inset: -12%;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, #9ff4ff 55%, transparent) 0%, transparent 70%); /* lint-allow: not a theme color yet */
+  opacity: 0;
+  transition: opacity var(--mw-duration) var(--mw-ease);
+  pointer-events: none;
+}
+
+.mw-avatar-bot:hover::before {
+  opacity: 1;
+}
+
+.mw-avatar-bot svg.bot-icon {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  overflow: visible;
+}
+
+.bot-icon .bot-eyes {
+  transform: translate(var(--bot-look-x, 0px), var(--bot-look-y, 0px));
+}
+
+.bot-icon .bot-mouth {
+  transform: translate(calc(var(--bot-look-x, 0px) / 2), calc(var(--bot-look-y, 0px) / 2));
+}
+
+/* A bot that is off: closed grey eyes, a little dimmer. One waiting for its host blinks. */
+.mw-avatar-bot.off svg.bot-icon {
+  opacity: 0.75;
+}
+
+.bot-icon .bot-blink {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* One blink, started on each icon's own rhythm by ui/botEyes.ts (more often while waiting for its host). Never an
+   endless animation: inside an SVG it runs on the main thread and repaints the page on every frame. */
+.bot-icon .bot-blink.blinking {
+  animation: bot-blink 0.3s;
+}
+
+@keyframes bot-blink {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(0.08); }
+}
+
+/* Same selector as the blink above: a shorter one would lose to it. */
+@media (prefers-reduced-motion: reduce) {
+  .bot-icon .bot-blink.blinking { animation: none; }
+}

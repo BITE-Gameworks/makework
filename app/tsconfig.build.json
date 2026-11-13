@@ -1,0 +1,6 @@
+{
+  // The production build (`build:web`, and through it `build:desktop` and the release builder) checks the app only.
+  // Tests are dev-only: `npm run typecheck` and `npm test` cover them through tsconfig.json.
+  "extends": "./tsconfig.json",
+  "include": ["src"]
+}

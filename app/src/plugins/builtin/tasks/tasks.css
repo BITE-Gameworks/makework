@@ -1,0 +1,1059 @@
+.tasks-board {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(var(--columns), minmax(240px, 1fr)) auto;
+  gap: 8px;
+  padding: 0 var(--mw-margin) var(--mw-margin);
+  overflow-x: auto;
+}
+
+.tasks-column {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--mw-dark);
+}
+
+.tasks-column-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 6px 6px 10px;
+  color: var(--mw-text);
+}
+
+.tasks-status {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--mw-text-disabled);
+}
+
+.tasks-status.done {
+  background: var(--mw-success);
+}
+
+.tasks-column-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tasks-count {
+  flex: 1;
+  color: var(--mw-text-disabled);
+}
+
+.tasks-name-input {
+  flex: 1;
+}
+
+.tasks-new-column {
+  align-self: start;
+  background: none;
+  border: var(--mw-border-width) dashed var(--mw-dark);
+}
+
+/* A thin full-height strip with the label written sideways in its middle; it widens only while a name is typed. */
+.tasks-new-column:not(.adding) {
+  align-self: stretch;
+}
+
+.tasks-new-column.adding {
+  width: 240px;
+}
+
+.tasks-add-column {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 6px;
+  writing-mode: vertical-rl;
+  white-space: nowrap;
+  color: var(--mw-text-disabled);
+}
+
+.tasks-add-column:hover {
+  color: var(--mw-text);
+}
+
+.tasks-new-column .tasks-add {
+  padding: 6px;
+}
+
+.tasks-add {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 6px 6px;
+}
+
+.tasks-add input {
+  width: 100%;
+}
+
+.tasks-cards {
+  flex: 1;
+  min-height: 40px;
+  margin: 0;
+  padding: 0 6px 6px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.tasks-empty {
+  margin: 0;
+  padding: 0 10px 12px;
+  color: var(--mw-text-disabled);
+}
+
+.task-card {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-bottom: 4px;
+  padding: 6px;
+  background: var(--mw-light);
+  border: var(--mw-border-width) solid transparent;
+  cursor: grab;
+  transition: border-color var(--mw-duration) var(--mw-ease), opacity var(--mw-duration) var(--mw-ease);
+}
+
+.task-card:hover {
+  border-color: var(--mw-border);
+}
+
+.task-card.selected {
+  border-color: var(--mw-accent);
+}
+
+/* Open by another member: their color (the first one's, if several). */
+.task-card.viewed {
+  border-color: var(--who);
+  background: color-mix(in srgb, var(--who) 14%, var(--mw-light));
+  transition: border-color var(--mw-duration) var(--mw-ease), background-color var(--mw-duration) var(--mw-ease);
+}
+
+.task-viewers {
+  display: flex;
+  align-self: center;
+}
+
+.task-viewers > * + * {
+  margin-left: -4px;
+}
+
+.task-card.flash {
+  animation: task-flash 1.6s var(--mw-ease);
+}
+
+@keyframes task-flash {
+  0%, 40% {
+    border-color: var(--mw-accent);
+    background-color: color-mix(in srgb, var(--mw-accent) 22%, var(--mw-light));
+  }
+}
+
+.task-card.dragging {
+  opacity: 0.4;
+}
+
+/* Drop markers are drawn outside the card so nothing shifts while dragging. */
+.task-card.drop-before::before,
+.tasks-column.drop-end .tasks-cards::after {
+  content: "";
+  display: block;
+  height: calc(var(--mw-border-width) * 2);
+  background: var(--mw-accent);
+}
+
+.task-card.drop-before::before {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -4px;
+}
+
+.task-check {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  padding: 0;
+  border: var(--mw-border-width) solid var(--mw-border);
+  border-radius: var(--mw-radius);
+  background: none;
+  color: transparent;
+  cursor: pointer;
+  --mw-icon-size: 14px;
+}
+
+.task-check:hover {
+  color: var(--mw-text-disabled);
+}
+
+.task-check.on {
+  border-color: var(--mw-success);
+  background: var(--mw-success);
+  color: var(--mw-darker);
+}
+
+.task-open {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.task-title {
+  overflow-wrap: anywhere;
+}
+
+.task-card.done .task-title {
+  color: var(--mw-text-disabled);
+  text-decoration: line-through;
+}
+
+.task-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 2px;
+}
+
+.task-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 2px;
+  color: var(--mw-text-disabled);
+  font-size: 0.85em;
+}
+
+.task-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 6px;
+  border: 1px solid color-mix(in srgb, var(--tag) 60%, transparent);
+  background: color-mix(in srgb, var(--tag) 22%, transparent);
+  color: var(--mw-text);
+  font-size: 0.8em;
+  line-height: 1.5;
+  white-space: nowrap;
+  transition: background-color var(--mw-duration) var(--mw-ease), opacity var(--mw-duration) var(--mw-ease);
+}
+
+.task-tag.clickable {
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.task-tag.clickable:hover,
+.task-tag.on {
+  opacity: 1;
+}
+
+.task-tag.on {
+  background: color-mix(in srgb, var(--tag) 55%, transparent);
+}
+
+.task-tag.off {
+  opacity: 1;
+  text-decoration: line-through;
+  background: transparent;
+}
+
+.task-copy {
+  position: relative;
+  order: 2;
+  opacity: 0;
+  transition: opacity var(--mw-duration) var(--mw-ease);
+}
+
+.task-card:hover .task-copy,
+.task-copy:focus-within,
+.task-copy:has(.task-copied) {
+  opacity: 1;
+}
+
+.task-copied {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 5;
+  padding: 2px 6px;
+  background: var(--mw-dark);
+  color: var(--mw-text);
+  font-size: 0.8em;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.task-tag-remove {
+  display: grid;
+  place-items: center;
+  color: var(--mw-text-muted);
+}
+
+.task-tag-remove:hover {
+  color: var(--mw-text);
+}
+
+.tasks-tagbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 1 1 auto;
+  gap: 4px;
+  min-width: 0;
+}
+
+/* Narrow: the tags wrap across a row of their own instead of widening the header past the screen. */
+.shell.narrow .tasks-tagbar {
+  flex: 1 1 100%;
+  justify-content: flex-start;
+}
+
+.tasks-auto-assign {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  color: var(--mw-text-muted);
+  font-size: 0.9em;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tasks-auto-assign input {
+  accent-color: var(--mw-accent);
+}
+
+.tasks-tag-manager {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 260px;
+}
+
+.tasks-tag-manager p {
+  margin: 4px;
+}
+
+.tasks-tag-manager input {
+  width: 100%;
+}
+
+.tasks-tag-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tasks-tag-color {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border: var(--mw-border-width) solid transparent;
+  border-radius: 50%;
+}
+
+.tasks-tag-color.on {
+  border-color: var(--mw-text);
+}
+
+.tasks-tag-swatches {
+  padding: 6px 0 4px;
+}
+
+.task-tag-editor {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.task-tag-editor > input {
+  flex: 1;
+  min-width: 80px;
+}
+
+.task-tag-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+}
+
+.task-tag-new {
+  color: var(--mw-accent);
+  font-size: 0.85em;
+}
+
+.task-assignees {
+  display: flex;
+  flex: none;
+  align-items: center;
+  align-self: center;
+}
+
+.task-assignees > * + * {
+  margin-left: -4px;
+}
+
+.task-assignee {
+  display: flex;
+}
+
+.task-assignee-more {
+  padding-left: 6px;
+  color: var(--mw-text-muted);
+  font-size: 0.8em;
+}
+
+.task-assignee-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.task-assignee-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.task-person {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px 2px 2px;
+  border: 1px solid var(--mw-border);
+  font-size: 0.85em;
+  white-space: nowrap;
+}
+
+.task-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+}
+
+.task-editor-title {
+  font-size: 1.15em;
+}
+
+.task-editor-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.task-editor-field > span {
+  width: 70px;
+  color: var(--mw-text-disabled);
+}
+
+.task-editor-field .mw-select {
+  flex: 1;
+}
+
+.task-editor-field.column {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.task-editor-field textarea {
+  resize: vertical;
+}
+
+.task-editor-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.task-comments {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.task-comments h3 {
+  margin: 4px 0 0;
+  color: var(--mw-text-muted);
+  font-size: 1em;
+  font-weight: 500;
+}
+
+.task-comments > p {
+  margin: 0;
+}
+
+.task-comment {
+  display: flex;
+  gap: 8px;
+  padding: 6px;
+  background: var(--mw-dark);
+}
+
+.task-comment-avatar {
+  display: flex;
+  align-self: flex-start;
+}
+
+.task-comment-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.task-comment-main header {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.task-comment-main time {
+  color: var(--mw-text-disabled);
+  font-size: 0.85em;
+}
+
+.task-comment-edited {
+  color: var(--mw-text-disabled);
+  font-size: 0.85em;
+}
+
+.task-comment-actions {
+  display: flex;
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity var(--mw-duration) var(--mw-ease);
+}
+
+.task-comment-actions .icon-button {
+  width: 22px;
+  height: 22px;
+}
+
+.task-comment:hover .task-comment-actions,
+.task-comment-actions:focus-within {
+  opacity: 1;
+}
+
+.task-comment-edit .mw-editor {
+  margin: 2px 0;
+}
+
+.task-comment-hint {
+  margin: 0;
+  font-size: 0.8em;
+}
+
+.task-comment-body p {
+  margin: 2px 0 0;
+}
+
+.task-editor-meta {
+  margin: 0;
+  color: var(--mw-text-disabled);
+  font-size: 0.85em;
+}
+
+.task-editor-delete {
+  align-self: flex-start;
+}
+
+.task-editor-delete.confirming {
+  color: var(--mw-warning);
+  border-color: var(--mw-warning);
+}
+
+.tasks-archive-button {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: calc(var(--mw-margin) / 2);
+  color: var(--mw-text-muted);
+  font-size: 0.9em;
+  white-space: nowrap;
+}
+
+.tasks-archive-button:hover,
+.tasks-archive-button.open {
+  color: var(--mw-accent);
+}
+
+.tasks-archive {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--mw-margin) / 2);
+  min-height: 0;
+}
+
+.tasks-archive-list {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--mw-margin) / 2);
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.tasks-archive-item {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--mw-margin) / 2);
+  padding: calc(var(--mw-margin) / 2);
+  background: var(--mw-darker);
+}
+
+.tasks-archive-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.tasks-archive-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tasks-add .view-input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Issues: one long column. */
+.issues {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0 var(--mw-margin) var(--mw-margin);
+}
+
+.issues-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: calc(var(--mw-margin) / 2);
+  padding-bottom: calc(var(--mw-margin) / 2);
+}
+
+.issues-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.issues-list {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+}
+
+.issue-card {
+  cursor: default;
+  border-left: calc(var(--mw-border-width) * 3) solid var(--sev);
+}
+
+.issue-card.done {
+  opacity: 0.6;
+}
+
+.issue-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.issue-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.issue-head .task-open {
+  flex: 1 1 12em;
+  min-width: 0;
+}
+
+.issue-select {
+  flex: none;
+  width: 130px;
+}
+
+
+.issue-texts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--mw-margin) / 2) var(--mw-margin);
+}
+
+.issue-text {
+  display: flex;
+  flex: 1 1 260px;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font-size: 0.9em;
+}
+
+.issue-text-label {
+  color: var(--mw-text-muted);
+  font-size: 0.85em;
+}
+
+.issue-text-body {
+  max-height: 4.5em;
+  overflow: hidden;
+  mask-image: linear-gradient(to bottom, #000 70%, transparent);
+}
+
+.issue-text-body p {
+  margin: 0;
+}
+
+.issue-text-body img {
+  max-height: 4em;
+}
+
+.issue-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px calc(var(--mw-margin));
+  color: var(--mw-text-muted);
+  font-size: 0.85em;
+}
+
+.issue-blocked {
+  color: var(--mw-warning);
+}
+
+
+
+.task-dependency {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 2px 6px;
+  border: var(--mw-border-width) solid var(--mw-border);
+  font-size: 0.85em;
+}
+
+.task-dependency.done .task-dependency-title {
+  color: var(--mw-text-disabled);
+  text-decoration: line-through;
+}
+
+.task-dependency-title {
+  min-width: 0;
+  overflow: hidden;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--mw-text);
+  font: inherit;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tasks-mode {
+  flex: none;
+  width: auto;
+  min-width: 0;
+}
+
+.tasks-mode .mw-select {
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.tasks-search {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  gap: calc(var(--mw-margin) / 2);
+  min-width: 100px;
+  padding: calc(var(--mw-margin) / 4) calc(var(--mw-margin) / 2);
+  color: var(--mw-text-muted);
+}
+
+.tasks-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--mw-text);
+  font: inherit;
+  outline: none;
+}
+
+.issues-bar > .mw-popover-anchor:last-of-type {
+  margin-left: auto;
+}
+
+.issues-sort {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: calc(var(--mw-margin) / 2);
+}
+
+.issues-sort-rule {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.issues-sort-rule .mw-select {
+  flex: none;
+  width: 150px;
+}
+
+.issue-head .task-copy {
+  order: 0;
+}
+
+/* Properties in the side panel: label, chips, and a button that opens the picker. */
+.task-props {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.task-prop {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  align-items: start;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.task-prop-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+  color: var(--mw-text-disabled);
+}
+
+.task-prop-value {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+}
+
+.task-prop-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+  padding: 0 6px;
+  border: var(--mw-border-width) dashed var(--mw-border);
+  background: none;
+  color: var(--mw-text-muted);
+  font: inherit;
+  font-size: 0.85em;
+  cursor: pointer;
+  transition: color var(--mw-duration) var(--mw-ease), border-color var(--mw-duration) var(--mw-ease);
+}
+
+.task-prop-add:hover,
+.task-prop-add.open {
+  border-color: var(--mw-accent);
+  color: var(--mw-accent);
+}
+
+.task-prop-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 260px;
+  padding: 6px;
+}
+
+.task-prop-options {
+  display: flex;
+  flex-direction: column;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.task-prop-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px;
+  border: none;
+  background: none;
+  color: var(--mw-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.task-prop-option:hover {
+  background: var(--mw-light);
+}
+
+.task-prop-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-prop-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+/* A task's activity as a timeline: a line down the left with a dot for each change and a ring for each comment. */
+.task-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.task-step {
+  --dot-y: 0.75em;
+  position: relative;
+  padding-left: 20px;
+}
+
+.task-step.comment {
+  --dot-y: 18px;
+}
+
+.task-step::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: -6px;
+  left: 6px;
+  width: var(--mw-border-width);
+  background: var(--mw-border);
+}
+
+.task-step:first-child::before {
+  top: var(--dot-y);
+}
+
+.task-step:last-child::before {
+  bottom: calc(100% - var(--dot-y));
+}
+
+.task-step:only-child::before {
+  display: none;
+}
+
+.task-step::after {
+  content: "";
+  position: absolute;
+  top: calc(var(--dot-y) - 3.5px);
+  left: calc(6px + var(--mw-border-width) / 2 - 3.5px);
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--mw-text-disabled);
+}
+
+.task-step.comment::after {
+  top: calc(var(--dot-y) - 5.5px);
+  left: calc(6px + var(--mw-border-width) / 2 - 5.5px);
+  width: 11px;
+  height: 11px;
+  box-sizing: border-box;
+  border: 2px solid var(--mw-accent);
+  background: var(--mw-darker);
+}
+
+.task-event {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px 6px;
+  padding: 2px 0;
+  color: var(--mw-text-muted);
+  font-size: 0.9em;
+}
+
+.task-event > :first-child {
+  flex: none;
+}
+
+.task-event b {
+  color: var(--mw-text);
+  font-weight: 500;
+}
+
+.task-event time {
+  color: var(--mw-text-disabled);
+}
+
+.issue-new {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.issue-new .task-editor-field > span {
+  width: auto;
+  min-width: 70px;
+}
+
+.issue-new .task-editor-field .mw-select {
+  flex: none;
+  width: 160px;
+}
+
+.issue-new-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: calc(var(--mw-margin) / 2);
+}

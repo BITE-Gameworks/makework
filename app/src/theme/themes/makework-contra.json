@@ -1,0 +1,45 @@
+{
+  "id": "makework-contra",
+  "name": "Contra",
+  "author": "MakeWork",
+  "extends": "makework-dark",
+  "scheme": "dark",
+  "colors": {
+    "accent": "#5b8fd6",
+    "accentText": "#ffffff",
+    "text": "#f2f4f7",
+    "textMuted": "#9aa6b5",
+    "textDisabled": "#5f6b7a",
+    "border": "#3a4654",
+    "link": "#de9b35",
+    "warning": "#e5534b",
+    "success": "#6bbf59",
+    "danger": "#ef4444",
+    "light": "#1e252e",
+    "dark": "#171c23",
+    "darker": "#0f1318"
+  },
+  "border": {
+    "width": 1
+  },
+  "shadow": {
+    "panel": "0 4px 16px rgba(0, 0, 0, 0.45)",
+    "popup": "0 8px 24px rgba(0, 0, 0, 0.6)"
+  },
+  "fonts": {
+    "ui": "'Barlow Condensed', 'Arial Narrow', sans-serif",
+    "size": 16
+  },
+  "shape": {
+    "corners": "rounded",
+    "size": 3
+  },
+  "layout": {
+    "gap": 6,
+    "margin": 16
+  },
+  "icons": {
+    "set": "sharp",
+    "overrides": {}
+  }
+}

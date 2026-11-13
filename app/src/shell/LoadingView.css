@@ -1,0 +1,13 @@
+.loading-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.loading-status {
+  margin: 0;
+  padding: 8px var(--mw-margin) 12px;
+  color: var(--mw-text-disabled);
+  font-size: 0.85em;
+}

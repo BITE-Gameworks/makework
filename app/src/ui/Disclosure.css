@@ -1,0 +1,26 @@
+.mw-disclosure {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--mw-text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.mw-disclosure:hover,
+.mw-disclosure.open {
+  color: var(--mw-text);
+}
+
+.mw-disclosure-arrow {
+  display: inline-flex;
+  transform: rotate(-90deg);
+  transition: transform var(--mw-duration) var(--mw-ease);
+}
+
+.mw-disclosure.open .mw-disclosure-arrow {
+  transform: none;
+}

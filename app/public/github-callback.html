@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="dark light" />
+<title>Signing in - MakeWork</title>
+<link rel="stylesheet" href="sign-in.css" />
+<main>
+  <div class="spinner" aria-hidden="true"></div>
+  <h1>Signing in with GitHub</h1>
+  <p>This window closes by itself. If it doesn't, close it and go back to MakeWork.</p>
+  <div class="brand">MakeWork</div>
+</main>
+<script>
+  // The user server sends a GitHub sign-in started in the browser back here, on the app's own origin, with a
+  // one-time code; this hands it to the app window, which fetches the answer with it, then closes.
+  const once = new URLSearchParams(location.hash.replace(/^#/, "")).get("once");
+  history.replaceState(null, "", location.pathname);
+  const channel = new BroadcastChannel("makework-github");
+  channel.postMessage({ once });
+  channel.close();
+  window.close();
+</script>
+</html>

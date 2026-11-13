@@ -1,0 +1,94 @@
+.reset-prompts {
+  position: fixed;
+  right: var(--mw-margin);
+  bottom: var(--mw-margin);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(360px, calc(100vw - 2 * var(--mw-margin)));
+  pointer-events: none;
+}
+
+.reset-prompt {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: var(--mw-margin);
+  border: var(--mw-border-width) solid var(--mw-warning);
+  background: var(--mw-dark);
+  box-shadow: var(--mw-shadow-popup);
+  pointer-events: auto;
+}
+
+.reset-prompt p {
+  margin: 0;
+}
+
+.reset-prompt-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.reset-prompt-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+/* Plain notices sit above the reset prompts and aren't warnings. */
+.reset-prompts.notices {
+  bottom: auto;
+  top: calc(var(--mw-margin) * 3);
+}
+
+.reset-prompt.notice {
+  border-color: var(--mw-accent);
+}
+
+/* A long notice scrolls instead of running off the screen; every notice can be dismissed. */
+.reset-prompt.notice .hint {
+  white-space: pre-line;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+.reset-prompt.notice .notice-title {
+  flex: 1;
+}
+
+.reset-prompt.notice .notice-close {
+  flex: none;
+}
+
+/* Short notes about what the user just did (core/notices.ts showToast). */
+.toasts {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--mw-margin) * 2);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--mw-margin) / 2);
+  max-width: calc(100vw - 2 * var(--mw-margin));
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: var(--mw-margin);
+  padding: calc(var(--mw-margin) / 2) var(--mw-margin);
+  background: var(--mw-darker);
+  box-shadow: var(--mw-shadow-popup);
+  color: var(--mw-text);
+  pointer-events: auto;
+}
+
+.toast-action {
+  color: var(--mw-accent);
+}

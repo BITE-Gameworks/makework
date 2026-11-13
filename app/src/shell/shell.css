@@ -1,0 +1,1962 @@
+.shell {
+  position: relative;
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+  background: var(--mw-light);
+}
+
+button {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: default;
+}
+
+.icon-button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  color: var(--mw-text-muted);
+}
+
+.icon-button:hover {
+  color: var(--mw-text);
+}
+
+.icon-button.accent {
+  color: var(--mw-accent);
+}
+
+.icon-button.accent.mw-box {
+  background: var(--mw-light);
+}
+
+.icon-button.overlay-button,
+.icon-button.overlay-button:hover {
+  color: var(--mw-accent);
+}
+
+.warning {
+  color: var(--mw-warning);
+}
+
+/* The user box (voice/VoicePanel) floats over the bottom of both bars; --user-box-height is its height. */
+.sidebars {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  min-height: 0;
+}
+
+.sidebars-top {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Server bar */
+
+.workspace-bar {
+  position: relative;
+  contain: layout paint;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  width: var(--mw-workspace-bar-width);
+  padding: 6px 0 calc(6px + var(--user-box-height, 0px));
+  overflow-y: auto;
+  background: var(--mw-darker);
+  scrollbar-width: none;
+}
+
+:root[data-workspace-bar="floating"] .workspace-bar {
+  margin: var(--mw-gap) 0 var(--mw-gap) var(--mw-gap);
+  border-radius: var(--mw-radius);
+  clip-path: var(--mw-clip);
+  box-shadow: var(--mw-shadow-panel);
+}
+
+.workspace-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 24px;
+  border-radius: 0 3px 3px 0;
+  background: var(--mw-accent);
+  opacity: 0;
+  transition: transform calc(var(--mw-duration) * 1.4) var(--mw-ease), opacity var(--mw-duration) var(--mw-ease);
+}
+
+.workspace-indicator.visible {
+  opacity: 1;
+}
+
+.workspace-button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  background: var(--mw-dark);
+  color: var(--mw-text);
+  font-weight: 700;
+  font-size: 1.05em;
+  border: var(--mw-border-width) solid transparent;
+  transition: opacity var(--mw-duration) var(--mw-ease);
+}
+
+/* An uploaded server picture fills the button, inside its themed shape. */
+.workspace-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+/* A workspace group: a tile with a mosaic of its members, expanding inline to show them below it. */
+.workspace-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: none;
+  width: 100%;
+}
+
+.workspace-button.group {
+  padding: 2px;
+}
+
+.workspace-button.drop-into {
+  border-color: var(--mw-accent);
+}
+
+.workspace-group-mosaic {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-auto-rows: 1fr;
+  gap: 1px;
+  width: 100%;
+  height: 100%;
+}
+
+.workspace-group-mosaic.single {
+  grid-template-columns: 1fr;
+}
+
+.workspace-group-face {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: calc(var(--mw-radius) / 2);
+  background: var(--mw-dark);
+  color: var(--mw-text);
+  font-size: 0.7em;
+  font-weight: 700;
+}
+
+.workspace-group-face .mw-image,
+.workspace-group-face .workspace-image {
+  width: 100%;
+  height: 100%;
+}
+
+.workspace-group-face .mw-spinner {
+  width: 10px;
+  height: 10px;
+  border-width: 1px;
+}
+
+.workspace-group-count {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  padding: 0 3px;
+  border-radius: calc(var(--mw-radius) / 2);
+  background: var(--mw-dark);
+  color: var(--mw-text);
+  font-size: 0.6em;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.workspace-group-members {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--mw-margin) / 2);
+  padding: calc(var(--mw-margin) / 2) 0 0 var(--mw-margin);
+}
+
+.workspace-group-members::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: calc(var(--mw-margin) / 2 + 4px);
+  bottom: 4px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--mw-border);
+}
+
+.workspace-button.nested {
+  width: 34px;
+  height: 34px;
+  font-size: 0.95em;
+}
+
+.workspace-button:hover,
+.workspace-button.active {
+  border-color: var(--mw-accent);
+}
+
+.workspace-button.unread::before {
+  content: "";
+  position: absolute;
+  left: -6px;
+  width: 4px;
+  height: 8px;
+  border-radius: 0 4px 4px 0;
+  background: var(--mw-text);
+}
+
+.workspace-button[draggable="true"] {
+  cursor: grab;
+}
+
+.workspace-button[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+/* The bar is a window drag region; while a tile is dragged it must not be, or the gaps and the empty space below the
+   tiles don't receive the drag events and a drop there does nothing. */
+.workspace-bar.reordering,
+.workspace-bar.reordering .spacer {
+  -webkit-app-region: no-drag;
+}
+
+.workspace-button.dragging {
+  opacity: 0.45;
+}
+
+/* Dragging a workspace: a line above or below the one it would go before or after. It sits in the bar, not in a
+   button, because a cut-corner theme's clip-path would hide it. */
+.workspace-drop-line {
+  position: absolute;
+  top: 0;
+  left: 4px;
+  right: 4px;
+  height: 2px;
+  background: var(--mw-accent);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.spacer {
+  flex: 1;
+}
+
+/* Channel bar */
+
+.channel-bar {
+  position: relative;
+  contain: layout paint;
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  width: var(--mw-channel-bar-width);
+  padding: 6px 6px 0;
+  background: var(--mw-dark);
+  overflow: hidden;
+}
+
+:root[data-channel-bar="floating"] .channel-bar {
+  margin: var(--mw-gap) 0 var(--mw-gap) var(--mw-gap);
+  border-radius: var(--mw-radius);
+  clip-path: var(--mw-clip);
+  box-shadow: var(--mw-shadow-panel);
+}
+
+.channel-bar-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.channel-bar-header h1 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--mw-accent);
+  font-size: 1.3em;
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.channel-bar-header .mw-icon {
+  --mw-icon-size: 20px;
+}
+
+.workspace-channels {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+.channel-bar-note {
+  padding: 8px;
+  color: var(--mw-text-disabled);
+}
+
+.channel-tools {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.channel-search {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  padding: 2px 6px;
+  background: var(--mw-light);
+  color: var(--mw-text-muted);
+}
+
+.channel-search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  outline: none;
+}
+
+.channel-search input::placeholder {
+  color: var(--mw-text-muted);
+}
+
+.channel-search:focus-within {
+  outline: var(--mw-border-width) solid var(--mw-accent);
+}
+
+.history-buttons {
+  display: flex;
+  overflow: hidden;
+  background: var(--mw-light);
+}
+
+.history-buttons button {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  color: var(--mw-text);
+}
+
+.history-buttons button:first-child {
+  background: var(--mw-light);
+}
+
+.history-buttons button:last-child {
+  background: var(--mw-darker);
+}
+
+.history-buttons button:disabled {
+  color: var(--mw-text-disabled);
+}
+
+.channel-list {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: calc(8px + var(--user-box-wide-height, 0px));
+}
+
+.channel-section {
+  padding: 2px 0 4px;
+  margin-bottom: 6px;
+  background: var(--mw-light);
+  transition: background-color var(--mw-duration) var(--mw-ease);
+}
+
+.channel-section.scratchpad {
+  opacity: 0.6;
+  transition: opacity var(--mw-duration) var(--mw-ease), background-color var(--mw-duration) var(--mw-ease);
+}
+
+.channel-section.scratchpad:hover,
+.channel-section.scratchpad:focus-within {
+  opacity: 1;
+}
+
+.channel-section-note {
+  margin-left: 6px;
+  font-size: 0.75em;
+  font-style: italic;
+  color: var(--mw-text-disabled);
+}
+
+.chevron {
+  display: inline-flex;
+  transition: transform var(--mw-duration) var(--mw-ease);
+}
+
+.channel-section.collapsed .chevron {
+  transform: rotate(-90deg);
+}
+
+.channel-section.collapsed {
+  background: none;
+}
+
+.channel-section-header {
+  display: flex;
+  align-items: center;
+  padding: 0 4px;
+}
+
+.channel-section-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  padding: 2px 0;
+  color: var(--mw-text-muted);
+  font-size: 1.2em;
+  text-align: left;
+}
+
+.channel-section-toggle:hover {
+  color: var(--mw-text);
+}
+
+.channel-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.channel-open {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  min-height: 24px;
+  padding: 2px 10px;
+  color: var(--mw-text-disabled);
+  font-size: 0.93em;
+  text-align: left;
+}
+
+.channel-label {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  transition: transform var(--mw-duration) var(--mw-ease);
+}
+
+.channel-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* How many members a voice channel's call has. */
+.channel-call-size {
+  flex: none;
+  margin-left: auto;
+  padding-left: 4px;
+  font-size: 0.75em;
+  color: var(--mw-text-muted);
+  white-space: nowrap;
+}
+
+.channel-row:hover .channel-open,
+.channel-row.unread .channel-open {
+  color: var(--mw-text);
+}
+
+/* Unread mentions of you: a count at the end of the channel row, and in the corner of the server button. */
+.mention-badge {
+  flex: none;
+  margin-left: auto;
+  padding: 0 5px;
+  background: var(--mw-accent);
+  color: var(--mw-accent-text);
+  font-size: 0.75em;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.workspace-mentions {
+  position: absolute;
+  right: 1px;
+  bottom: 1px;
+  min-width: 14px;
+  padding: 0 3px;
+  font-size: 0.6em;
+  text-align: center;
+}
+
+.channel-row.active .channel-open,
+.channel-row.active-copy .channel-open,
+.channel-row.in-call .channel-open {
+  color: var(--mw-accent);
+}
+
+/* A channel forgotten on this device: dimmed, with a cloud-off icon at the row end; unread still shows. */
+.channel-row.forgotten .channel-open {
+  opacity: 0.55;
+}
+
+.channel-cloud-off {
+  flex: none;
+  height: 22px;
+  margin-right: 10px;
+  display: flex;
+  align-items: center;
+  color: var(--mw-text-disabled);
+}
+
+/* Hover and selection animate only transform and opacity: animating layout here made WebKitGTK drop to
+   about 20 fps while moving the mouse over the list. */
+
+/* Hover: a short bar at 60% of the text height scales in from the left edge and nudges the channel right. */
+.channel-open::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 14px;
+  height: 0.6em;
+  border-radius: 0 2px 2px 0;
+  background: var(--mw-accent);
+  transform: translateY(-50%) scaleX(0);
+  transform-origin: left;
+  transition: transform var(--mw-duration) var(--mw-ease), opacity var(--mw-duration) var(--mw-ease);
+}
+
+.channel-row:not(.active):hover .channel-open::before {
+  transform: translateY(-50%) scaleX(1);
+}
+
+.channel-row:not(.active):hover .channel-label {
+  transform: translateX(8px);
+}
+
+/* Selected: a thin line fills the space up to the channel, which sits at the right. The line grows from the
+   left; ChannelRow slides the channel over with a transform. */
+.channel-line {
+  flex: 0 0 0;
+  height: var(--mw-border-width);
+  background: var(--mw-accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform calc(var(--mw-duration) * 1.5) var(--mw-ease);
+}
+
+.channel-row.active .channel-line {
+  flex: 1 1 auto;
+  margin: 0 6px 0 -10px;
+  transform: none;
+}
+
+.channel-row.active .channel-open::before {
+  opacity: 0;
+}
+
+.channel-open .mw-icon {
+  margin-right: 6px;
+}
+
+.add-channel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 6px;
+}
+
+.add-channel-row {
+  display: flex;
+  gap: 4px;
+}
+
+.add-channel-row .mw-select {
+  flex: 1;
+  min-width: 0;
+}
+
+.add-channel .mw-button {
+  padding: 0.2em 0.5em;
+}
+
+.add-channel p {
+  margin: 0;
+}
+
+.add-category {
+  margin-top: 2px;
+}
+
+.add-category-button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  padding: 4px 8px;
+  color: var(--mw-text-disabled);
+  font-size: 0.85em;
+  opacity: 0.7;
+  transition: opacity var(--mw-duration) var(--mw-ease), color var(--mw-duration) var(--mw-ease);
+}
+
+.add-category-button:hover,
+.add-category-button:focus-visible {
+  color: var(--mw-accent);
+  opacity: 1;
+}
+
+/* Workspace: tab bar over the main view and side panel */
+
+.workspace {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.workspace-body {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.tab-bar {
+  display: flex;
+  align-items: stretch;
+  flex: none;
+  height: var(--mw-tab-bar-height, 30px);
+  background: var(--mw-darker);
+}
+
+.has-window-controls .tab-bar {
+  padding-right: var(--mw-window-controls);
+}
+
+.tabs {
+  display: flex;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 1 180px;
+  min-width: 70px;
+  padding: 0 4px 0 10px;
+  color: var(--mw-text-disabled);
+  font-size: 0.93em;
+  cursor: pointer;
+  user-select: none;
+  transition: color var(--mw-duration) var(--mw-ease), background-color var(--mw-duration) var(--mw-ease),
+    opacity var(--mw-duration) var(--mw-ease), transform var(--mw-duration) var(--mw-ease);
+}
+
+.tab:hover {
+  color: var(--mw-text);
+  background: var(--mw-dark);
+}
+
+.tab.active {
+  color: var(--mw-text);
+  background: var(--mw-light);
+}
+
+.tab.in-call .mw-icon:first-child {
+  color: var(--mw-accent);
+}
+
+/* The active tab's accent line grows from the left. */
+.tab::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: var(--mw-border-width);
+  background: var(--mw-accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform calc(var(--mw-duration) * 1.5) var(--mw-ease);
+}
+
+.tab.active::before {
+  transform: none;
+}
+
+.tab.closing {
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+}
+
+.tab.drop-before {
+  box-shadow: inset calc(var(--mw-border-width) * 2) 0 var(--mw-accent);
+}
+
+.tab.drop-after {
+  box-shadow: inset calc(var(--mw-border-width) * -2) 0 var(--mw-accent);
+}
+
+.tab-workspace {
+  font-weight: 700;
+  font-size: 0.85em;
+}
+
+.tab-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.tab-close {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--mw-radius);
+  color: var(--mw-text-disabled);
+  opacity: 0;
+  transition: opacity var(--mw-duration) var(--mw-ease), color var(--mw-duration) var(--mw-ease);
+}
+
+.tab:hover .tab-close,
+.tab.active .tab-close,
+.tab-close:focus-visible {
+  opacity: 1;
+}
+
+.tab-close:hover {
+  color: var(--mw-accent);
+}
+
+.tab-add {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  color: var(--mw-text-muted);
+}
+
+.tab-add:hover {
+  color: var(--mw-text);
+}
+
+.tab-bar-fill {
+  flex: 1;
+}
+
+/* A tab being dragged with the pointer: it stays in place, the drop marker shows where it would land. */
+.tab.dragging {
+  opacity: 0.6;
+}
+
+/* What will happen to the dragged tab, following the pointer. */
+.tab-drag-hint {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 40;
+  padding: 4px 8px;
+  background: var(--mw-dark);
+  border: 1px solid var(--mw-light);
+  box-shadow: var(--mw-shadow-popup);
+  color: var(--mw-text-muted);
+  font-size: 0.85em;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.tab-drag-hint.new {
+  border-color: var(--mw-accent);
+  color: var(--mw-accent);
+}
+
+/* Main view. Views scroll themselves; the view itself never scrolls, so enter animations can't add a scrollbar. */
+
+.main-view {
+  position: relative;
+  contain: layout paint;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* A view kept open while the user is elsewhere (kept views, core/keptViews.ts). Withdrawn by visibility, not
+   display: a hidden <webview> must keep its size and stay in the page, or it reloads. The shown view's slides
+   are run by the kept layer's swap (ui/transitions.ts createViewSwap). */
+.kept-view {
+  position: absolute;
+  inset: 0;
+}
+
+.kept-view.hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Hidden views aren't laid out or painted: with visibility alone every kept view (up to 8, plus every channel with an
+   open tab) laid itself out again on each step of a window resize, and the window blinked on Windows. Their state and
+   scroll positions stay; showing one lays it out once. Not views with a webview, which must keep its size. */
+.kept-view.hidden:not(:has(webview)) {
+  content-visibility: hidden;
+}
+
+/* Hidden by visibility, its CSS animations would go on (spinners, skeletons), and one running animation is enough
+   to restyle and paint the page on every frame. Its slides are Web Animations, which this doesn't pause. */
+.kept-view.hidden * {
+  animation-play-state: paused;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 100%;
+  padding: calc(var(--mw-margin) * 2);
+  color: var(--mw-text-disabled);
+  text-align: center;
+}
+
+.empty-state h2 {
+  margin: 0;
+  font-size: 2.3em;
+  font-weight: 500;
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 1.6em;
+}
+
+/* No servers yet: what a server is, and the create and join forms. */
+.start-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--mw-margin);
+  height: 100%;
+  padding: var(--mw-margin);
+  overflow-y: auto;
+  text-align: center;
+}
+
+.start-page-intro {
+  max-width: 520px;
+}
+
+.start-page-intro h2 {
+  margin: 0 0 8px;
+  color: var(--mw-accent);
+  font-size: 2em;
+  font-weight: 500;
+}
+
+.start-page-intro p {
+  margin: 0;
+  color: var(--mw-text-muted);
+  line-height: 1.5;
+}
+
+.start-page-plus {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin: 0 4px;
+  vertical-align: middle;
+  background: var(--mw-dark);
+  border-radius: var(--mw-radius);
+}
+
+.start-page-forms {
+  background: var(--mw-dark);
+  text-align: left;
+}
+
+.start-page-forms .add-workspace-panel {
+  width: min(360px, calc(100vw - 4 * var(--mw-margin)));
+}
+
+.channel-host,
+.plugin-mount {
+  height: 100%;
+}
+
+.channel-host {
+  overflow: auto;
+}
+
+/* Opacity only: a translate on a full-height view overflows its scroller for a moment. */
+.plugin-mount {
+  animation: mw-fade-only var(--mw-duration) var(--mw-ease);
+}
+
+.channel-host-note {
+  padding: calc(var(--mw-margin) * 2);
+}
+
+/* A notice over a channel whose plugin is missing locally: disabled, or not installed on this device. */
+.channel-plugin-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--mw-bg-2);
+  border-bottom: 1px solid var(--mw-border);
+  font-size: 13px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.channel-plugin-banner .warning {
+  margin-left: auto;
+}
+
+.sandbox-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: none;
+  animation: mw-fade-in var(--mw-duration) var(--mw-ease);
+}
+
+/* Side panel */
+
+.side-panel {
+  position: relative;
+  flex: none;
+  overflow: hidden;
+  background: var(--mw-darker);
+  transition: width var(--mw-duration) var(--mw-ease);
+}
+
+.side-panel.resizing {
+  transition: none;
+}
+
+.side-panel-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.side-panel-header {
+  display: flex;
+  align-items: center;
+  padding: 6px 8px;
+}
+
+.side-panel-header h2 {
+  flex: 1;
+  margin: 0;
+  color: var(--mw-text-muted);
+  font-size: 1.1em;
+  font-weight: 500;
+}
+
+.side-panel-body {
+  flex: 1;
+  overflow: auto;
+  padding: 0 8px 8px;
+}
+
+.details {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 12px;
+  margin: 0;
+}
+
+.details dt {
+  color: var(--mw-text-disabled);
+}
+
+.details dd {
+  margin: 0;
+}
+
+.user-profile-roles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* Settings */
+
+.settings-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: var(--mw-light);
+  opacity: 0;
+  transform: scale(1.02);
+  transition: opacity var(--mw-duration) var(--mw-ease), transform var(--mw-duration) var(--mw-ease);
+}
+
+.settings-overlay.visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* The solid background stays on the frame: the fade mask is on the scrolling part inside it. */
+.settings-scroll {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+}
+
+.settings-scroll:focus {
+  outline: none;
+}
+
+/* Stays in view however the page scrolls (a narrow window scrolls it sideways too), so Close is always reachable. */
+.settings-header {
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: var(--mw-margin);
+  padding: calc(var(--mw-margin) * 4 / 3) calc(var(--mw-margin) * 2) 0;
+  background: var(--mw-light);
+}
+
+.settings-header h1 {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  margin: 0;
+  color: var(--mw-accent);
+  font-weight: 500;
+}
+
+/* Window dragging (desktop only). Like a title bar: the marked element drags, its direct children do not
+   unless marked too. Anything layered over a drag region must opt out, or clicks on it move the window. */
+
+[data-drag-region] {
+  -webkit-app-region: drag;
+}
+
+[data-drag-region] > :not([data-drag-region]),
+.mw-popover,
+.settings-overlay,
+.viewer-overlay,
+.voice-panel,
+.window-controls {
+  -webkit-app-region: no-drag;
+}
+
+/* Window controls (desktop only). They float over the top right corner, so headers there leave room. */
+
+.window-controls {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 20;
+  display: flex;
+}
+
+.window-controls button {
+  display: grid;
+  place-items: center;
+  width: calc(var(--mw-window-controls) / 3);
+  height: 30px;
+  color: var(--mw-text-muted);
+}
+
+.window-controls button:hover {
+  background: var(--mw-dark);
+  color: var(--mw-text);
+}
+
+.window-controls button.close:hover {
+  background: var(--mw-warning);
+  color: var(--mw-accent-text);
+}
+
+.settings-tabs {
+  position: relative;
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: var(--mw-margin) calc(var(--mw-margin) * 2) 0;
+  border-bottom: 1px solid var(--mw-dark);
+}
+
+.settings-tab {
+  flex: none;
+  white-space: nowrap;
+  padding: 6px 12px;
+  color: var(--mw-text-muted);
+  border-bottom: var(--mw-border-width) solid transparent;
+}
+
+.settings-tab:hover {
+  color: var(--mw-text);
+}
+
+.settings-tab.active {
+  color: var(--mw-accent);
+}
+
+.settings-section {
+  max-width: 820px;
+  padding: calc(var(--mw-margin) * 2);
+}
+
+.settings-section h2 {
+  margin: 0 0 12px;
+  color: var(--mw-accent);
+  font-weight: 500;
+}
+
+.settings-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 4px;
+}
+
+.settings-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-field input {
+  width: 90px;
+}
+
+.settings-field input[type="range"] {
+  width: 200px;
+}
+
+.settings-value {
+  min-width: 3em;
+  color: var(--mw-text-muted);
+}
+
+.hint {
+  color: var(--mw-text-disabled);
+}
+
+/* Settings > Server */
+.backend-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.backend-status > button {
+  margin-left: auto;
+}
+
+.backend-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--mw-text-disabled);
+  transition: background-color var(--mw-duration) var(--mw-ease);
+}
+
+.backend-dot.connected {
+  background: var(--mw-success);
+}
+
+.backend-dot.error {
+  background: var(--mw-warning);
+}
+
+.backend-settings h3 {
+  margin: 24px 0 8px;
+  font-weight: 500;
+}
+
+.backend-plugin {
+  margin-bottom: 12px;
+  padding: 12px 16px;
+  background: var(--mw-darker);
+}
+
+.backend-plugin p {
+  margin: 4px 0 8px;
+}
+
+.backend-plugin ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.backend-plugin li {
+  margin: 4px 0;
+}
+
+/* File viewer */
+
+.viewer-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  background: var(--mw-light);
+  opacity: 0;
+  transform: scale(1.02);
+  transition: opacity var(--mw-duration) var(--mw-ease), transform var(--mw-duration) var(--mw-ease);
+}
+
+.viewer-overlay.visible {
+  opacity: 1;
+  transform: none;
+}
+
+.viewer-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--mw-dark);
+}
+
+.viewer-title {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.viewer-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 1.1em;
+}
+
+.viewer-with {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.viewer-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.viewer-mount {
+  height: 100%;
+}
+
+.viewer-note {
+  padding: calc(var(--mw-margin) * 8 / 3);
+  text-align: center;
+}
+
+/* Settings > Account */
+.account-settings {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.account-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.account-name {
+  font-size: 1.3em;
+}
+
+.account-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.account-field > span {
+  color: var(--mw-text-muted);
+}
+
+.account-field .mw-input {
+  width: 280px;
+}
+
+.account-avatar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Outlined themes: lines between the panels. */
+:root[data-outlines] .workspace-bar {
+  box-shadow: inset calc(var(--mw-border-width) * -1) 0 var(--mw-border);
+}
+
+:root[data-outlines] .channel-bar {
+  box-shadow: inset calc(var(--mw-border-width) * -1) 0 var(--mw-border);
+}
+
+:root[data-outlines][data-workspace-bar="floating"] .workspace-bar,
+:root[data-outlines][data-channel-bar="floating"] .channel-bar {
+  box-shadow: inset 0 0 0 var(--mw-border-width) var(--mw-border);
+}
+
+:root[data-outlines] .tab-bar {
+  box-shadow: inset 0 calc(var(--mw-border-width) * -1) var(--mw-border);
+}
+
+:root[data-outlines] .side-panel {
+  box-shadow: inset var(--mw-border-width) 0 var(--mw-border);
+}
+
+/* Server bar > add a server */
+.add-workspace-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 300px;
+  padding: 12px;
+}
+
+.add-workspace-panel h3 {
+  margin: 0 0 6px;
+  font-size: 1em;
+  font-weight: 500;
+}
+
+.add-workspace-panel .hint {
+  margin: 0 0 6px;
+  font-size: 0.9em;
+}
+
+.add-workspace-row {
+  display: flex;
+  gap: 6px;
+}
+
+.add-workspace-row .mw-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.add-workspace-error {
+  margin: 0;
+  color: var(--mw-warning);
+}
+
+.add-workspace-storage {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9em;
+}
+
+.add-workspace-storage .where {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Server bar > right-click > Storage... */
+.workspace-storage {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 340px;
+  padding: 12px;
+}
+
+.workspace-storage h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 1em;
+  font-weight: 500;
+}
+
+.workspace-storage .where {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.workspace-storage .hint {
+  margin: 0;
+  font-size: 0.9em;
+}
+
+.workspace-storage-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.workspace-storage-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Dragging a channel: a line where it would land, or the category header lit up for its end. */
+.channel-row.drop-above,
+.channel-row.drop-below {
+  position: relative;
+}
+
+.channel-row.drop-above::before,
+.channel-row.drop-below::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  background: var(--mw-accent);
+  pointer-events: none;
+}
+
+.channel-row.drop-above::before {
+  top: -1px;
+}
+
+.channel-row.drop-below::before {
+  bottom: -1px;
+}
+
+.channel-section-header.drop-into {
+  box-shadow: inset 0 0 0 var(--mw-border-width) var(--mw-accent);
+}
+
+/* Dragging a category: a line at the top or bottom of the category it would go before or after. */
+.channel-section.drop-above,
+.channel-section.drop-below {
+  position: relative;
+}
+
+.channel-section.drop-above::before,
+.channel-section.drop-below::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  background: var(--mw-accent);
+  pointer-events: none;
+}
+
+.channel-section.drop-above::before {
+  top: 0;
+}
+
+.channel-section.drop-below::before {
+  bottom: 0;
+}
+
+.channel-section-header[draggable="true"] {
+  cursor: grab;
+}
+
+.channel-section-header[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.account-inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.account-inline-form .warning {
+  margin: 0;
+}
+
+.account-delete {
+  margin-top: 16px;
+}
+
+.account-delete .mw-button.danger:not(:disabled) {
+  color: var(--mw-danger);
+}
+
+.account-delete-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+}
+
+.account-delete-confirm p {
+  margin: 0;
+}
+
+/* Settings > Account security (shell/AccountSecurity.tsx). */
+.account-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.account-stack .mw-input.invalid {
+  border-color: var(--mw-warning);
+}
+
+.account-stack-note {
+  margin: 0;
+}
+
+.account-code {
+  width: 160px !important;
+  letter-spacing: 0.15em;
+}
+
+.account-notice {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 560px;
+  padding: calc(var(--mw-margin) * 0.75);
+  border: calc(var(--mw-border-width) * 2) solid var(--mw-border);
+  background: var(--mw-darker);
+}
+
+.account-notice.warning {
+  border-color: var(--mw-warning);
+  color: var(--mw-text);
+}
+
+.account-notice.safe {
+  border-color: var(--mw-accent);
+}
+
+.account-notice p {
+  margin: 0;
+}
+
+.account-notice-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 1.05em;
+  font-weight: 600;
+}
+
+.account-notice.warning .account-notice-title {
+  color: var(--mw-warning);
+}
+
+.recovery-key {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: 560px;
+  padding: calc(var(--mw-margin) * 0.75);
+  border: var(--mw-border-width) solid var(--mw-accent);
+  background: var(--mw-darker);
+}
+
+.recovery-key p {
+  margin: 0;
+}
+
+.recovery-key-value {
+  font-size: 1.2em;
+  letter-spacing: 0.08em;
+  user-select: all;
+}
+
+/* Files dragged in from outside onto a files or code channel. */
+.channel-row.drop-files {
+  background: color-mix(in srgb, var(--mw-accent) 30%, transparent);
+}
+
+.channel-bots { display: inline-flex; gap: 2px; margin-left: auto; align-items: center; }
+
+/* ui/SearchBox: the field and its operator suggestions. */
+.search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding: 2px 6px;
+  background: var(--mw-light);
+  color: var(--mw-text-muted);
+}
+
+.search-box input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  outline: none;
+}
+
+.search-box input::placeholder {
+  color: var(--mw-text-muted);
+}
+
+.search-box:focus-within {
+  outline: var(--mw-border-width) solid var(--mw-accent);
+}
+
+.search-toggle {
+  display: grid;
+  place-items: center;
+  padding: 2px;
+  color: inherit;
+}
+
+.search-toggle:hover,
+.search-toggle[aria-expanded="true"] {
+  color: var(--mw-accent);
+}
+
+.search-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  margin: 2px 0 0;
+  padding: 2px;
+  list-style: none;
+  background: var(--mw-dark);
+  color: var(--mw-text);
+}
+
+.search-suggestions li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 6px;
+  cursor: pointer;
+}
+
+.search-suggestions li.active,
+.search-suggestions li:hover {
+  background: var(--mw-light);
+  color: var(--mw-accent);
+}
+
+.channel-list.hidden {
+  display: none;
+}
+
+/* Narrow (phones, core/ui.ts `narrow`): one pane. The workspace and channel bars slide in as a drawer over the view,
+   the side panel covers the view, and resize handles go (the panels take the whole width). */
+
+.tab-menu {
+  display: none;
+}
+
+.shell.narrow .tab-menu {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  color: var(--mw-text-muted);
+}
+
+.shell.narrow .tab-menu.on {
+  color: var(--mw-accent);
+}
+
+.shell.narrow .sidebars {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 30;
+  width: min(calc(100% - 48px), 420px);
+  background: var(--mw-dark);
+  box-shadow: var(--mw-shadow-panel);
+  transform: translateX(-100%);
+  visibility: hidden;
+  transition: transform var(--mw-duration) var(--mw-ease), visibility 0s linear var(--mw-duration);
+}
+
+.shell.narrow.drawer-open .sidebars {
+  transform: none;
+  visibility: visible;
+  transition: transform var(--mw-duration) var(--mw-ease);
+}
+
+/* Portrait phones: the drawer takes the whole screen (a swipe to the left or picking a channel closes it). */
+@media (orientation: portrait) {
+  .shell.narrow .sidebars {
+    width: 100%;
+  }
+}
+
+.shell.narrow .channel-bar {
+  flex: 1;
+  width: auto !important;
+  min-width: 0;
+}
+
+.drawer-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 29;
+  background: color-mix(in srgb, var(--mw-darker) 55%, transparent);
+  opacity: 0;
+  transition: opacity var(--mw-duration) var(--mw-ease);
+}
+
+.drawer-backdrop.visible {
+  opacity: 1;
+}
+
+.shell.narrow .tab-bar {
+  height: max(var(--mw-tab-bar-height, 30px), 40px);
+}
+
+.shell.narrow .tabs {
+  flex: 1;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.shell.narrow .tab {
+  flex: 0 0 auto;
+  max-width: 160px;
+}
+
+.shell.narrow .tab-bar-fill {
+  display: none;
+}
+
+.tab-call {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  padding: 0 calc(var(--mw-margin) / 2);
+}
+
+/* Panels slide in from outside the screen; focusing one on its way in must not scroll the whole app to it. */
+.shell.narrow,
+.shell.narrow .workspace,
+.shell.narrow .workspace-body {
+  overflow: clip;
+}
+
+.shell.narrow .side-panel {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  max-width: none;
+  transform: translateX(100%);
+  transition: transform var(--mw-duration) var(--mw-ease);
+}
+
+.shell.narrow .side-panel.shown {
+  transform: none;
+}
+
+.shell.narrow .side-panel-content {
+  width: 100%;
+  max-width: none;
+}
+
+.shell.narrow .mw-resize-handle {
+  display: none;
+}
+
+.shell.narrow .settings-header {
+  padding: 12px var(--mw-margin) 0;
+}
+
+/* Touch screens: fields at 16px so iOS doesn't zoom in on focus, and no hover-only actions left out of reach. */
+@media (pointer: coarse) {
+  input, textarea, select, [contenteditable="true"], [contenteditable="plaintext-only"] {
+    font-size: max(16px, 1em);
+  }
+}
+
+.channel-type-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: calc(var(--mw-margin) / 2);
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.channel-type-option {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--mw-margin) / 2);
+  padding: calc(var(--mw-margin) / 2);
+  border: var(--mw-border-width) solid transparent;
+  background: var(--mw-darker);
+  color: var(--mw-text);
+  text-align: left;
+}
+
+.channel-type-option:hover,
+.channel-type-option.active {
+  border-color: var(--mw-accent);
+}
+
+.channel-type-option.active {
+  color: var(--mw-accent);
+}
+
+.channel-type-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* Touch: every control in the drawer takes a finger. */
+.shell.narrow .sidebars button {
+  min-height: 44px;
+}
+
+.shell.narrow .sidebars .icon-button,
+.shell.narrow .sidebars .history-buttons button,
+.shell.narrow .tab-close {
+  min-width: 44px;
+}
+
+/* One heading style inside every settings page. */
+.settings-overlay .settings-section h2,
+.settings-overlay .settings-section h3,
+.settings-overlay .theme-settings h2 {
+  margin: var(--mw-margin) 0 calc(var(--mw-margin) / 2);
+  font-size: 1.1em;
+  font-weight: 500;
+  color: var(--mw-text);
+}
+
+.settings-overlay .settings-section > h2:first-child,
+.settings-overlay .nodes-lists > h2:first-child,
+.settings-overlay .plugin-toolbar h2 {
+  display: none;
+}
+
+.account-create {
+  align-self: flex-start;
+}
+
+.about-workspace {
+  margin-bottom: calc(var(--mw-margin) / 2);
+}
+
+.about-versions {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.feedback-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mw-margin);
+}
+
+.feedback-field {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--mw-margin) / 3);
+}
+
+.feedback-field textarea {
+  resize: vertical;
+}
+
+.feedback-details {
+  max-height: 200px;
+  margin: calc(var(--mw-margin) / 2) 0 0;
+  padding: calc(var(--mw-margin) / 2);
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--mw-darker);
+  color: var(--mw-text-muted);
+}
+
+.feedback-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: calc(var(--mw-margin) / 2);
+}
+
+/* Settings > Account, authenticator app. */
+.totp-qr {
+  width: 200px;
+  height: 200px;
+}
+
+.totp-qr-light {
+  fill: white;
+}
+
+.totp-qr-dark {
+  fill: black;
+}
+
+.totp-secret {
+  font-family: var(--mw-font-code);
+  letter-spacing: 0.08em;
+  user-select: all;
+  word-break: break-all;
+}
+
+.totp-backup-codes {
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  gap: 4px calc(var(--mw-margin) * 2);
+}

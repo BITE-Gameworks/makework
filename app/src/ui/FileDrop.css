@@ -1,0 +1,18 @@
+.mw-drop-hint {
+  position: absolute;
+  inset: 8px;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  border: calc(var(--mw-border-width) * 2) dashed var(--mw-accent);
+  background: color-mix(in srgb, var(--mw-light) 80%, transparent);
+  color: var(--mw-accent);
+  font-size: 1.3em;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--mw-duration) var(--mw-ease);
+}
+
+.mw-drop-hint.visible {
+  opacity: 1;
+}

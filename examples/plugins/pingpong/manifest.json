@@ -1,0 +1,22 @@
+{
+  "id": "example.pingpong",
+  "name": "Ping-pong",
+  "version": "1.0.3",
+  "description": "A multiplayer ping-pong game that demonstrates live presence, events, and declared data.",
+  "author": "MakeWork examples",
+  "icon": "icon.svg",
+  "data": {
+    "tables": {
+      "example_pingpong_games": {
+        "columns": {
+          "left_score": "integer",
+          "right_score": "integer",
+          "left_holder": "user",
+          "right_holder": "user",
+          "running": "bool"
+        },
+        "channel": true
+      }
+    }
+  }
+}

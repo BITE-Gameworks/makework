@@ -1,0 +1,40 @@
+.mw-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+  margin-top: 6px;
+  padding: 6px 8px;
+  border: var(--mw-border-width) solid var(--mw-warning);
+  background: var(--mw-dark);
+}
+
+.mw-confirm p {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Wraps in narrow places (file cards): the collapse around the prompt clips anything wider. */
+.mw-confirm-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.mw-confirm-yes {
+  color: var(--mw-warning);
+}
+
+.mw-confirm-yes:hover {
+  border-color: var(--mw-warning);
+}
+
+/* In a context menu the prompt takes the menu's width instead of widening it (the menu animates width changes, and
+   the text rewrapped from two lines to one when that ended). */
+.mw-context-menu .mw-confirm {
+  box-sizing: border-box;
+  width: 0;
+  min-width: 100%;
+}

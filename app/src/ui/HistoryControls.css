@@ -1,0 +1,55 @@
+.mw-history {
+  display: flex;
+  flex-direction: column-reverse;
+  width: 280px;
+  max-height: 320px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.mw-history button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 4px 8px;
+  border-radius: var(--mw-radius);
+  color: var(--mw-text-muted);
+  text-align: left;
+}
+
+.mw-history button:hover:not(:disabled) {
+  background: var(--mw-light);
+  color: var(--mw-text);
+}
+
+.mw-history .current button {
+  color: var(--mw-accent);
+}
+
+.mw-history .undone button {
+  color: var(--mw-text-disabled);
+}
+
+.mw-history-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.mw-history time {
+  color: var(--mw-text-disabled);
+  font-size: 0.8em;
+  white-space: nowrap;
+}
+
+.mw-history-note {
+  max-width: 280px;
+  margin: 6px 8px 2px;
+  color: var(--mw-text-disabled);
+  font-size: 0.8em;
+}

@@ -1,0 +1,2 @@
+# Built plugin packages; regenerate with: npm run pack-plugins
+*.mwp
