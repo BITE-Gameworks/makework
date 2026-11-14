@@ -1,6 +1,6 @@
 // Turns a theme file into a complete, validated Theme. Imported themes are untrusted, so every value is
 // checked before it reaches a CSS variable: no url(), no rule breaking characters, numbers in range.
-import { colorKeys, soundNames, type Theme, type ThemeFile } from "./schema";
+import { colorKeys, severityKeys, soundNames, type Theme, type ThemeFile } from "./schema";
 
 export class ThemeError extends Error {
   constructor(readonly problems: string[]) {
@@ -57,6 +57,7 @@ function validate(theme: Theme): string[] {
   check(theme.scheme === "dark" || theme.scheme === "light", "scheme must be dark or light");
 
   for (const key of colorKeys) check(isColor(at(`colors.${key}`)), `colors.${key} must be a color`);
+  for (const key of severityKeys) check(at(`colors.${key}`) === undefined || isColor(at(`colors.${key}`)), `colors.${key} must be a color`);
   const safeCss = (path: string) => String.raw`${path} must be plain CSS text without url() or ; { } \ < > @`;
   for (const path of ["shadow.panel", "shadow.popup", "fonts.ui", "fonts.code"]) check(isSafeCss(at(path)), safeCss(path));
   check(at("fonts.heading") === undefined || isSafeCss(at("fonts.heading")), safeCss("fonts.heading"));

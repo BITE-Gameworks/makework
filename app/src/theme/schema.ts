@@ -6,6 +6,16 @@ export const colorKeys = [
 ] as const;
 export type ColorKey = (typeof colorKeys)[number];
 
+// Colors a theme may leave out: each then takes the default for the theme's scheme.
+export const severityKeys = ["severityLow", "severityMedium", "severityHigh", "severitySevere"] as const;
+export type SeverityKey = (typeof severityKeys)[number];
+// Issue severities as a heat scale (light yellow, deep yellow, orange, deep red) that reads the same in every theme:
+// most themes' warning color sits close to their danger color. Light themes get stronger tones for a pale background.
+export const defaultSeverityColors: Record<"dark" | "light", Record<SeverityKey, string>> = {
+  dark: { severityLow: "#fff176", severityMedium: "#fbc02d", severityHigh: "#fb8c00", severitySevere: "#d32f2f" },
+  light: { severityLow: "#e3c13b", severityMedium: "#d39e00", severityHigh: "#e65100", severitySevere: "#b71c1c" },
+};
+
 export type Corners = "rounded" | "square" | "cut";
 export type BarMode = "docked" | "floating";
 
@@ -25,7 +35,7 @@ export interface Theme {
   name: string;
   author?: string;
   scheme: "dark" | "light";
-  colors: Record<ColorKey, string>;
+  colors: Record<ColorKey, string> & Partial<Record<SeverityKey, string>>;
   border: { width: number; outlines?: boolean };    // width: px. outlines: grey lines around boxes and panels
   shadow: { panel: string; popup: string };
   fonts: { ui: string; heading?: string; code: string; size: number; files: { family: string; url: string }[] };

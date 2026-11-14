@@ -1,5 +1,5 @@
 // Writes a theme to CSS variables and data attributes on <html>. Styles read only these.
-import type { Theme } from "./schema";
+import { defaultSeverityColors, type Theme } from "./schema";
 
 const loadedFonts = new Set<string>();
 let applied = false;
@@ -20,7 +20,7 @@ export function themeVariables(theme: Theme): Record<string, string> {
     "--mw-gap": `${theme.layout.gap}px`,
     "--mw-margin": `${theme.layout.margin}px`,
   };
-  for (const [key, value] of Object.entries(theme.colors)) vars[`--mw-${kebab(key)}`] = value;
+  for (const [key, value] of Object.entries({ ...defaultSeverityColors[theme.scheme], ...theme.colors })) vars[`--mw-${kebab(key)}`] = value;
   return vars;
 }
 

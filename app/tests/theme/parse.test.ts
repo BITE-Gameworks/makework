@@ -45,6 +45,16 @@ describe("parseTheme", () => {
     expect(problems({ id: "Bad Id" })).toHaveLength(1);
   });
 
+  it("gives issue severities a heat scale for the theme's scheme, unless the theme sets its own", () => {
+    const dark = themeVariables(base);
+    const light = themeVariables(parseTheme({ id: "t", name: "T", scheme: "light" }, base));
+    for (const vars of [dark, light])
+      expect(["low", "medium", "high", "severe"].every((s) => /^#[0-9a-f]{6}$/.test(vars[`--mw-severity-${s}`]))).toBe(true);
+    expect(light["--mw-severity-low"]).not.toBe(dark["--mw-severity-low"]);
+    expect(themeVariables(parseTheme({ id: "t", name: "T", colors: { severitySevere: "#ff0000" } }, base))["--mw-severity-severe"]).toBe("#ff0000");
+    expect(problems({ colors: { severityLow: "url(x)" } })).toHaveLength(1);
+  });
+
   it("gives every view the theme's margin to snap to", () => {
     expect(base.layout.margin).toBe(12);
     expect(themeVariables(parseTheme({ id: "t", name: "T", layout: { margin: 24 } }, base))["--mw-margin"]).toBe("24px");

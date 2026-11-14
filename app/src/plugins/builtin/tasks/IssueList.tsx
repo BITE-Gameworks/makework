@@ -19,10 +19,10 @@ import { createCopied } from "../../../ui/clipboard";
 
 export const severityColor: Record<Severity, string> = {
   none: "var(--mw-text-disabled)",
-  low: "var(--mw-success)",
-  medium: "var(--mw-warning)",
-  high: "color-mix(in srgb, var(--mw-warning) 50%, var(--mw-danger))",
-  severe: "var(--mw-danger)",
+  low: "var(--mw-severity-low)",
+  medium: "var(--mw-severity-medium)",
+  high: "var(--mw-severity-high)",
+  severe: "var(--mw-severity-severe)",
 };
 const statusColor: Record<IssueStatus, string> = {
   triage: "var(--mw-text-disabled)",
