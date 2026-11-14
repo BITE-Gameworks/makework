@@ -4,11 +4,10 @@
 import { userMessage, type PluginClient } from "../../../api/client";
 import { desktop, type GitSubmodule, type GitPreparedSubmodule } from "../../../core/desktop";
 import { channelToken } from "./connections";
-import { hostOf, localFolder, saveSubFolders, subFolders, type Repo, type SubFolder } from "./data";
+import { localFolder, saveSubFolders, subFolders, type Repo, type SubFolder } from "./data";
 import { importRepo, importTree, maxDepth, maxRepos, type ImportProgress, type OpenSubmodule, type Skipped } from "./importer";
 import { gitCall } from "./local";
 import { parseRepoLink, readerFor, type RepoReader } from "./providers";
-import { resolveSubmoduleUrl } from "./submodules";
 
 // What getting a folder's submodules ready did, each by its path from the main repository's root.
 export interface Prepared {
@@ -23,16 +22,15 @@ const nothingDone = (): Prepared => ({ cloned: [], attached: [], left: [], faile
 // Looks through the channel's folder here for its submodules at every level and remembers the folders of the ones
 // checked out (asking the desktop app is also what lets it read them). With `prepare`, the missing ones are cloned
 // first and each is put on its branch where that changes no file (electron/gitOps.js prepareSubmodules), so the
-// submodules of a fresh clone are looked into too. `mainHost`: the main repository's host. When the folder can't be
-// asked, what was known stays.
-export async function findSubFolders(workspaceId: string, channelId: number, mainHost: string | null,
+// submodules of a fresh clone are looked into too. When the folder can't be asked, what was known stays.
+export async function findSubFolders(workspaceId: string, channelId: number,
   prepare = false): Promise<{ folders: Record<string, SubFolder>; prepared: Prepared }> {
   const root = localFolder(workspaceId, channelId);
   const prepared = nothingDone();
   if (!root || !desktop?.git?.submodules) return { folders: {}, prepared };
   const found: Record<string, SubFolder> = {};
   const look = async (folder: string, above: string, depth: number): Promise<void> => {
-    const { origin, submodules } = await gitCall((git): Promise<{ origin: string; submodules: (GitSubmodule & Partial<GitPreparedSubmodule>)[] }> =>
+    const { submodules } = await gitCall((git): Promise<{ origin: string; submodules: (GitSubmodule & Partial<GitPreparedSubmodule>)[] }> =>
       (prepare ? git.prepareSubmodules(folder) : git.submodules(folder)));
     for (const s of submodules) {
       const sub = above ? `${above}/${s.path}` : s.path;
@@ -41,8 +39,7 @@ export async function findSubFolders(workspaceId: string, channelId: number, mai
       if (s.left) prepared.left.push({ sub, reason: s.left });
       if (s.error) prepared.failed.push({ sub, reason: s.error, ...(s.auth ? { auth: s.auth } : {}) });
       if (!s.folder || Object.keys(found).length >= maxRepos - 1) continue;
-      const host = parseRepoLink(resolveSubmoduleUrl(origin, s.url))?.host ?? null;
-      found[sub] = host && host !== mainHost ? { folder: s.folder, ownHost: host } : { folder: s.folder };
+      found[sub] = { folder: s.folder };
       if (depth < maxDepth) await look(s.folder, sub, depth + 1);
     }
   };
@@ -79,12 +76,12 @@ async function folderHasSubmodules(workspaceId: string, channelId: number): Prom
 
 // A submodule's reader here: its folder when the channel was made from one and it is checked out, else its host
 // with the channel's connection for it.
-const opener = (workspaceId: string, channelId: number, main: Repo): OpenSubmodule => async (_sub, submodule) => {
+const opener = (workspaceId: string, channelId: number, main: Repo): OpenSubmodule => async (sub, submodule) => {
   if (main.provider === "local" && submodule.folder && desktop?.git)
     return readerFor({ provider: "local", host: "", path: submodule.folder }, null);
   const link = parseRepoLink(submodule.url);
   if (!link) return null;
-  const token = await channelToken(workspaceId, channelId, link.host, link.host !== hostOf(main));
+  const token = await channelToken(workspaceId, channelId, link.host, sub);
   return readerFor({ provider: link.provider ?? "gitlab", host: link.host, path: link.path }, token);
 };
 
@@ -102,7 +99,7 @@ export async function importChannel(api: PluginClient, workspaceId: string, chan
   }
   if (!included) return { added: (await importRepo(api, channelId, reader, mode, onProgress, signal, from)).added, skipped: [], prepared: nothingDone() };
   // Before reading: the desktop app lets the page read a submodule's folder once it was found from its repository's.
-  const { prepared } = await findSubFolders(workspaceId, channelId, hostOf(main), prepare);
+  const { prepared } = await findSubFolders(workspaceId, channelId, prepare);
   // A submodule's default branch is asked of its reader.
   const source = { reader, defaultBranch: from ? undefined : main.defaultBranch, fromFolder: main.provider === "local", sub: from };
   return { ...(await importTree(api, channelId, source, mode, opener(workspaceId, channelId, main), onProgress, signal)), prepared };

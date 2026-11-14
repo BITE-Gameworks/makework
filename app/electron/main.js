@@ -1147,14 +1147,17 @@ ipcMain.handle("git:account", (_event, id, credentials) => {
 });
 const gitNetwork = (channel, fn) => ipcMain.handle(channel, async (_event, folder, ...args) => {
   const account = gitAccount;
-  const chosen = gitCredentials.get(folder);
-  const git = gitOps.withCredentials(gitRunner, (host) => {
+  const cwd = await pickedFolder(folder);
+  return gitSerial(cwd, () => fn(signedInGit(account, folder), cwd, ...args));
+});
+// The runner whose network commands sign in with the connection the page gave the first of `folders` it has one for.
+function signedInGit(account, ...folders) {
+  const chosen = folders.map((f) => gitCredentials.get(f)).find((c) => c !== undefined);
+  return gitOps.withCredentials(gitRunner, (host) => {
     const name = gitOps.credentialName(host, chosen);
     return account && name ? readSecret(`${account}:${name}`) : null;
   });
-  const cwd = await pickedFolder(folder);
-  return gitSerial(cwd, () => fn(git, cwd, ...args));
-});
+}
 // A picked repository's submodules. The ones checked out become folders the page may ask about too: main finds them
 // from the picked folder's own last commit and never takes such a path from the page.
 gitRead("git:submodules", async (cwd) => {
@@ -1163,9 +1166,11 @@ gitRead("git:submodules", async (cwd) => {
   return { origin: (await runGit(cwd, ["remote", "get-url", "origin"]).catch(() => "")).trim(), submodules: found };
 });
 // The same after cloning the missing ones and putting each on its branch (gitOps.js prepareSubmodules). The page's
-// own git work in a submodule's folder waits while its branch is changed.
+// own git work in a submodule's folder waits while its branch is changed. Each clone signs in with the connection the
+// page gave the folder it goes into, else the repository's.
 gitNetwork("git:prepare-submodules", async (git, cwd) => {
-  const prepared = await gitOps.prepareSubmodules(git, cwd, { serial: gitSerial });
+  const account = gitAccount;
+  const prepared = await gitOps.prepareSubmodules(git, cwd, { serial: gitSerial, gitFor: (folder) => signedInGit(account, folder, cwd) });
   await allowGitFolders(prepared.flatMap((s) => (s.folder ? [s.folder] : [])));
   return { origin: (await runGit(cwd, ["remote", "get-url", "origin"]).catch(() => "")).trim(), submodules: prepared };
 });

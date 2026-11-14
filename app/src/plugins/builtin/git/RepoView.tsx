@@ -7,6 +7,7 @@ import { desktop, desktopError, type GitMergeTarget } from "../../../core/deskto
 import { isLooking, notify } from "../../../core/notifier";
 import { checkGitHubSignIn, githubLogin, githubRevision, githubSignInReady } from "../../../core/githubAuth";
 import { getToken, tokenRevision, tokenStorage } from "../../../core/secrets";
+import { serverFeatures } from "../../../core/userServer";
 import { relativeTime } from "../../../core/time";
 import { openSettings } from "../../../core/ui";
 import { Icon } from "../../../theme/icons";
@@ -17,13 +18,17 @@ import Select from "../../../ui/Select";
 import TabUnderline from "../../../ui/TabUnderline";
 import { ProgressBar } from "../../../ui/UploadList";
 import type { ChannelContext } from "../../types";
-import { addConnection, channelConnectionKey, channelToken, connectionRevision, connectionsFor, forgetConnection, useConnection } from "./connections";
+import {
+  addConnection, channelConnectionKey, channelToken, connectionRevision, connectionsFor, findWorkingConnection, forgetConnection, hasOwnConnection,
+  useConnection,
+} from "./connections";
 import Branches from "./Branches";
 import Changes from "./Changes";
 import CommitAside, { type Pane } from "./CommitAside";
 import CommitList, { type CommitLabel } from "./CommitList";
 import Files from "./Files";
-import { stashMessage } from "./actions";
+import { stashMessage, type ActionMessage } from "./actions";
+import { appAccessPage, describeRefusal, whyRefused } from "./githubAccess";
 import SignInPrompt from "./GitHubSignIn";
 import { GitAuthError, gitCall } from "./local";
 import LocalHistory from "./LocalHistory";
@@ -65,17 +70,15 @@ export default function RepoView(props: {
   const state = createRepo(ctx.api, channelId, sub);
   const repo = () => state.value.repo;
   const main = () => props.repos.find((r) => r.subPath === "") ?? null;
-  const mainHost = () => (main() ? hostOf(main()!) : null);
   const [changing, setChanging] = createSignal(false);
   const [releasing, setReleasing] = createSignal(false);
   // The host this repository's host connection is for (connections.ts): its own, a folder's by its origin.
   const connectionHost = () => (repo() ? hostOf(repo()!) : null);
-  // A submodule on another host than the main repository's has the channel's pick for that host.
-  const ownHost = () => (sub !== "" && connectionHost() !== mainHost() ? connectionHost() ?? undefined : undefined);
   const revisions = () => connectionRevision() + tokenRevision() + githubRevision();
   // The repository's connection on this computer and the others for its host, for the More menu and sign-in prompts.
-  const [connection] = createResource(() => (connectionHost() ? { host: connectionHost()!, own: !!ownHost(), revision: revisions() } : false),
-    async ({ host, own }) => ({ key: await channelConnectionKey(workspaceId, channelId, host, own), list: await connectionsFor(host) }));
+  // A submodule's is its own pick, else the channel's.
+  const [connection] = createResource(() => (connectionHost() ? { host: connectionHost()!, revision: revisions() } : false),
+    async ({ host }) => ({ key: await channelConnectionKey(workspaceId, channelId, host, sub), list: await connectionsFor(host) }));
   const currentConnection = () => connection.latest?.key ?? null;
   // Releases go to the repository's GitHub or GitLab (a folder's through its origin there) and need a host
   // connection that may write to it: the channel's connection on this computer. Checked again after every sign-in,
@@ -146,18 +149,48 @@ export default function RepoView(props: {
   // since the last look, e.g. in a terminal.
   const findFolders = async () => {
     if (!desktop?.git || !main() || !localFolder(workspaceId, channelId)) return;
-    const { prepared } = await findSubFolders(workspaceId, channelId, mainHost(), true);
+    const { prepared } = await findSubFolders(workspaceId, channelId, true);
     setFolder(localFolder(workspaceId, channelId, sub));
+    // A clone refused with the channel's connection: another of this member's may read that submodule.
+    const refused = prepared.failed.filter((f) => f.auth).map((f) => props.repos.find((r) => r.subPath === f.sub)).filter((r) => !!r);
+    if (refused.length && (await Promise.all(refused.map((r) => searchConnection(r)))).some(Boolean)) return findFolders();
     showPrepared(prepared);
     void wc.refresh();
+  };
+  // When a submodule's connection was refused and it has none of its own: looks once (per view and submodule) for one
+  // of this member's connections that can read it and keeps it for that submodule (connections.ts). True when found.
+  const searched = new Set<string>();
+  const searchConnection = async (r: Repo): Promise<boolean> => {
+    if (!r.subPath || searched.has(r.subPath) || hasOwnConnection(workspaceId, channelId, r.subPath)) return false;
+    searched.add(r.subPath);
+    const link = r.provider === "local" ? parseRepoLink(r.url) : { provider: r.provider, host: r.host, path: r.path };
+    if (!link) return false;
+    const found = await findWorkingConnection(workspaceId, channelId, r.subPath, { provider: link.provider ?? "gitlab", host: link.host, path: link.path });
+    return found !== null;
   };
   // What that did, in the status line; a missing sign-in offers it, and signing in tries again.
   const showPrepared = (prepared: Prepared) => {
     const text = describePrepared(prepared);
     if (!text) return;
-    const auth = prepared.failed.find((f) => f.auth)?.auth;
-    wc.setMessage(auth ? { kind: "info", text, auth, retry: findFolders }
+    const refused = prepared.failed.find((f) => f.auth);
+    wc.setMessage(refused ? { kind: "info", text, auth: refused.auth, about: refused.sub, retry: findFolders }
       : { kind: prepared.failed.length ? "error" : prepared.left.length ? "info" : "ok", text });
+  };
+  // Git only says "not found" when GitHub refuses a repository; GitHub's API says why (githubAccess.ts). A refusal in
+  // the status line is replaced by that reason, and an organization that hasn't approved MakeWork gets a link to the
+  // page where it is requested or granted instead of a sign-in, which wouldn't help.
+  const explainRefusal = async (m: ActionMessage): Promise<ActionMessage> => {
+    const r = (m.about !== undefined ? props.repos.find((x) => x.subPath === m.about) : null) ?? repo();
+    const link = r ? (r.provider === "local" ? parseRepoLink(r.url) : { host: r.host, path: r.path }) : null;
+    if (!r || link?.host !== "github.com") return { ...m, explained: true };
+    const key = await channelConnectionKey(workspaceId, channelId, "github.com", r.subPath);
+    const token = key ? await getToken(key) : null;
+    const refusal = token ? await whyRefused(token, link.path) : null;
+    if (!refusal) return { ...m, explained: true };
+    const text = describeRefusal(refusal, link.path);
+    if (refusal.kind !== "restricted") return { ...m, text, explained: true };
+    const clientId = (await serverFeatures().catch(() => null))?.githubClientId;
+    return { kind: "error", text, explained: true, retry: m.retry, ...(clientId ? { link: { label: "Open on GitHub", url: appAccessPage(clientId) } } : {}) };
   };
   const [tab, setTab] = createSignal<Tab>("history");
   // A commit to open in History (from blame in the Files tab).
@@ -168,6 +201,11 @@ export default function RepoView(props: {
   const local = () => !!(folder() && desktop?.git && repo());
   // The working copy's branches, graph and actions; History shows this computer's graph unless `shared` is chosen.
   const wc = createWorkingCopy(() => (local() ? folder() : null));
+  createEffect(on(wc.message, (m) => {
+    if (m?.auth !== "github.com" || m.explained) return;
+    // Only while the same message is still shown.
+    void explainRefusal(m).then((better) => wc.message() === m && wc.setMessage(better), () => wc.message() === m && wc.setMessage({ ...m, explained: true }));
+  }));
   const [shared, setShared] = createSignal(false);
   // A sign-in the remote asked for (or the menu started): its host, and what to run again once signed in. `add`: the
   // menu's "Sign in to GitHub", which goes straight to signing in rather than offering saved connections first.
@@ -177,7 +215,7 @@ export default function RepoView(props: {
   // The remote check stops asking after a refused sign-in, until the user signed in or picked another connection.
   let authPaused = false;
   const pickConnection = (key: string) => {
-    useConnection(workspaceId, channelId, key, ownHost());
+    useConnection(workspaceId, channelId, key, sub);
     authPaused = false;
   };
   const signedIn = (login?: string | null) => {
@@ -288,13 +326,14 @@ export default function RepoView(props: {
           .map((c) => ({ branch: c.branch, count: c.count, isNew: c.from === null }));
       } catch (e) {
         if (!(e instanceof GitAuthError)) throw e;
+        if (await searchConnection(current)) return checkRemote();
         // Said once; checking again only after signing in.
         authPaused = true;
         wc.setMessage({ kind: "info", text: `${e.message} New commits can't be fetched until then.`, auth: e.host, retry: () => checkRemote() });
         return;
       }
     } else {
-      const here = await readerHere(workspaceId, channelId, current, undefined, mainHost());
+      const here = await readerHere(workspaceId, channelId, current);
       if (!here?.reader.watchBranches) return;
       const result = await here.reader.watchBranches(etag);
       if (!result) return;
@@ -372,7 +411,7 @@ export default function RepoView(props: {
   const update = async (mode: "update" | "older", token?: string) => {
     const current = repo();
     if (!current) return;
-    const here = await readerHere(workspaceId, channelId, current, token, mainHost());
+    const here = await readerHere(workspaceId, channelId, current, token);
     if (!here) {
       setError("This history came from a folder on another member's device without a link; update it from there.");
       return;
@@ -472,6 +511,16 @@ export default function RepoView(props: {
               setPushing(false);
               wc.setMessage(null);
             }}>Resolve conflicts</button>
+          </Show>
+          <Show when={wc.message()?.link}>
+            {(link) => <a class="mw-button mw-box accent" href={link().url} target="_blank" rel="noreferrer">{link().label}</a>}
+          </Show>
+          <Show when={wc.message()?.link && wc.message()?.retry}>
+            <button class="mw-button mw-box" disabled={!!wc.busy()} onClick={() => {
+              const retry = wc.message()!.retry!;
+              wc.setMessage(null);
+              void retry();
+            }}>Try again</button>
           </Show>
           <Show when={wc.message()?.stashFirst && wc.message()?.retry}>
             <button class="mw-button mw-box accent" disabled={!!wc.busy()} onClick={() => void stashAndRetry()}>
@@ -576,7 +625,7 @@ export default function RepoView(props: {
           <Files folder={folder()!} onCommit={(sha) => { setShowCommit(sha); setTab("history"); }} openSubmodule={openSubmodule} />
         </Match>
         <Match when={local() && !shared()}>
-          <LocalHistory context={ctx} repo={repo()!} mainHost={mainHost()} wc={wc} onShared={() => setShared(true)} onChanged={changed}
+          <LocalHistory context={ctx} repo={repo()!} wc={wc} onShared={() => setShared(true)} onChanged={changed}
             onAttention={() => setPushing(true)} />
         </Match>
         <Match when={repo()}>
@@ -846,7 +895,7 @@ function History(props: {
         </section>
         <Show when={pane()}>
           {(open) => (
-            <CommitAside context={ctx} repo={props.repo} mainHost={props.main ? hostOf(props.main) : null} pane={open()} setPane={setPane} folder={props.folder}
+            <CommitAside context={ctx} repo={props.repo} pane={open()} setPane={setPane} folder={props.folder}
               commitOf={(sha) => history.value.rows.find((r) => r.sha === sha) ?? null} labelsOf={(sha) => labels().get(sha) ?? []}
               onSelect={(sha) => select(sha)} />
           )}

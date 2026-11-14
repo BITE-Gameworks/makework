@@ -123,10 +123,8 @@ export const setLocalFolder = (workspaceId: string, channelId: number, folder: s
 };
 
 // The submodules checked out inside a channel's folder here, by their path from the main repository's root.
-// `ownHost`: its link leads to another host than the main repository's, so it has a connection of its own.
 export interface SubFolder {
   folder: string;
-  ownHost?: string;
 }
 const subFoldersKey = (workspaceId: string, channelId: number) => `mw.git.subfolders.${workspaceId}:${channelId}`;
 export const subFolders = (workspaceId: string, channelId: number) =>
@@ -145,7 +143,6 @@ export interface LocalCopy {
   folder: string;
   // "" for the channel's main repository.
   sub: string;
-  ownHost?: string;
 }
 
 // Every channel with a working copy on this device, and the submodules checked out inside each.
@@ -162,7 +159,7 @@ export function workingCopies(): LocalCopy[] {
       const workspaceId = rest.slice(0, at);
       const channelId = Number(rest.slice(at + 1));
       found.push({ workspaceId, channelId, folder, sub: "" });
-      for (const [sub, copy] of Object.entries(subFolders(workspaceId, channelId))) found.push({ workspaceId, channelId, sub, ...copy });
+      for (const [sub, copy] of Object.entries(subFolders(workspaceId, channelId))) found.push({ workspaceId, channelId, sub, folder: copy.folder });
     }
   } catch {
     // No storage: no working copies known.
@@ -174,17 +171,15 @@ export function workingCopies(): LocalCopy[] {
 // on this device (a submodule: its folder inside it, when checked out); otherwise the shared link through the host's
 // API (with the channel's host connection here, if it has one: connections.ts). A GitHub/GitLab channel always reads
 // the host, even when this device also has a working copy: an update replaces the channel's branch list, which must
-// be the remote's, not one person's local branches. Null when it can't. `mainHost`: the main repository's host, for
-// a submodule (one on another host has a connection of its own).
-export async function readerHere(workspaceId: string, channelId: number, repo: Repo, token: string | undefined,
-  mainHost: string | null): Promise<{ reader: RepoReader; host: string | null } | null> {
+// be the remote's, not one person's local branches. Null when it can't. A submodule uses its own connection pick.
+export async function readerHere(workspaceId: string, channelId: number, repo: Repo,
+  token?: string): Promise<{ reader: RepoReader; host: string | null } | null> {
   const folder = localFolder(workspaceId, channelId, repo.subPath);
   if (folder && repo.provider === "local") return { reader: readerFor({ provider: "local", host: "", path: folder }, null), host: null };
   // A folder imported on another device: its origin link, if it has one.
   const link = repo.provider === "local" ? parseRepoLink(repo.url) : { provider: repo.provider, host: repo.host, path: repo.path };
   if (!link) return null;
   const provider = link.provider ?? "gitlab";
-  const own = repo.subPath !== "" && link.host !== mainHost;
-  return { reader: readerFor({ provider, host: link.host, path: link.path }, token ?? (await channelToken(workspaceId, channelId, link.host, own))),
+  return { reader: readerFor({ provider, host: link.host, path: link.path }, token ?? (await channelToken(workspaceId, channelId, link.host, repo.subPath))),
     host: link.host };
 }

@@ -31,6 +31,7 @@ export function status(git: Git, cwd: string): Promise<GitChange[]>;
 export function submodules(git: Git, cwd: string): Promise<GitSubmodule[]>;
 export function prepareSubmodules(git: Git, cwd: string, options?: {
   serial?: <T>(folder: string, fn: () => Promise<T>) => Promise<T>;
+  gitFor?: (folder: string) => Git;
 }): Promise<GitPreparedSubmodule[]>;
 export function attachBranch(git: Git, cwd: string, wanted: string | null): Promise<Pick<GitPreparedSubmodule, "onBranch" | "attached" | "left">>;
 export function workingDiff(git: Git, cwd: string, file: string): Promise<GitPatch>;

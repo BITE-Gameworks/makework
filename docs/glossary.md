@@ -465,7 +465,7 @@ _Avoid_: fix
 **host connection**:
 A member's named token for a git host (github.com, a GitLab server) on one computer, from MakeWork's GitHub sign-in
 or pasted in; a member can have several per host, and each version control channel uses one of them on that
-computer. Releases are offered only with one that may write to the repository; a MakeWork account signed in with
+computer. Each of its submodules can use another, since one host holds repositories of owners one token can't read. Releases are offered only with one that may write to the repository; a MakeWork account signed in with
 GitHub is not one.
 _Avoid_: login, GitHub account, credentials, saved token
 

@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { forgetToken, getToken, setToken } from "../../../../src/core/secrets";
-import { addConnection, allConnections, channelToken, connectionUses, connectionsFor, folderCredentials, forgetConnection, nameGitHubSignIn, renameConnection, useConnection } from "../../../../src/plugins/builtin/git/connections";
+import {
+  addConnection, allConnections, channelToken, connectionUses, connectionsFor, findWorkingConnection, folderCredentials, forgetConnection,
+  forgetOwnConnection, hasOwnConnection, nameGitHubSignIn, renameConnection, useConnection,
+} from "../../../../src/plugins/builtin/git/connections";
 
 // core/storage reads localStorage, which node doesn't have.
 beforeEach(() => {
@@ -112,20 +115,55 @@ describe("a channel's connection on this computer", () => {
     expect(await channelToken("ws", 1, "gitlab.com")).toBe("lab-token");
   });
 
-  it("keeps its pick while a submodule on another host gets one of its own", async () => {
-    const github = await addConnection({ host: "github.com", provider: "github", token: "gh-token", name: "GitHub" }, silent);
+  it("lets each submodule have its own pick, which never changes the channel's", async () => {
+    const mine = await addConnection({ host: "github.com", provider: "github", token: "mine", name: "Mine" }, silent);
+    const org = await addConnection({ host: "github.com", provider: "github", token: "org", name: "Org" }, silent);
     const lab = await addConnection({ host: "gitlab.com", provider: "gitlab", token: "lab-token", name: "Lab" }, silent);
-    await addConnection({ host: "gitlab.com", provider: "gitlab", token: "lab-2", name: "Lab 2" }, silent);
-    useConnection("ws", 1, github.key);
-    // The submodule's host takes its latest connection and stays on it; the channel's own pick is untouched.
-    expect(await channelToken("ws", 1, "gitlab.com", true)).toBe("lab-2");
-    expect(await channelToken("ws", 1, "github.com")).toBe("gh-token");
-    useConnection("ws", 1, lab.key, "gitlab.com");
-    expect(await channelToken("ws", 1, "gitlab.com", true)).toBe("lab-token");
-    expect(await channelToken("ws", 1, "github.com")).toBe("gh-token");
+    useConnection("ws", 1, mine.key);
+    // Without a pick of its own a submodule follows the channel's, for the same host.
+    expect(await channelToken("ws", 1, "github.com", "homepage")).toBe("mine");
+    expect(hasOwnConnection("ws", 1, "homepage")).toBe(false);
+    useConnection("ws", 1, org.key, "homepage");
+    expect([await channelToken("ws", 1, "github.com", "homepage"), await channelToken("ws", 1, "github.com")]).toEqual(["org", "mine"]);
+    expect(await channelToken("ws", 1, "github.com", "makework")).toBe("mine");
+    // On another host it has a pick of its own from the start.
+    expect(await channelToken("ws", 1, "gitlab.com", "tool")).toBe("lab-token");
+    expect(hasOwnConnection("ws", 1, "tool")).toBe(true);
+    expect(await channelToken("ws", 1, "github.com")).toBe("mine");
     expect(connectionUses().get(lab.key)).toBe(1);
+    forgetOwnConnection("ws", 1, "homepage");
+    expect(await channelToken("ws", 1, "github.com", "homepage")).toBe("mine");
     await forgetConnection(lab.key);
-    expect(await channelToken("ws", 1, "gitlab.com", true)).toBeNull();
+    expect(await channelToken("ws", 1, "gitlab.com", "tool")).toBeNull();
+  });
+
+  it("finds one of the member's connections that can read a submodule the channel's can't", async () => {
+    const mine = await addConnection({ host: "github.com", provider: "github", token: "mine", name: "Mine" }, silent);
+    await addConnection({ host: "github.com", provider: "github", token: "org", name: "Org" }, silent);
+    await addConnection({ host: "gitlab.com", provider: "gitlab", token: "lab", name: "Lab" }, silent);
+    useConnection("ws", 1, mine.key);
+    const asked: string[] = [];
+    // GitHub shows the private repository only to the org's token; a public one to anyone.
+    const github = (readable: (auth: string | undefined) => boolean) => (async (url: string | URL | Request, init?: RequestInit) => {
+      const auth = ((init?.headers ?? {}) as Record<string, string>).Authorization;
+      asked.push(`${new URL(String(url)).host} ${auth ?? "none"}`);
+      return readable(auth) ? Response.json({ default_branch: "main" }) : new Response("{}", { status: 404 });
+    }) as typeof fetch;
+    const repo = { provider: "github" as const, host: "github.com", path: "Org/private" };
+    expect(await findWorkingConnection("ws", 1, "homepage", repo, github((auth) => auth === "Bearer org"))).toMatch(/^github\.com#/);
+    expect(asked).toEqual(["api.github.com Bearer org"]);
+    expect(await channelToken("ws", 1, "github.com", "homepage")).toBe("org");
+    expect(await channelToken("ws", 1, "github.com")).toBe("mine");
+
+    // A public repository: none of the tokens is needed.
+    asked.length = 0;
+    expect(await findWorkingConnection("ws", 1, "makework", { ...repo, path: "Org/public" }, github((auth) => auth === undefined))).toBe("none");
+    expect(asked).toEqual(["api.github.com Bearer org", "api.github.com none"]);
+    expect(await channelToken("ws", 1, "github.com", "makework")).toBeNull();
+
+    // Nothing reads it: the pick stays as it was.
+    expect(await findWorkingConnection("ws", 1, "webapp", { ...repo, path: "Org/secret" }, github(() => false))).toBeNull();
+    expect(hasOwnConnection("ws", 1, "webapp")).toBe(false);
   });
 
   it("is none once forgotten, never another one in its place, a new GitHub sign-in included", async () => {
@@ -162,16 +200,20 @@ describe("working copies' connections", () => {
     expect(folderCredentials(copies)).toEqual({ "/repos/1": work.key, "/repos/2": "", "/repos/3": "", "/repos/4": "github.com" });
   });
 
-  it("give a submodule's folder its channel's connection, or the channel's pick for its own host", async () => {
+  it("give a submodule's folder its own pick or the channel's, also before it is cloned", async () => {
     const work = await addConnection({ host: "github.com", provider: "github", token: "work-token", name: "Work" }, silent);
-    const lab = await addConnection({ host: "gitlab.com", provider: "gitlab", token: "lab-token", name: "Lab" }, silent);
+    const org = await addConnection({ host: "github.com", provider: "github", token: "org-token", name: "Org" }, silent);
     useConnection("ws", 1, work.key);
-    useConnection("ws", 1, lab.key, "gitlab.com");
+    useConnection("ws", 1, org.key, "homepage");
+    useConnection("ws", 1, "none", "vendor/public");
     expect(folderCredentials([
       { workspaceId: "ws", channelId: 1, folder: "/repo" },
-      { workspaceId: "ws", channelId: 1, folder: "/repo/lib" },
-      { workspaceId: "ws", channelId: 1, folder: "/repo/tool", ownHost: "gitlab.com" },
-      { workspaceId: "ws", channelId: 1, folder: "/repo/other", ownHost: "example.org" },
-    ])).toEqual({ "/repo": work.key, "/repo/lib": work.key, "/repo/tool": lab.key });
+      { workspaceId: "ws", channelId: 1, folder: "/repo/lib", sub: "lib" },
+      { workspaceId: "ws", channelId: 1, folder: "/repo/homepage", sub: "homepage" },
+    ])).toEqual({ "/repo": work.key, "/repo/lib": work.key, "/repo/homepage": org.key, "/repo/vendor/public": "" });
+    // Written as the desktop app joins it on Windows.
+    expect(folderCredentials([{ workspaceId: "ws", channelId: 1, folder: "C:\\code\\repo" }])).toEqual({
+      "C:\\code\\repo": work.key, "C:\\code\\repo\\homepage": org.key, "C:\\code\\repo\\vendor\\public": "",
+    });
   });
 });

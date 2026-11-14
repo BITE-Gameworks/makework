@@ -8,7 +8,7 @@ import { can } from "../../../core/roles";
 import { desktop } from "../../../core/desktop";
 import { openChannel } from "../../../core/navigation";
 import { isLooking, notify } from "../../../core/notifier";
-import { hostOf, loadRepos, readerHere, workingCopies } from "./data";
+import { loadRepos, readerHere, workingCopies } from "./data";
 import { gitCall } from "./local";
 import { importChannel } from "./tree";
 
@@ -77,7 +77,7 @@ export async function importLatest(workspaceId: string, channelId: number, prepa
   const api = workspaceApi(workspaceId).plugin("git");
   const [repo] = await loadRepos(api, channelId);
   if (!repo) return 0;
-  const here = await readerHere(workspaceId, channelId, repo, undefined, hostOf(repo));
+  const here = await readerHere(workspaceId, channelId, repo);
   if (!here) return 0;
   return (await importChannel(api, workspaceId, channelId, repo, here.reader, "update", undefined, undefined, "", prepare)).added;
 }

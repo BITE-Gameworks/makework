@@ -80,6 +80,12 @@ export interface ActionMessage {
   // The merge would conflict: its conflicts can be resolved here first.
   resolve?: GitMergeTarget;
   retry?: () => Promise<unknown>;
+  // A page that settles it, opened in the browser.
+  link?: { label: string; url: string };
+  // The submodule it is about when that isn't the repository shown (its path from the main repository's root).
+  about?: string;
+  // The host's own reason for a refusal was looked up already.
+  explained?: boolean;
 }
 
 // The push panel works on the current branch; for another branch the message says what to do instead.

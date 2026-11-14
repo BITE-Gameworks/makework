@@ -231,8 +231,9 @@ const cloneTimeoutMs = 15 * 60_000;
 // - a submodule on no branch is put on its branch (see attachBranch), which never changes a file.
 // Returns submodules() with, for each: cloned, onBranch (its branch now, null for none), attached (put on it now),
 // left (why it stays as it is), error and auth (the host a sign-in is missing for). `serial(folder, fn)` runs `fn`
-// in turn with the other git work in a submodule's folder.
-export async function prepareSubmodules(git, cwd, { serial = (_folder, fn) => fn() } = {}) {
+// in turn with the other git work in a submodule's folder; `gitFor(folder)` gives the runner that clones into it (its
+// own sign-in: one host holds repositories of owners one token can't read).
+export async function prepareSubmodules(git, cwd, { serial = (_folder, fn) => fn(), gitFor = () => git } = {}) {
   const own = (await repoState(git, cwd)).branch;
   const root = await fs.realpath(cwd);
   const results = [];
@@ -241,7 +242,7 @@ export async function prepareSubmodules(git, cwd, { serial = (_folder, fn) => fn
     results.push(result);
     try {
       if (!result.folder) {
-        const left = await cloneSubmodule(git, cwd, s);
+        const left = await cloneSubmodule(git, gitFor(subFolder(cwd, s.path)), cwd, s);
         if (left) {
           result.left = left;
           continue;
@@ -261,8 +262,8 @@ export async function prepareSubmodules(git, cwd, { serial = (_folder, fn) => fn
   return results;
 }
 
-// Clones one submodule that isn't here; returns why it didn't, or null once it did.
-async function cloneSubmodule(git, cwd, s) {
+// Clones one submodule that isn't here, signing in through `cloner`; returns why it didn't, or null once it did.
+async function cloneSubmodule(git, cloner, cwd, s) {
   const dir = subFolder(cwd, s.path);
   const there = await fs.lstat(dir).catch(() => null);
   if (there?.isSymbolicLink()) return "Its folder is a link, so nothing was cloned into it.";
@@ -272,7 +273,7 @@ async function cloneSubmodule(git, cwd, s) {
   await run(git, cwd, ["submodule", "init", "--", s.path]);
   const url = (await git(cwd, ["config", "--get", `submodule.${s.name}.url`], { allowCodes: [0, 1] })).out.trim();
   if (!url) return "It has no link to clone from.";
-  await remoteRun(git, cwd, url, ["submodule", "update", "--checkout", "--", s.path], cloneTimeoutMs);
+  await remoteRun(cloner, cwd, url, ["submodule", "update", "--checkout", "--", s.path], cloneTimeoutMs);
   return null;
 }
 

@@ -38,7 +38,7 @@ const entry = (path: string, url: string, fields: Partial<GitPreparedSubmodule> 
   ({ name: path, path, url, pinned: "abcdef1", branch: null, folder: null, cloned: false, onBranch: null, attached: false, ...fields });
 
 describe("getting a folder's submodules ready", () => {
-  it("walks into freshly cloned submodules, and remembers every folder with the host it signs in to", async () => {
+  it("walks into freshly cloned submodules, and remembers every folder", async () => {
     setLocalFolder("ws", 1, "/repo");
     answers["/repo"] = { origin: "https://github.com/o/main.git", submodules: [
       entry("lib", "../lib.git", { folder: "/repo/lib", cloned: true, onBranch: "main", attached: true }),
@@ -48,10 +48,10 @@ describe("getting a folder's submodules ready", () => {
     answers["/repo/lib"] = { origin: "https://github.com/o/lib.git", submodules: [
       entry("vendor/x", "https://github.com/o/x.git", { folder: "/repo/lib/vendor/x", left: "Its branch main is at another commit." }),
     ] };
-    const { folders, prepared } = await findSubFolders("ws", 1, "github.com", true);
+    const { folders, prepared } = await findSubFolders("ws", 1, true);
     expect(asked).toEqual(["prepare /repo", "prepare /repo/lib", "prepare /repo/lib/vendor/x", "prepare /repo/tool"]);
     expect(folders).toEqual({
-      lib: { folder: "/repo/lib" }, "lib/vendor/x": { folder: "/repo/lib/vendor/x" }, tool: { folder: "/repo/tool", ownHost: "gitlab.com" },
+      lib: { folder: "/repo/lib" }, "lib/vendor/x": { folder: "/repo/lib/vendor/x" }, tool: { folder: "/repo/tool" },
     });
     expect(subFolders("ws", 1)).toEqual(folders);
     expect(localFolder("ws", 1, "lib/vendor/x")).toBe("/repo/lib/vendor/x");
@@ -63,10 +63,10 @@ describe("getting a folder's submodules ready", () => {
   });
 
   it("only reads without `prepare`, and does nothing without a folder here", async () => {
-    expect(await findSubFolders("ws", 1, null, true)).toMatchObject({ folders: {} });
+    expect(await findSubFolders("ws", 1, true)).toMatchObject({ folders: {} });
     expect(asked).toEqual([]);
     setLocalFolder("ws", 1, "/repo");
-    await findSubFolders("ws", 1, null);
+    await findSubFolders("ws", 1);
     expect(asked).toEqual(["read /repo"]);
   });
 

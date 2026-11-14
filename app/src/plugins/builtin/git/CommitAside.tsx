@@ -19,8 +19,6 @@ const minWidth = 320;
 export default function CommitAside(props: {
   context: ChannelContext;
   repo: Repo;
-  // The host of the channel's main repository (see readerHere).
-  mainHost: string | null;
   pane: Pane;
   setPane: (pane: Pane | null) => void;
   folder: string | null;
@@ -53,7 +51,7 @@ export default function CommitAside(props: {
         <Switch>
           <Match when={commit()}>
             {(c) => (
-              <CommitPane context={props.context} repo={props.repo} mainHost={props.mainHost} sha={c().sha} folder={props.folder} diff={props.diff}
+              <CommitPane context={props.context} repo={props.repo} sha={c().sha} folder={props.folder} diff={props.diff}
                 commit={props.commitOf(c().sha)} labels={props.labelsOf(c().sha)}
                 onParent={props.onSelect} onBlame={(path) => props.setPane({ kind: "blame", rev: c().sha, path })} />
             )}

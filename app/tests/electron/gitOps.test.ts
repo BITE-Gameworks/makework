@@ -826,6 +826,16 @@ describe("submodules", () => {
     expect((await prepareSubmodules(git, c)).map((s) => [s.cloned, s.attached, s.onBranch])).toEqual([[false, false, "main"], [false, false, "main"]]);
   });
 
+  it("clones each one with the sign-in for the folder it goes into", async () => {
+    addSubmodule("tool");
+    addSubmodule("vendor/lib");
+    const c = freshClone();
+    const asked: string[] = [];
+    const gitFor = (folder: string) => { asked.push(path.relative(c, folder)); return git; };
+    expect((await prepareSubmodules(git, c, { gitFor })).map((s) => s.cloned)).toEqual([true, true]);
+    expect(asked).toEqual(["tool", path.join("vendor", "lib")]);
+  });
+
   it("takes the branch .gitmodules names, and '.' as the repository's own", async () => {
     const tool = addSubmodule("tool");
     sh(tool.lib, "branch", "dev");
