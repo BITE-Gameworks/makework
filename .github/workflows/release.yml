@@ -47,6 +47,8 @@ jobs:
           npm ci --ignore-scripts
           npm rebuild adblock-rs
       - run: npm run build:web
+        env:
+          VITE_GOOGLE_DESKTOP_CLIENT_SECRET: ${{ secrets.GOOGLE_DESKTOP_CLIENT_SECRET }}
       # electron-builder installs the Flatpak runtime, SDK and Electron base app (--user) the first time.
       - run: npx electron-builder --linux AppImage deb rpm flatpak --x64 --publish never
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -76,6 +78,8 @@ jobs:
           npm ci --ignore-scripts
           npm rebuild adblock-rs
       - run: npm run build:web
+        env:
+          VITE_GOOGLE_DESKTOP_CLIENT_SECRET: ${{ secrets.GOOGLE_DESKTOP_CLIENT_SECRET }}
       - run: npx electron-builder --win nsis --x64 --publish never
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -108,6 +112,8 @@ jobs:
           npm ci --ignore-scripts
           npm rebuild adblock-rs
       - run: npm run build:web
+        env:
+          VITE_GOOGLE_DESKTOP_CLIENT_SECRET: ${{ secrets.GOOGLE_DESKTOP_CLIENT_SECRET }}
       - run: npx electron-builder --mac dmg --${{ matrix.arch }} --publish never
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:

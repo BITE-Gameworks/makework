@@ -99,7 +99,9 @@ To release, push a tag with the current version (`git tag v1.2.7 && git push ori
 `.github/workflows/release.yml` builds every package on GitHub's Linux, Windows and macOS runners (macOS for Intel and
 Apple Silicon) and the APK, and puts them in a draft release with the node (`makework-node.tar.gz`), the servers
 (`makework-user-server.tar.gz`, `makework-turn-server.tar.gz`, without MakeWork's own settings) and `latest.json`.
-Started by hand from the Actions tab, it keeps the files as the run's artifacts. Desktop apps read `latest.json` at
+Started by hand from the Actions tab, it keeps the files as the run's artifacts. The desktop builds take Google's
+desktop OAuth client secret from the repository secret `GOOGLE_DESKTOP_CLIENT_SECRET` (locally:
+`VITE_GOOGLE_DESKTOP_CLIENT_SECRET` in `app/.env.local`); without it they offer no Google sign-in. Desktop apps read `latest.json` at
 start and every 6 hours and offer an update when it names a newer version, so publish it after the packages.
 
 ## Code quality

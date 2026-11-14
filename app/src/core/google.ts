@@ -14,8 +14,10 @@ export interface GoogleProfile {
   accessToken: string;
 }
 
-// MakeWork's OAuth clients. Not confidential: client IDs are public, and Google does not treat an installed app's
-// secret as one, since every copy of the app carries it. `.env.local` can point at other clients.
+// MakeWork's OAuth clients. Client IDs are public. The desktop client's secret comes in at build time
+// (VITE_GOOGLE_DESKTOP_CLIENT_SECRET: `.env.local`, or the release workflow's secret) and stays out of the source;
+// Google doesn't treat an installed app's secret as confidential, since every copy of the app carries it. Without it
+// the desktop app offers no Google sign-in. `.env.local` can also point at other clients.
 const env = import.meta.env;
 const webClientId = env.VITE_GOOGLE_WEB_CLIENT_ID || "50887485708-au7vo1cff6dkqvcmpin5k0v694unpcm2.apps.googleusercontent.com";
 const desktopClient = {
@@ -27,7 +29,7 @@ export const callbackChannel = "makework-google";
 const scope = "openid email profile https://www.googleapis.com/auth/drive.appdata";
 
 export function googleAvailable(): boolean {
-  return desktop?.googleSignIn ? desktopClient.id !== "" : webClientId !== "";
+  return desktop?.googleSignIn ? desktopClient.id !== "" && desktopClient.secret !== "" : webClientId !== "";
 }
 
 // `loginHint` (an email) makes Google use that account, or ask to sign in to it, instead of one it picks.
