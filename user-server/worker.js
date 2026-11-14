@@ -17,8 +17,8 @@
 //
 // Sign in with GitHub runs through here, since GitHub hands out sign-ins only to a server holding the app's secret:
 // /github/start sends the person to GitHub, /github/callback learns who they are and hands a one-time code to the
-// place the sign-in started from (the desktop app's loopback port, or the web app's own origin), and the app
-// fetches /github/result with its session id and that code. The key then comes back like after a password reset
+// place the sign-in started from (the desktop app's loopback port, the Android app's link, or the web app's own
+// origin), and the app fetches /github/result with its session id and that code. The key then comes back like after a password reset
 // (recovery copy, recovery key, or a device).
 //
 // Friends are mutual (a request, then an accept). Messages from people who aren't friends are refused unless the
@@ -47,7 +47,7 @@ const maxCodesPerAddress = 20;
 const maxCodeGuessesPerAddress = 30;
 const maxEmailLookupsPerAddress = 30;
 // Shown to the app (Settings > About); raise it when deploying a change.
-const serverVersion = "1.4.0";
+const serverVersion = "1.4.1";
 const maxFeedbackChars = 16_000;
 const maxFeedbackPerAddress = 10;
 // From all addresses together: feedback shares its mail quota with sign-in codes, which must keep working.
@@ -62,6 +62,9 @@ const maxCodeAttempts = 5;
 const maxCodesPerHour = 5;
 const resetLifetimeMs = 30 * 60_000;
 const oauthLifetimeMs = 10 * 60_000;
+// The Android app's intent filter (AndroidManifest.xml). Another app claiming it would get only the one-time code, which
+// is useless without the session id the sign-in started with.
+const androidReturn = "com.makework.app://github";
 const sessionPattern = /^[A-Za-z0-9_-]{22,64}$/;
 // How a device names itself in a sign-in code's email ("Windows · Chrome"): plain words only, since whoever signs in writes it.
 const deviceLabelPattern = /^[\p{L}\p{N} ·.-]{1,64}$/u;
@@ -387,8 +390,8 @@ async function startReset(request, env, input) {
   });
 }
 
-// Where a GitHub sign-in's answer may go: the desktop app's one-off loopback port, or the web app at one of its
-// origins (APP_ORIGINS, comma separated). Never an address the starter names freely: whoever starts a sign-in could
+// Where a GitHub sign-in's answer may go: the desktop app's one-off loopback port, the Android app's link
+// (androidReturn), or the web app at one of its origins (APP_ORIGINS, comma separated). Never an address the starter names freely: whoever starts a sign-in could
 // otherwise send someone else the link and collect that person's answer.
 function returnTarget(env, url) {
   const port = url.searchParams.get("port");
@@ -397,6 +400,7 @@ function returnTarget(env, url) {
     if (!/^\d{4,5}$/.test(port) || n < 1024 || n > 65535) throw new Refusal(400, "Bad port.");
     return { port: n };
   }
+  if (url.searchParams.get("app") === "android") return { app: "android" };
   const origin = url.searchParams.get("origin");
   const allowed = String(env.APP_ORIGINS ?? "https://makework.dev,http://localhost:1420").split(",").map((o) => o.trim()).filter(Boolean);
   if (origin !== null && allowed.includes(origin)) return { origin };
@@ -431,9 +435,9 @@ async function githubCallback(env, url) {
     await env.DB.prepare("UPDATE oauth_sessions SET result = ?, once_hash = ? WHERE state = ?").bind(JSON.stringify(result), await sha256(once), state).run();
     // Only tells the app's page what to show; the answer itself is fetched with the code.
     const status = result.error ? "error" : "ok";
-    return target.port
-      ? Response.redirect(`http://127.0.0.1:${Number(target.port)}/github?once=${once}&status=${status}`, 302)
-      : Response.redirect(`${target.origin}/github-callback.html#once=${once}`, 302);
+    if (target.port) return Response.redirect(`http://127.0.0.1:${Number(target.port)}/github?once=${once}&status=${status}`, 302);
+    if (target.app === "android") return new Response(null, { status: 302, headers: { Location: `${androidReturn}?once=${once}&status=${status}` } });
+    return Response.redirect(`${target.origin}/github-callback.html#once=${once}`, 302);
   };
   if (url.searchParams.get("error")) return answer({ error: "Sign-in was cancelled." });
   const tokenResponse = await fetch("https://github.com/login/oauth/access_token", {

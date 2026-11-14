@@ -82,7 +82,27 @@ the repository's secrets `ANDROID_KEYSTORE` (the keystore, base64), `ANDROID_KEY
 `ANDROID_KEY_ALIAS`. Without the Android Studio IDE, the SDK comes from Google's command line tools:
 `sdkmanager --sdk_root=$ANDROID_HOME "platform-tools" "platforms;android-36" "build-tools;36.0.0"`.
 
-Icons come from `app/resources/icon.svg` (`app/scripts/icon.sh`).
+A signed local build, with the keystore and a `signing.env` holding the three variables kept outside the repository
+(for example in `~/.local/share/makework/android/`), and `JAVA_HOME` pointing at JDK 21 if it isn't the default:
+
+```sh
+cd app
+set -a; . ~/.local/share/makework/android/signing.env; set +a
+JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ANDROID_HOME=~/Android/Sdk npm run build:android
+```
+
+The APK lands in `app/release/`. Install it with `adb install -r app/release/MakeWork-<version>.apk`, or copy it to the
+phone. To read a key's SHA-1: `keytool -list -v -keystore <keystore> -alias makework`, or for a built APK
+`apksigner verify --print-certs <apk>` (from the SDK's `build-tools`).
+
+Google sign-in on Android needs an Android OAuth client in the same Google Cloud project as the web client, with the
+package name `com.makework.app` and the SHA-1 of each key that signs a build (the release key, and the debug key for
+debug builds). The app never uses that client's id: Google matches the app by package and signature, and the ID
+token is for the web client. GitHub sign-in on Android comes back on the link `com.makework.app://github`, which the
+user server must know (`user-server/worker.js`).
+
+Icons come from `app/resources/icon.svg` (`app/scripts/icon.sh`). The same script makes the Android launcher icons and
+splash screens from `app/resources/icon.png` (`app/scripts/android-icons.py`, Python with Pillow).
 
 ## Versions and releases
 

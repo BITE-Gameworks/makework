@@ -64,7 +64,8 @@ Sign in with GitHub (optional; the button only shows once both secrets are set):
    the client id (`github_client_id` in `GET /`), which isn't secret.
 4. `APP_ORIGINS` in `wrangler.toml` lists the origins the web app is served from (comma separated). A sign-in from
    the browser build only gets its answer back at one of them (`<origin>/github-callback.html`); the desktop app
-   gets it on a one-off loopback port. Add your own origin if you serve the web build elsewhere.
+   gets it on a one-off loopback port, and the Android app on its link `com.makework.app://github`. Add your own
+   origin if you serve the web build elsewhere.
 
 `MAIL_FROM` in `wrangler.toml` must be an address on the verified domain. `sendEmail` in `worker.js` is the one
 place that sends mail, if the provider ever changes. To receive feedback and crash reports from people using this

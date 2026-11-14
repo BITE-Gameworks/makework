@@ -251,11 +251,12 @@ export interface GitHubSignIn {
   reset: { token: string; recoveryCopy: boolean; recoveryLocked: LockedKey | null; totp?: boolean } | null;
 }
 
-// Where the browser build sends the person to sign in with GitHub: `session` is a random id kept by the app, and the
-// user server sends the answer's one-time code back to `origin` (one of the origins it knows the web app at). The
-// desktop app starts it in the main process instead, with a loopback port (desktop.githubSignIn).
-export const githubStartUrl = (session: string, origin: string) =>
-  `${userServer()}/github/start?session=${encodeURIComponent(session)}&origin=${encodeURIComponent(origin)}`;
+// Where the browser build and the Android app send the person to sign in with GitHub: `session` is a random id kept by
+// the app, and the user server sends the answer's one-time code back to `origin` (one of the origins it knows the web
+// app at) or to the Android app's link. The desktop app starts it in the main process instead, with a loopback port
+// (desktop.githubSignIn).
+export const githubStartUrl = (session: string, returnTo: { origin: string } | { app: "android" }) =>
+  `${userServer()}/github/start?${new URLSearchParams({ session, ...returnTo })}`;
 
 // The answer, for the session id and the one-time code that came back to this device; handed out once.
 export function githubResult(session: string, once: string): Promise<{ status: "done" } & GitHubSignIn> {

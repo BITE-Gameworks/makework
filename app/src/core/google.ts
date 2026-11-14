@@ -1,7 +1,8 @@
 // Sign in with Google (OpenID Connect). The browser build opens Google in a popup (implicit flow, ID token in
 // the redirect); the desktop shell opens the system browser with a loopback redirect, since Google blocks
-// sign-in inside embedded windows. Either way we get Google's ID token straight from Google over TLS, and an access
+// sign-in inside embedded windows; the Android app signs in natively (GoogleSignInPlugin.java). Either way we get Google's ID token straight from Google over TLS, and an access
 // token for the app's hidden Drive folder, where the account key is kept (core/drive.ts).
+import { Capacitor, registerPlugin } from "@capacitor/core";
 import { desktop } from "./desktop";
 import { base64url, jwtClaims } from "./identity";
 
@@ -26,15 +27,29 @@ const desktopClient = {
 };
 const issuers = new Set(["https://accounts.google.com", "accounts.google.com"]);
 export const callbackChannel = "makework-google";
-const scope = "openid email profile https://www.googleapis.com/auth/drive.appdata";
+const driveScope = "https://www.googleapis.com/auth/drive.appdata";
+const scope = `openid email profile ${driveScope}`;
+
+interface NativeGoogle {
+  signIn(options: { clientId: string; nonce: string; scopes: string[] }): Promise<{ idToken: string; accessToken: string }>;
+}
+// Android matches the app to its own OAuth client by package name and signing key; the ID token is still for the web
+// client.
+const nativeGoogle = Capacitor.isNativePlatform() ? registerPlugin<NativeGoogle>("GoogleSignIn") : null;
 
 export function googleAvailable(): boolean {
+  if (nativeGoogle) return webClientId !== "";
   return desktop?.googleSignIn ? desktopClient.id !== "" && desktopClient.secret !== "" : webClientId !== "";
 }
 
-// `loginHint` (an email) makes Google use that account, or ask to sign in to it, instead of one it picks.
+// `loginHint` (an email) makes Google use that account, or ask to sign in to it, instead of one it picks. Android's
+// account picker takes no hint, so callers still check the account they got.
 export async function signInWithGoogle(loginHint?: string): Promise<GoogleProfile> {
   const nonce = base64url(crypto.getRandomValues(new Uint8Array(16)));
+  if (nativeGoogle) {
+    const { idToken, accessToken } = await nativeGoogle.signIn({ clientId: webClientId, nonce, scopes: [driveScope] });
+    return profile(idToken, accessToken, webClientId, nonce);
+  }
   if (desktop?.googleSignIn) {
     const { idToken, accessToken } = await desktop.googleSignIn({
       clientId: desktopClient.id, clientSecret: desktopClient.secret, nonce, scope, ...(loginHint && { loginHint }),

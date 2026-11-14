@@ -20,9 +20,12 @@ Ways to sign in (`core/account.ts`, `shell/Auth.tsx`):
 - **Google.** The key and profile live in the Google account's Drive app folder (`core/drive.ts`, scope
   `drive.appdata`), so every computer signing in with that Google account gets the same account. Electron opens
   Google in the system browser (Google blocks embedded windows); the browser and desktop builds use separate OAuth
-  clients.
+  clients. Android signs in natively through Credential Manager (`GoogleSignInPlugin.java`) with the web client's ID;
+  Google recognizes the app by an Android OAuth client in the same project, holding the package name and the SHA-1 of
+  each key that signs a build.
 - **GitHub.** Runs through the user server, which holds the GitHub app's secret. The key then comes back like after a
-  password reset (below).
+  password reset (below). Android opens GitHub in a Custom Tab, and the user server sends the one-time code back on
+  the app's link (`com.makework.app://github`, `SignInBrowserPlugin.java`).
 - **Offline accounts** stay on one computer and can be exported as an account file.
 
 Once an account is on a computer, later sign-ins there are local: the server isn't asked.

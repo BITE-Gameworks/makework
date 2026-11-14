@@ -7,6 +7,7 @@
 // with that Google account uses. Every account is also published to the user server, so others can find it and
 // send it private messages.
 import { deviceLabel } from "./device";
+import { Capacitor, registerPlugin, type PluginListenerHandle } from "@capacitor/core";
 import { createSignal } from "solid-js";
 import { dbAll, dbDelete, dbGet, dbPut } from "./db";
 import { desktop, desktopError } from "./desktop";
@@ -369,11 +370,14 @@ export async function finishPasswordReset(
   await begin(stored, keys, remember);
 }
 
-// Opens GitHub (the system browser on desktop, else a popup) and fetches the user server's answer with the one-time
-// code it sent back to this device: a loopback port on desktop, public/github-callback.html in the browser.
+// Opens GitHub (the system browser on desktop, a Custom Tab on Android, else a popup) and fetches the user server's
+// answer with the one-time code it sent back to this device: a loopback port on desktop, the app's link on Android,
+// public/github-callback.html in the browser.
 async function signInWithGitHub(signal: AbortSignal): Promise<GitHubSignIn> {
   const session = base64url(crypto.getRandomValues(new Uint8Array(24)));
-  const once = desktop?.githubSignIn ? await desktopGitHubCode(session, signal) : await popupGitHubCode(session, signal);
+  const once = desktop?.githubSignIn ? await desktopGitHubCode(session, signal)
+    : signInBrowser ? await androidGitHubCode(session, signal)
+    : await popupGitHubCode(session, signal);
   return githubResult(session, once);
 }
 
@@ -390,29 +394,57 @@ async function desktopGitHubCode(session: string, signal: AbortSignal): Promise<
   }
 }
 
+interface SignInBrowser {
+  open(options: { url: string }): Promise<void>;
+  addListener(event: "returned", listener: (event: { url: string }) => void): Promise<PluginListenerHandle>;
+}
+const signInBrowser = Capacitor.isNativePlatform() ? registerPlugin<SignInBrowser>("SignInBrowser") : null;
+
+function androidGitHubCode(session: string, signal: AbortSignal): Promise<string> {
+  const code = codeComingBack(signal, (got) => {
+    const listening = signInBrowser!.addListener("returned", ({ url }) => {
+      const back = new URL(url);
+      const once = back.host === "github" && back.searchParams.get("once");
+      if (once) got(once);
+    });
+    return () => void listening.then((handle) => handle.remove());
+  });
+  void signInBrowser!.open({ url: githubStartUrl(session, { app: "android" }) });
+  return code;
+}
+
 function popupGitHubCode(session: string, signal: AbortSignal): Promise<string> {
-  const popup = window.open(githubStartUrl(session, location.origin), "makework-github", "popup,width=520,height=720");
+  const popup = window.open(githubStartUrl(session, { origin: location.origin }), "makework-github", "popup,width=520,height=720");
   if (!popup) return Promise.reject(new AuthError("The sign-in popup was blocked."));
-  return new Promise((resolve, reject) => {
+  return codeComingBack(signal, (got) => {
     const channel = new BroadcastChannel("makework-github");
+    channel.onmessage = (event: MessageEvent<{ once?: string | null }>) => {
+      if (event.data?.once) got(event.data.once);
+    };
+    return () => channel.close();
+  }, () => popup.close());
+}
+
+// Waits for the one-time code from `listen` (which returns how to stop listening). Not the sign-in window closing:
+// GitHub's pages cut a popup off from this window (Cross-Origin-Opener-Policy), and then it reads as closed while the
+// person is still signing in. Cancel (the signal) or the time limit end the wait.
+function codeComingBack(signal: AbortSignal, listen: (got: (once: string) => void) => () => void, closeWindow?: () => void): Promise<string> {
+  return new Promise((resolve, reject) => {
     const done = () => {
-      channel.close();
+      stopListening();
       clearTimeout(timeout);
       signal.removeEventListener("abort", cancelled);
     };
     const fail = (message: string) => {
       done();
-      popup.close();
+      closeWindow?.();
       reject(new AuthError(message));
     };
     const cancelled = () => fail("Sign-in was cancelled.");
-    channel.onmessage = (event: MessageEvent<{ once?: string | null }>) => {
-      if (!event.data?.once) return;
+    const stopListening = listen((once) => {
       done();
-      resolve(event.data.once);
-    };
-    // Not `popup.closed`: GitHub's pages cut the popup off from this window (Cross-Origin-Opener-Policy), and then it
-    // reads as closed while the person is still signing in. Cancel (the signal) or the time limit end the wait.
+      resolve(once);
+    });
     const timeout = setTimeout(() => fail("Sign-in took too long. Try again."), 10 * 60_000);
     if (signal.aborted) cancelled();
     else signal.addEventListener("abort", cancelled);

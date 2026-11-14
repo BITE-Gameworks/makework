@@ -448,7 +448,7 @@ describe("user server", () => {
   // What the app sees after the person signed in on GitHub as user `id`, from the web build at localhost:1420.
   async function signInOnGitHub(id: number) {
     const session = "session-0123456789abcdefghij";
-    const start = await fetch(githubStartUrl(session, "http://localhost:1420"));
+    const start = await fetch(githubStartUrl(session, { origin: "http://localhost:1420" }));
     await expect(githubResult(session, "not-the-code-0123456789")).rejects.toMatchObject({ status: 404 });
     const back = await finishOnGitHub(start, id);
     expect(`${back.origin}${back.pathname}`).toBe("http://localhost:1420/github-callback.html");
@@ -456,6 +456,13 @@ describe("user server", () => {
     await expect(githubResult(session, "not-the-code-0123456789")).rejects.toMatchObject({ status: 404 });
     return githubResult(session, once);
   }
+
+  it("sends an Android GitHub sign-in back through the app's link", async () => {
+    const session = "android-0123456789abcdefghij";
+    const back = await finishOnGitHub(await fetch(githubStartUrl(session, { app: "android" })), 7);
+    expect(`${back.protocol}//${back.host}${back.pathname}`).toBe("com.makework.app://github");
+    expect((await githubResult(session, back.searchParams.get("once")!)).status).toBe("done");
+  });
 
   it("gives a GitHub sign-in's answer only to the device it went back to", async () => {
     // Someone starts a sign-in, sends the victim the link, and polls with the session id they chose.
@@ -471,7 +478,7 @@ describe("user server", () => {
     await expect(githubResult(session, back.searchParams.get("once")!)).rejects.toMatchObject({ status: 404 });
 
     // The answer never goes to an origin the server doesn't know the web app at, nor without a place at all.
-    expect((await fetch(githubStartUrl(session, "https://evil.example"))).status).toBe(400);
+    expect((await fetch(githubStartUrl(session, { origin: "https://evil.example" }))).status).toBe(400);
     expect((await fetch(`https://me.test/github/start?session=${session}`)).status).toBe(400);
     expect((await fetch(`https://me.test/github/start?session=${session}&port=80`)).status).toBe(400);
   }, 30_000);
