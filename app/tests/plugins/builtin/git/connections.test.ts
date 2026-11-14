@@ -221,4 +221,26 @@ describe("working copies' connections", () => {
       "C:\\code\\repo": work.key, "C:\\code\\repo\\homepage": org.key, "C:\\code\\repo\\vendor\\public": "",
     });
   });
+
+  it("give a folder two channels share the pick made for it, the latest when both made one", async () => {
+    const mine = await addConnection({ host: "github.com", provider: "github", token: "mine", name: "Mine" }, silent);
+    const org = await addConnection({ host: "github.com", provider: "github", token: "org", name: "Org" }, silent);
+    const pushing = await addConnection({ host: "github.com", provider: "github", token: "push", name: "Push" }, silent);
+    // Channel 1 holds the repository as its submodule, channel 2 is that repository's own channel, in the same folder.
+    const shared = [
+      { workspaceId: "ws", channelId: 2, folder: "/repo/lib" },
+      { workspaceId: "ws", channelId: 1, folder: "/repo" },
+      { workspaceId: "ws", channelId: 1, folder: "/repo/lib", sub: "lib" },
+    ];
+    useConnection("ws", 2, org.key);
+    useConnection("ws", 1, mine.key);
+    // The submodule only takes channel 1's pick: channel 2's own pick wins, whichever comes first.
+    expect(folderCredentials(shared)["/repo/lib"]).toBe(org.key);
+    expect(folderCredentials([...shared].reverse())["/repo/lib"]).toBe(org.key);
+    // Both picked one: the one picked last.
+    useConnection("ws", 1, pushing.key, "lib");
+    expect(folderCredentials(shared)["/repo/lib"]).toBe(pushing.key);
+    useConnection("ws", 2, org.key);
+    expect(folderCredentials([...shared].reverse())["/repo/lib"]).toBe(org.key);
+  });
 });

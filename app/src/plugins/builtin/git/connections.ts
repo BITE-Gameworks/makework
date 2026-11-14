@@ -202,22 +202,31 @@ export async function channelToken(workspaceId: string, channelId: number, host:
 // the plain "<host>" slot, as before connections had names). An emptied plain slot needs no check: main finds it empty.
 // A submodule's folder (`sub`) takes its own pick, else the channel's (main ignores a pick for another host). A
 // submodule with a pick of its own that isn't here yet gets one at the folder it is cloned into, so the clone uses it.
+// One folder can belong to several channels (a repository's own channel and another's submodule): a pick made for
+// that folder beats one taken from a channel or waiting for a clone, and among equals the connection picked last wins.
 export function folderCredentials(copies: { workspaceId: string; channelId: number; folder: string; sub?: string }[]): Record<string, string> {
-  const saved = new Set(readList().map((c) => c.key));
-  const credentials: Record<string, string> = {};
+  const list = readList();
+  const saved = new Set(list.map((c) => c.key));
+  const used = new Map(list.map((c) => [c.key, c.used]));
   const value = (chosen: string) => (chosen === "none" || (chosen.includes("#") && !saved.has(chosen)) ? "" : chosen);
+  const best = new Map<string, { chosen: string; own: boolean }>();
+  const offer = (folder: string, chosen: string, own: boolean) => {
+    const current = best.get(folder);
+    const later = (used.get(chosen) ?? 0) > (used.get(current?.chosen ?? "") ?? 0);
+    if (!current || (own && !current.own) || (own === current.own && later)) best.set(folder, { chosen, own });
+  };
   for (const { workspaceId, channelId, folder, sub = "" } of copies) {
-    const chosen = readChoice(workspaceId, channelId, sub) ?? (sub ? readChoice(workspaceId, channelId) : null);
-    if (chosen) credentials[folder] = value(chosen);
+    const own = readChoice(workspaceId, channelId, sub);
+    const inherited = sub ? readChoice(workspaceId, channelId) : null;
+    if (own) offer(folder, own, true);
+    else if (inherited) offer(folder, inherited, false);
     if (sub) continue;
     // The folder a submodule is cloned into, written as the desktop app joins it.
     const separator = folder.includes("\\") && !folder.includes("/") ? "\\" : "/";
-    for (const pending of subPicks(workspaceId, channelId)) {
-      const at = `${folder}${separator}${pending.split("/").join(separator)}`;
-      if (!(at in credentials)) credentials[at] = value(readChoice(workspaceId, channelId, pending)!);
-    }
+    for (const pending of subPicks(workspaceId, channelId))
+      offer(`${folder}${separator}${pending.split("/").join(separator)}`, readChoice(workspaceId, channelId, pending)!, false);
   }
-  return credentials;
+  return Object.fromEntries([...best].map(([folder, { chosen }]) => [folder, value(chosen)]));
 }
 
 // Every connection kept here, by host, the latest used first within one. The common hosts' own slots are looked at

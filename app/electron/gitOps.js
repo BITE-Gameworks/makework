@@ -856,7 +856,9 @@ export async function remoteHeads(git, cwd) {
 export async function fetchRemote(git, cwd) {
   const url = await requireOrigin(git, cwd);
   const before = await remoteHeads(git, cwd);
-  await remoteRun(git, cwd, url, ["fetch", "--no-write-fetch-head", "origin"]);
+  // Never into submodules: they would get this repository's token, and each submodule's folder is fetched by itself
+  // with its own connection.
+  await remoteRun(git, cwd, url, ["fetch", "--no-write-fetch-head", "--recurse-submodules=no", "origin"]);
   const after = await remoteHeads(git, cwd);
   const changes = [];
   for (const [branch, to] of Object.entries(after)) {
@@ -942,7 +944,8 @@ export async function push(git, cwd, { allowMassDelete = false, branch = null } 
   if (check.massDelete && !allowMassDelete) return { ok: false, reason: "mass-delete", check };
   const refspec = `refs/heads/${check.branch}:refs/heads/${check.branch}`;
   const upstream = (await git(cwd, ["rev-parse", "--abbrev-ref", "--symbolic-full-name", `${check.branch}@{upstream}`], { allowCodes: [0, 128] })).out.trim();
-  const args = ["push", "--porcelain", ...(upstream ? [] : ["--set-upstream"]), "origin", refspec];
+  // Submodules are pushed from their own folders with their own connection, even with the user's submodule.recurse.
+  const args = ["push", "--porcelain", "--recurse-submodules=no", ...(upstream ? [] : ["--set-upstream"]), "origin", refspec];
   const url = await requireOrigin(git, cwd);
   try {
     const out = await remoteRun(git, cwd, url, args);

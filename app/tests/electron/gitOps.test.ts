@@ -749,6 +749,21 @@ describe("MakeWork's own credentials", () => {
     }, () => null);
     await expect(fetchRemote(fake, a)).rejects.toThrow(/^\[auth github\.com\] GitHub needs you to sign in/);
   });
+
+  it("never fetches or pushes submodules with the main repository's token", async () => {
+    sh(a, "config", "submodule.recurse", "true");
+    const networked: string[][] = [];
+    const counting = withCredentials(async (cwd, args, options) => {
+      if (args[0] === "fetch" || args[0] === "push") networked.push(args);
+      return git(cwd, args, options);
+    }, () => null);
+    write(a, "new.txt", "new\n");
+    sh(a, "add", ".");
+    sh(a, "commit", "-q", "-m", "New");
+    expect((await push(counting, a)).ok).toBe(true);
+    expect(networked.length).toBeGreaterThan(1);
+    expect(networked.every((args) => args.includes("--recurse-submodules=no"))).toBe(true);
+  });
 });
 
 describe("submodules", () => {

@@ -177,16 +177,19 @@ export default function RepoView(props: {
       : { kind: prepared.failed.length ? "error" : prepared.left.length ? "info" : "ok", text });
   };
   // Git only says "not found" when GitHub refuses a repository; GitHub's API says why (githubAccess.ts), for the
-  // connection the repository (or the submodule `about`) uses here. Null when it isn't on GitHub or GitHub can't say.
-  // `write`: a write was refused, so a token that can read the repository is called read-only.
-  const githubRefusal = async (about?: string, { write = false } = {}) => {
+  // connection the repository (or the submodule `about`) uses here. `noToken` when that connection gives no token (none
+  // picked, or one emptied or forgotten), keeping git's own message (`text`). Null when the repository isn't on GitHub
+  // or GitHub can't say. `write`: a write was refused, so a token that can read the repository is called read-only.
+  const githubRefusal = async (text: string, about?: string, { write = false } = {}) => {
     const r = (about !== undefined ? props.repos.find((x) => x.subPath === about) : null) ?? repo();
     const link = r ? (r.provider === "local" ? parseRepoLink(r.url) : { host: r.host, path: r.path }) : null;
     if (!r || !link || link.host !== "github.com") return null;
     const key = await channelConnectionKey(workspaceId, channelId, "github.com", r.subPath);
     const token = key ? await getToken(key) : null;
-    const refusal = token ? await (write ? whyWriteRefused : whyRefused)(token, link.path) : null;
-    return refusal && key ? { refusal, key, path: link.path, sub: r.subPath, text: describeRefusal(refusal, link.path) } : null;
+    const found = { key, path: link.path, sub: r.subPath };
+    if (!token) return { ...found, refusal: { kind: "noToken" as const }, text };
+    const refusal = await (write ? whyWriteRefused : whyRefused)(token, link.path);
+    return refusal ? { ...found, refusal, text: describeRefusal(refusal, link.path) } : null;
   };
   type GitHubRefusal = NonNullable<Awaited<ReturnType<typeof githubRefusal>>>;
   // An organization that hasn't approved MakeWork gets a link to the page where it is requested or granted instead of
@@ -195,9 +198,9 @@ export default function RepoView(props: {
     const clientId = (await serverFeatures().catch(() => null))?.githubClientId;
     return { kind: "error", text: found.text, explained: true, retry, ...(clientId ? { link: { label: "Open on GitHub", url: appAccessPage(clientId) } } : {}) };
   };
-  // A token that ran out, was revoked or can't see the repository: another of this member's connections that can read
-  // it takes its place and the action runs again. Without one, adding a connection opens at once (none of the saved
-  // ones works), starting at signing in to GitHub again when the sign-in itself ran out.
+  // No token, or one that ran out, was revoked or can't see the repository: another of this member's connections that
+  // can read it takes its place and the action runs again. Without one, adding a connection opens at once (none of the
+  // saved ones works), starting at signing in to GitHub again when the sign-in itself ran out.
   const replaceRefused = async (found: GitHubRefusal, retry?: () => unknown) => {
     const key = await findWorkingConnection(workspaceId, channelId, found.sub, { provider: "github", host: "github.com", path: found.path },
       { allowNone: false }).catch(() => null);
@@ -207,12 +210,13 @@ export default function RepoView(props: {
     }
     authPaused = false;
     const name = (await connectionsFor("github.com")).find((c) => c.key === key)?.name ?? "another connection";
-    wc.setMessage({ kind: "info", text: `The connection used here can't reach this repository; using ${name} instead.` });
+    wc.setMessage({ kind: "info", text: found.refusal.kind === "noToken" ? `Using ${name} for this repository.`
+      : `The connection used here can't reach this repository; using ${name} instead.` });
     await retry?.();
   };
   // A refusal in the status line is replaced by GitHub's reason, or by what settles it.
   const explainRefusal = async (m: ActionMessage): Promise<ActionMessage | null> => {
-    const found = await githubRefusal(m.about);
+    const found = await githubRefusal(m.text, m.about);
     if (!found) return { ...m, explained: true };
     if (found.refusal.kind === "restricted") return restrictedMessage(found, m.retry);
     await replaceRefused(found, m.retry);
@@ -221,7 +225,7 @@ export default function RepoView(props: {
   // A write that needs a sign-in (push, publishing a branch): asks GitHub why first, like the status line does. A
   // read-only token isn't swapped for another automatically: the others are only checked for reading.
   const askSignIn = async (e: GitAuthError, retry: () => void) => {
-    const found = e.host === "github.com" ? await githubRefusal(undefined, { write: true }).catch(() => null) : null;
+    const found = e.host === "github.com" ? await githubRefusal(e.message, undefined, { write: true }).catch(() => null) : null;
     if (found?.refusal.kind === "restricted") return wc.setMessage(await restrictedMessage(found, async () => retry()));
     if (found && found.refusal.kind !== "readOnly") return replaceRefused(found, retry);
     setSigningIn({ host: e.host, reason: found?.text ?? e.message, retry });
