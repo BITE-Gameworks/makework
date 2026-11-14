@@ -28,7 +28,7 @@ import CommitAside, { type Pane } from "./CommitAside";
 import CommitList, { type CommitLabel } from "./CommitList";
 import Files from "./Files";
 import { stashMessage, type ActionMessage } from "./actions";
-import { appAccessPage, describeRefusal, whyRefused } from "./githubAccess";
+import { appAccessPage, describeRefusal, whyRefused, whyWriteRefused } from "./githubAccess";
 import SignInPrompt from "./GitHubSignIn";
 import { GitAuthError, gitCall } from "./local";
 import LocalHistory from "./LocalHistory";
@@ -176,21 +176,55 @@ export default function RepoView(props: {
     wc.setMessage(refused ? { kind: "info", text, auth: refused.auth, about: refused.sub, retry: findFolders }
       : { kind: prepared.failed.length ? "error" : prepared.left.length ? "info" : "ok", text });
   };
-  // Git only says "not found" when GitHub refuses a repository; GitHub's API says why (githubAccess.ts). A refusal in
-  // the status line is replaced by that reason, and an organization that hasn't approved MakeWork gets a link to the
-  // page where it is requested or granted instead of a sign-in, which wouldn't help.
-  const explainRefusal = async (m: ActionMessage): Promise<ActionMessage> => {
-    const r = (m.about !== undefined ? props.repos.find((x) => x.subPath === m.about) : null) ?? repo();
+  // Git only says "not found" when GitHub refuses a repository; GitHub's API says why (githubAccess.ts), for the
+  // connection the repository (or the submodule `about`) uses here. Null when it isn't on GitHub or GitHub can't say.
+  // `write`: a write was refused, so a token that can read the repository is called read-only.
+  const githubRefusal = async (about?: string, { write = false } = {}) => {
+    const r = (about !== undefined ? props.repos.find((x) => x.subPath === about) : null) ?? repo();
     const link = r ? (r.provider === "local" ? parseRepoLink(r.url) : { host: r.host, path: r.path }) : null;
-    if (!r || link?.host !== "github.com") return { ...m, explained: true };
+    if (!r || !link || link.host !== "github.com") return null;
     const key = await channelConnectionKey(workspaceId, channelId, "github.com", r.subPath);
     const token = key ? await getToken(key) : null;
-    const refusal = token ? await whyRefused(token, link.path) : null;
-    if (!refusal) return { ...m, explained: true };
-    const text = describeRefusal(refusal, link.path);
-    if (refusal.kind !== "restricted") return { ...m, text, explained: true };
+    const refusal = token ? await (write ? whyWriteRefused : whyRefused)(token, link.path) : null;
+    return refusal && key ? { refusal, key, path: link.path, sub: r.subPath, text: describeRefusal(refusal, link.path) } : null;
+  };
+  type GitHubRefusal = NonNullable<Awaited<ReturnType<typeof githubRefusal>>>;
+  // An organization that hasn't approved MakeWork gets a link to the page where it is requested or granted instead of
+  // a sign-in, which wouldn't help.
+  const restrictedMessage = async (found: GitHubRefusal, retry?: () => Promise<unknown>): Promise<ActionMessage> => {
     const clientId = (await serverFeatures().catch(() => null))?.githubClientId;
-    return { kind: "error", text, explained: true, retry: m.retry, ...(clientId ? { link: { label: "Open on GitHub", url: appAccessPage(clientId) } } : {}) };
+    return { kind: "error", text: found.text, explained: true, retry, ...(clientId ? { link: { label: "Open on GitHub", url: appAccessPage(clientId) } } : {}) };
+  };
+  // A token that ran out, was revoked or can't see the repository: another of this member's connections that can read
+  // it takes its place and the action runs again. Without one, adding a connection opens at once (none of the saved
+  // ones works), starting at signing in to GitHub again when the sign-in itself ran out.
+  const replaceRefused = async (found: GitHubRefusal, retry?: () => unknown) => {
+    const key = await findWorkingConnection(workspaceId, channelId, found.sub, { provider: "github", host: "github.com", path: found.path },
+      { allowNone: false }).catch(() => null);
+    if (!key) {
+      setSigningIn({ host: "github.com", reason: found.text, retry, add: true, renew: found.refusal.kind === "signedOut" && found.key === "github.com" });
+      return;
+    }
+    authPaused = false;
+    const name = (await connectionsFor("github.com")).find((c) => c.key === key)?.name ?? "another connection";
+    wc.setMessage({ kind: "info", text: `The connection used here can't reach this repository; using ${name} instead.` });
+    await retry?.();
+  };
+  // A refusal in the status line is replaced by GitHub's reason, or by what settles it.
+  const explainRefusal = async (m: ActionMessage): Promise<ActionMessage | null> => {
+    const found = await githubRefusal(m.about);
+    if (!found) return { ...m, explained: true };
+    if (found.refusal.kind === "restricted") return restrictedMessage(found, m.retry);
+    await replaceRefused(found, m.retry);
+    return null;
+  };
+  // A write that needs a sign-in (push, publishing a branch): asks GitHub why first, like the status line does. A
+  // read-only token isn't swapped for another automatically: the others are only checked for reading.
+  const askSignIn = async (e: GitAuthError, retry: () => void) => {
+    const found = e.host === "github.com" ? await githubRefusal(undefined, { write: true }).catch(() => null) : null;
+    if (found?.refusal.kind === "restricted") return wc.setMessage(await restrictedMessage(found, async () => retry()));
+    if (found && found.refusal.kind !== "readOnly") return replaceRefused(found, retry);
+    setSigningIn({ host: e.host, reason: found?.text ?? e.message, retry });
   };
   const [tab, setTab] = createSignal<Tab>("history");
   // A commit to open in History (from blame in the Files tab).
@@ -207,10 +241,13 @@ export default function RepoView(props: {
     void explainRefusal(m).then((better) => wc.message() === m && wc.setMessage(better), () => wc.message() === m && wc.setMessage({ ...m, explained: true }));
   }));
   const [shared, setShared] = createSignal(false);
-  // A sign-in the remote asked for (or the menu started): its host, and what to run again once signed in. `add`: the
-  // menu's "Sign in to GitHub", which goes straight to signing in rather than offering saved connections first.
-  const [signingIn, setSigningIn] = createSignal<{ host: string; reason: string; retry?: () => void; add?: boolean } | null>(null);
-  let lastSignIn: { host: string; reason: string; add?: boolean } = { host: "", reason: "" };
+  // A sign-in the remote asked for (or the menu started): its host, and what to run again once signed in. `add`: goes
+  // straight to signing in rather than offering saved connections first (the menu's "Sign in to GitHub", or none of
+  // them works).
+  // `renew`: the GitHub sign-in ran out, so signing in again is offered though its old token is still kept.
+  type SignInAsk = { host: string; reason: string; retry?: () => unknown; add?: boolean; renew?: boolean };
+  const [signingIn, setSigningIn] = createSignal<SignInAsk | null>(null);
+  let lastSignIn: SignInAsk = { host: "", reason: "" };
   const shownSignIn = () => (lastSignIn = signingIn() ?? lastSignIn);
   // The remote check stops asking after a refused sign-in, until the user signed in or picked another connection.
   let authPaused = false;
@@ -533,8 +570,8 @@ export default function RepoView(props: {
       {/* Keyed: each ask gets a fresh prompt. */}
       <Collapse open={!!signingIn()}>
         <Show when={signingIn()} keyed>
-          <SignInPrompt host={shownSignIn().host} reason={shownSignIn().reason} submitLabel={shownSignIn().add ? "Use it here" : "Try again with it"}
-            current={currentConnection()} adding={shownSignIn().add} onNotSaved={tokenNotSaved}
+          <SignInPrompt host={shownSignIn().host} reason={shownSignIn().reason} submitLabel={shownSignIn().retry ? "Try again with it" : "Use it here"}
+            current={currentConnection()} adding={shownSignIn().add} renew={shownSignIn().renew} onNotSaved={tokenNotSaved}
             onDone={(key, _token, login) => {
               if (key) pickConnection(key);
               signedIn(login);
@@ -544,7 +581,7 @@ export default function RepoView(props: {
       <Collapse open={local() && pushing()}>
         <Show when={local() && pushing()}>
           <PushPanel folder={folder()!} onChanged={changed} onClose={() => { setPushing(false); void wc.refresh(); }}
-            onAuth={(e, retry) => setSigningIn({ host: e.host, reason: e.message, retry })}
+            onAuth={(e, retry) => void askSignIn(e, retry)}
             onResolve={() => { setPushing(false); setResolving({ target: { kind: "pull" }, fromPush: true }); }} />
         </Show>
       </Collapse>
@@ -619,7 +656,7 @@ export default function RepoView(props: {
         </Match>
         <Match when={local() && tab() === "branches"}>
           <Branches folder={folder()!} defaultBranch={repo()!.defaultBranch} onChanged={changed}
-            onAuth={(e, retry) => setSigningIn({ host: e.host, reason: e.message, retry })} />
+            onAuth={(e, retry) => void askSignIn(e, retry)} />
         </Match>
         <Match when={local() && tab() === "files"}>
           <Files folder={folder()!} onCommit={(sha) => { setShowCommit(sha); setTab("history"); }} openSubmodule={openSubmodule} />
@@ -743,7 +780,8 @@ function Setup(props: {
                 disabled={!allowed()} />
             </label>
             <p class="hint">
-              Read-only is enough. GitHub: a fine-grained token with "Contents: read". GitLab: <code>read_api</code> and <code>read_repository</code>.
+              Read-only is enough for the history. GitHub: a fine-grained token with "Contents: read" ("Read and write" to push from this
+              computer). GitLab: <code>read_api</code> and <code>read_repository</code> (<code>write_repository</code> to push).
               The token stays on this device and is only sent to {parsed()?.host ?? "that host"}.
             </p>
             <Collapse open={!!token().trim() && storage() !== "none"}>

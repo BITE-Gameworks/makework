@@ -20,6 +20,9 @@ export default function SignInPrompt(props: {
   current?: string | null;
   // Starts at adding a connection (signing in or pasting) rather than offering the saved ones first.
   adding?: boolean;
+  // GitHub refused the sign-in in the "github.com" slot as run out or revoked: signing in again comes first, though the
+  // slot still holds the old token.
+  renew?: boolean;
   // `key`: the connection picked or added, null when a pasted token couldn't be kept (`token` is it, for this once);
   // `login`: after signing in to GitHub.
   onDone: (key: string | null, token: string | null, login?: string | null) => void;
@@ -30,9 +33,10 @@ export default function SignInPrompt(props: {
   const [saved] = createResource(() => ({ host: props.host, revision: connectionRevision() }),
     ({ host }) => (host ? connectionsFor(host) : Promise.resolve([])));
   const others = () => (saved.latest ?? []).filter((c) => c.key !== props.current);
-  // Signing in to GitHub is offered while this account has no GitHub sign-in here (it lives in the "github.com" slot).
+  // Signing in to GitHub is offered while this account has no working GitHub sign-in here (it lives in the "github.com"
+  // slot).
   const signedIn = () => (saved.latest ?? []).some((c) => c.key === "github.com");
-  const github = () => props.host === "github.com" && githubSignInReady() === true && !signedIn();
+  const github = () => props.host === "github.com" && githubSignInReady() === true && (props.renew || !signedIn());
   // Only to someone without any connection for the host: one who has one may pick it instead. Read from `latest`, so a
   // refetch (any connection change) neither hides the form nor ends a GitHub sign-in waiting for approval.
   const loaded = () => saved.latest !== undefined;
@@ -41,7 +45,7 @@ export default function SignInPrompt(props: {
   const pick = () => (others().some((c) => c.key === picked()) ? picked()! : others()[0]?.key ?? null);
   // With other connections, they come first and adding one is a step further (unless asked to add one; read once:
   // the prompts that set it are mounted anew for each ask).
-  const [adding, setAdding] = createSignal(props.adding ?? false);
+  const [adding, setAdding] = createSignal(props.adding ?? props.renew ?? false);
   const showAdd = () => adding() || (loaded() && !others().length);
   const [pasting, setPasting] = createSignal(false);
   const [name, setName] = createSignal("");
@@ -83,7 +87,7 @@ export default function SignInPrompt(props: {
       <Collapse open={showAdd()}>
         <Switch>
           <Match when={github() && !pasting()}>
-            <GitHubDevice onCancel={props.onCancel} onPaste={() => setPasting(true)} onDone={(login) => {
+            <GitHubDevice again={props.renew} onCancel={props.onCancel} onPaste={() => setPasting(true)} onDone={(login) => {
               nameGitHubSignIn(login);
               props.onDone("github.com", null, login);
             }} />
@@ -116,7 +120,7 @@ export default function SignInPrompt(props: {
 }
 
 // The device flow: start, show the code until GitHub says yes, no or the code ran out.
-function GitHubDevice(props: { onDone: (login: string | null) => void; onCancel?: () => void; onPaste: () => void }) {
+function GitHubDevice(props: { again?: boolean; onDone: (login: string | null) => void; onCancel?: () => void; onPaste: () => void }) {
   const [signIn, setSignIn] = createSignal<DeviceSignIn | null>(null);
   const [starting, setStarting] = createSignal(false);
   const [error, setError] = createSignal("");
@@ -179,7 +183,7 @@ function GitHubDevice(props: { onDone: (login: string | null) => void; onCancel?
           <Show when={error()}><span class="view-error">{error()}</span></Show>
           <div class="git-signin-actions">
             <button class="mw-button mw-box accent" disabled={starting()} onClick={() => void start()}>
-              <Icon name="channel-git" /> {starting() ? "Opening GitHub..." : error() ? "Try again" : "Sign in to GitHub"}
+              <Icon name="channel-git" /> {starting() ? "Opening GitHub..." : error() ? "Try again" : props.again ? "Sign in to GitHub again" : "Sign in to GitHub"}
             </button>
             <button class="mw-button mw-box" onClick={props.onPaste}>Paste a token instead</button>
             <Show when={props.onCancel}>

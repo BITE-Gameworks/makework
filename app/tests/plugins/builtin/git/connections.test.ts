@@ -150,19 +150,24 @@ describe("a channel's connection on this computer", () => {
       return readable(auth) ? Response.json({ default_branch: "main" }) : new Response("{}", { status: 404 });
     }) as typeof fetch;
     const repo = { provider: "github" as const, host: "github.com", path: "Org/private" };
-    expect(await findWorkingConnection("ws", 1, "homepage", repo, github((auth) => auth === "Bearer org"))).toMatch(/^github\.com#/);
+    expect(await findWorkingConnection("ws", 1, "homepage", repo, { fetchFn: github((auth) => auth === "Bearer org") })).toMatch(/^github\.com#/);
     expect(asked).toEqual(["api.github.com Bearer org"]);
     expect(await channelToken("ws", 1, "github.com", "homepage")).toBe("org");
     expect(await channelToken("ws", 1, "github.com")).toBe("mine");
 
-    // A public repository: none of the tokens is needed.
+    // A public repository: none of the tokens is needed, unless none isn't allowed (it couldn't push).
     asked.length = 0;
-    expect(await findWorkingConnection("ws", 1, "makework", { ...repo, path: "Org/public" }, github((auth) => auth === undefined))).toBe("none");
+    const publicRepo = { ...repo, path: "Org/public" };
+    expect(await findWorkingConnection("ws", 1, "makework", publicRepo, { allowNone: false, fetchFn: github((auth) => auth === undefined) })).toBeNull();
+    expect(asked).toEqual(["api.github.com Bearer org"]);
+    expect(hasOwnConnection("ws", 1, "makework")).toBe(false);
+    asked.length = 0;
+    expect(await findWorkingConnection("ws", 1, "makework", publicRepo, { fetchFn: github((auth) => auth === undefined) })).toBe("none");
     expect(asked).toEqual(["api.github.com Bearer org", "api.github.com none"]);
     expect(await channelToken("ws", 1, "github.com", "makework")).toBeNull();
 
     // Nothing reads it: the pick stays as it was.
-    expect(await findWorkingConnection("ws", 1, "webapp", { ...repo, path: "Org/secret" }, github(() => false))).toBeNull();
+    expect(await findWorkingConnection("ws", 1, "webapp", { ...repo, path: "Org/secret" }, { fetchFn: github(() => false) })).toBeNull();
     expect(hasOwnConnection("ws", 1, "webapp")).toBe(false);
   });
 

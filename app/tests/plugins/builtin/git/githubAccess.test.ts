@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { appAccessPage, describeRefusal, whyRefused } from "../../../../src/plugins/builtin/git/githubAccess";
+import { appAccessPage, describeRefusal, whyRefused, whyWriteRefused } from "../../../../src/plugins/builtin/git/githubAccess";
 
 // GitHub's answers by URL, and what was asked with which token.
 function github(routes: Record<string, { status: number; body?: unknown }>) {
@@ -32,7 +32,7 @@ describe("why GitHub refuses a repository", () => {
     const hidden = github({ "https://api.github.com/user": { status: 200, body: { login: "octocat" } } });
     const refusal = await whyRefused("t", "BITE-Gameworks/makework.dev", hidden.fn);
     expect(refusal).toEqual({ kind: "noAccess", login: "octocat" });
-    expect(describeRefusal(refusal!, "BITE-Gameworks/makework.dev")).toBe("The GitHub account octocat can't see BITE-Gameworks/makework.dev. Use a connection for an account that can.");
+    expect(describeRefusal(refusal!, "BITE-Gameworks/makework.dev")).toBe("This connection (GitHub account octocat) can't see BITE-Gameworks/makework.dev: a fine-grained token reaches only the repositories it was made for. Use a connection that can.");
 
     expect(await whyRefused("t", "BITE-Gameworks/makework.dev", github({ [repo]: { status: 401 } }).fn)).toEqual({ kind: "signedOut" });
   });
@@ -41,5 +41,14 @@ describe("why GitHub refuses a repository", () => {
     expect(await whyRefused("t", "BITE-Gameworks/makework.dev", github({ [repo]: { status: 200, body: { id: 1 } } }).fn)).toBeNull();
     expect(await whyRefused("t", "BITE-Gameworks/makework.dev", (async () => { throw new TypeError("offline"); }) as typeof fetch)).toBeNull();
     expect(await whyRefused("t", "BITE-Gameworks/makework.dev", github({ [repo]: { status: 500 } }).fn)).toBeNull();
+  });
+
+  it("calls a refused push with a token that can read the repository read-only", async () => {
+    const readable = github({ [repo]: { status: 200, body: { id: 1 } } });
+    const refusal = await whyWriteRefused("t", "BITE-Gameworks/makework.dev", readable.fn);
+    expect(refusal).toEqual({ kind: "readOnly" });
+    expect(describeRefusal(refusal!, "BITE-Gameworks/makework.dev")).toMatch(/^This connection can read BITE-Gameworks\/makework\.dev but GitHub refused the push\. .*"Contents: Read and write"/);
+    expect(await whyWriteRefused("t", "BITE-Gameworks/makework.dev", (async () => { throw new TypeError("offline"); }) as typeof fetch)).toBeNull();
+    expect(await whyWriteRefused("t", "BITE-Gameworks/makework.dev", github({ [repo]: { status: 401 } }).fn)).toEqual({ kind: "signedOut" });
   });
 });

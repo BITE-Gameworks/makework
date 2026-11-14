@@ -143,11 +143,13 @@ export async function channelConnectionKey(workspaceId: string, channelId: numbe
   return fallback.key;
 }
 
-// After a submodule's connection was refused: tries this member's other connections for its host, then none (a public
-// repository needs none), each only against that host, and keeps the first that can read the repository as the
-// submodule's own pick. Returns it ("none" for none), or null when nothing could read it (the pick is as before).
+// After a connection was refused: tries this member's other connections for the host, then none (a public repository
+// needs none) unless `allowNone` is false (none can't push), each only against that host, and keeps the first that can
+// read the repository as the pick for `sub` ("" for the channel). Returns it ("none" for none), or null when nothing
+// could read it (the pick is as before).
 export async function findWorkingConnection(workspaceId: string, channelId: number, sub: string,
-  repo: { provider: Exclude<Provider, "local">; host: string; path: string }, fetchFn: typeof fetch = fetch): Promise<string | null> {
+  repo: { provider: Exclude<Provider, "local">; host: string; path: string },
+  { allowNone = true, fetchFn = fetch }: { allowNone?: boolean; fetchFn?: typeof fetch } = {}): Promise<string | null> {
   const host = repo.host.toLowerCase();
   const tried = await channelConnectionKey(workspaceId, channelId, host, sub);
   const readable = async (token: string | null) =>
@@ -160,7 +162,7 @@ export async function findWorkingConnection(workspaceId: string, channelId: numb
       return c.key;
     }
   }
-  if (tried !== null && (await readable(null))) {
+  if (allowNone && tried !== null && (await readable(null))) {
     useConnection(workspaceId, channelId, "none", sub);
     return "none";
   }
