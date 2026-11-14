@@ -15,7 +15,7 @@ import Collapse from "../../../ui/Collapse";
 import ConfirmPrompt from "../../../ui/ConfirmPrompt";
 import Dialog from "../../../ui/Dialog";
 import type { MenuEntry } from "../../../ui/contextMenu";
-import Select from "../../../ui/Select";
+import Select, { type SelectGuide, type SelectOption } from "../../../ui/Select";
 import TabUnderline from "../../../ui/TabUnderline";
 import { ProgressBar } from "../../../ui/UploadList";
 import type { ChannelContext } from "../../types";
@@ -39,7 +39,9 @@ import PushPanel from "./PushPanel";
 import SyncBar from "./SyncBar";
 import { createWorkingCopy } from "./workingCopy";
 import { channelName, compareHeads, describeChanges, importLatest, openCheckMs, repeat, viewWatching, type RemoteChange } from "./watch";
-import { createHistory, createRepo, hostOf, loadRepos, localFolder, readerHere, repoName, setLocalFolder, type Repo } from "./data";
+import {
+  createHistory, createRepo, hostOf, loadRepos, localFolder, readerHere, repoName, repoTree, setLocalFolder, type Repo, type RepoTreeRow,
+} from "./data";
 import { describeSkipped, importRepo, type ImportProgress, type Skipped } from "./importer";
 import { describePrepared, findSubFolders, importChannel, type Prepared } from "./tree";
 import ReleasePage from "./ReleasePage";
@@ -47,6 +49,24 @@ import { releaseHost, releaseTarget, type ReleaseHost } from "./releases";
 import { RepoAccessError, cloneReader, parseRepoLink, readerFor, type RepoReader } from "./providers";
 
 const pageSize = 100;
+
+// The guide cells before a repository in the picker: a line on for each repository above it with siblings still to
+// come, then its own elbow.
+const guidesOf = (row: RepoTreeRow): SelectGuide[] =>
+  row.depth === 0 ? [] : [...row.parentsLast.map((last): SelectGuide => (last ? "none" : "pass")), row.last ? "last" : "branch"];
+
+// The channel's repositories for the picker, as a tree: the main one with where it comes from, each submodule under
+// the repository holding it with the commit it is pinned at.
+function repoOptions(repos: Repo[]): SelectOption<string>[] {
+  return repoTree(repos).map((row) => {
+    const r = row.repo;
+    return r.subPath
+      ? { value: r.subPath, label: row.name, selectedLabel: r.subPath, icon: "folder", guides: guidesOf(row),
+          detail: r.pinned ? `@${r.pinned.slice(0, 7)}` : undefined }
+      : { value: "", label: row.name, icon: "channel-git", emphasis: true, guides: [],
+          detail: r.provider === "local" ? "folder" : `${r.host}/${r.path}` };
+  });
+}
 
 // Tabs for a channel with a working copy on this device; without one only History exists.
 type Tab = "history" | "changes" | "branches" | "files";
@@ -72,6 +92,7 @@ export default function RepoView(props: {
   const state = createRepo(ctx.api, channelId, sub);
   const repo = () => state.value.repo;
   const main = () => props.repos.find((r) => r.subPath === "") ?? null;
+  const pickerOptions = createMemo(() => repoOptions(props.repos));
   const [changing, setChanging] = createSignal(false);
   const [releasing, setReleasing] = createSignal(false);
   // The host this repository's host connection is for (connections.ts): its own, a folder's by its origin.
@@ -507,7 +528,10 @@ export default function RepoView(props: {
       <header class="view-header">
         <Show when={props.repos.length > 1 && !changing()}>
           <Select class="git-repo-pick" label="Repository" value={sub} onChange={props.onShow} search={props.repos.length > 8}
-            options={props.repos.map((r) => ({ value: r.subPath, label: repoName(r), icon: r.subPath ? "folder" : "channel-git" }))} />
+            options={pickerOptions()} />
+          <span class="git-repo-count mw-box" title={`${props.repos.length - 1} submodules in this channel`}>
+            <Icon name="folder" size={12} /> {props.repos.length - 1}
+          </span>
         </Show>
         <Show when={repo() && !changing()}>
           <Show when={canRelease() && !releasing()}>

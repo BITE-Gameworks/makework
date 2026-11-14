@@ -1581,3 +1581,13 @@
   direction: rtl;
   text-align: left;
 }
+
+.git-repo-count {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--mw-margin) / 4);
+  padding: calc(var(--mw-margin) / 4) calc(var(--mw-margin) / 2);
+  background: var(--mw-darker);
+  color: var(--mw-text-muted);
+  font-size: 0.85em;
+}
