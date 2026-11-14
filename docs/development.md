@@ -72,7 +72,8 @@ In `app/`; everything goes to `app/release/`.
 electron-builder packages only the `build.files` whitelist in `package.json`: a new file the main process imports must
 be added there, and tests stay out of it. The desktop packages aren't code signed: Windows shows SmartScreen's warning, macOS gets an
 ad-hoc signature. The Android app is a Capacitor wrapper of the web build (`capacitor.config.json`, `app/android/`); no
-iOS build, which needs a Mac.
+iOS build, which needs a Mac. It allows no Android backup or device transfer (the WebView's storage holds the device's
+keys, and a restored copy would be the same device twice) and no plain HTTP.
 
 The APK is signed with the release key when `MAKEWORK_ANDROID_KEYSTORE` names it (with
 `MAKEWORK_ANDROID_KEYSTORE_PASSWORD`, and `MAKEWORK_ANDROID_KEY_ALIAS` when it isn't `makework`), else with this

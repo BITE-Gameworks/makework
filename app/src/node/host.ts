@@ -394,41 +394,39 @@ export class HostedServer {
         throw e;
       });
     }
-    if (!this.sfuReady) {
-      this.sfuReady = this.sfuWorker.then(async (worker) => {
-        // Closed while the worker was starting: no calls for a server that is gone.
-        if (this.closed) throw new Error("the server is closing");
-        const calls = new SfuCalls(worker, (channelId, peer, notice) => {
-          for (const target of this.sfu?.get(channelId)?.peers() ?? []) {
-            if (target === peer) continue;
-            this.notifySfu?.(notice, target);
-          }
-          // A member's producer ended here: the other nodes serving the call drop it too.
-          if ("producerClosed" in notice) this.bridges.ended(channelId, [notice.producerClosed.id]);
-        });
-        this.sfu = calls;
-        // The worker died (its calls closed with it): the next join starts a new one; until then nobody is in a call
-        // here. Keeping the dead calls answered every later join with an error until the node restarted.
-        this.stopWatchingWorker = worker.onDied(() => {
-          this.stopWatchingWorker();
-          if (this.sfu !== calls) return;
-          console.warn("Calls through this node are off until the next one: its mediasoup worker died.");
-          this.sfu = null;
-          this.sfuReady = null;
-          this.sfuWorker = null;
-          this.callMembers.clear();
-          // Its bridges went with the calls: forgotten here and dropped on the other nodes, or the call stayed split.
-          this.bridges.reset();
-        });
-        return calls;
-      }).catch((e) => {
-        if (!this.closed) console.warn(`Calls through this node are off: ${(e as Error).message}`);
-        this.sfu = null;
-        this.sfuWorker = null;
-        this.sfuReady = null;
-        throw e;
+    this.sfuReady ??= this.sfuWorker.then(async (worker) => {
+      // Closed while the worker was starting: no calls for a server that is gone.
+      if (this.closed) throw new Error("the server is closing");
+      const calls = new SfuCalls(worker, (channelId, peer, notice) => {
+        for (const target of this.sfu?.get(channelId)?.peers() ?? []) {
+          if (target === peer) continue;
+          this.notifySfu?.(notice, target);
+        }
+        // A member's producer ended here: the other nodes serving the call drop it too.
+        if ("producerClosed" in notice) this.bridges.ended(channelId, [notice.producerClosed.id]);
       });
-    }
+      this.sfu = calls;
+      // The worker died (its calls closed with it): the next join starts a new one; until then nobody is in a call
+      // here. Keeping the dead calls answered every later join with an error until the node restarted.
+      this.stopWatchingWorker = worker.onDied(() => {
+        this.stopWatchingWorker();
+        if (this.sfu !== calls) return;
+        console.warn("Calls through this node are off until the next one: its mediasoup worker died.");
+        this.sfu = null;
+        this.sfuReady = null;
+        this.sfuWorker = null;
+        this.callMembers.clear();
+        // Its bridges went with the calls: forgotten here and dropped on the other nodes, or the call stayed split.
+        this.bridges.reset();
+      });
+      return calls;
+    }).catch((e) => {
+      if (!this.closed) console.warn(`Calls through this node are off: ${(e as Error).message}`);
+      this.sfu = null;
+      this.sfuWorker = null;
+      this.sfuReady = null;
+      throw e;
+    });
     return this.sfuReady;
   }
 

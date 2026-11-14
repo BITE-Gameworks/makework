@@ -275,23 +275,36 @@ export class ContentStreams {
     }, Math.max(0, slice.since + this.sliceMs - performance.now()));
   }
 
-  private async receive(hash: string, peer: string): Promise<Ended> {
-    const writer = await this.store.openWriter(hash);
-    let size = Infinity;
-    let expected = writer.size;
-    let writing: Promise<unknown> = Promise.resolve();
+  // The bookkeeping every download shares: `ended` settles on the first `end`, which also forgets the download.
+  // `idle` ends it as failed after `idleMs` without news; `begin` registers it and starts that wait.
+  private downloadEnd(hash: string) {
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let receiving: Receiving | undefined;
     let done!: (result: Ended) => void;
     const ended = new Promise<Ended>((resolve) => (done = resolve));
     const end = (result: Ended) => {
       clearTimeout(timer);
-      if (this.receiving.get(hash) === receiving) this.receiving.delete(hash);
+      if (receiving && this.receiving.get(hash) === receiving) this.receiving.delete(hash);
       done(result);
     };
     const idle = () => {
       clearTimeout(timer);
       timer = setTimeout(() => end("failed"), this.idleMs);
     };
+    const begin = (download: Receiving) => {
+      receiving = download;
+      this.receiving.set(hash, download);
+      idle();
+    };
+    return { ended, end, idle, begin };
+  }
+
+  private async receive(hash: string, peer: string): Promise<Ended> {
+    const writer = await this.store.openWriter(hash);
+    let size = Infinity;
+    let expected = writer.size;
+    let writing: Promise<unknown> = Promise.resolve();
+    const { ended, end, idle, begin } = this.downloadEnd(hash);
     const completeIfWhole = () => {
       if (writer.size >= size) end("done");
     };
@@ -325,8 +338,7 @@ export class ContentStreams {
       giveWay: () => void (givingWay = true),
       stop: end,
     };
-    this.receiving.set(hash, receiving);
-    idle();
+    begin(receiving);
     // A short wait for the answer: a peer that went away (WebRTC notices only after about 30 s) is skipped soon.
     this.want.request({ hash, offset: writer.size }, { target: peer, timeoutMs: Math.min(this.idleMs, wantTimeoutMs) }).then((reply) => {
       if (reply === "busy") end("busy");
@@ -362,18 +374,7 @@ export class ContentStreams {
     const out = new Uint8Array(new ArrayBuffer(length));
     let got = 0;
     let stopsAtEnd = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    let done!: (result: Ended) => void;
-    const ended = new Promise<Ended>((resolve) => (done = resolve));
-    const finish = (result: Ended) => {
-      clearTimeout(timer);
-      if (this.receiving.get(hash) === receiving) this.receiving.delete(hash);
-      done(result);
-    };
-    const idle = () => {
-      clearTimeout(timer);
-      timer = setTimeout(() => finish("failed"), this.idleMs);
-    };
+    const { ended, end: finish, idle, begin } = this.downloadEnd(hash);
     const receiving: Receiving = {
       peer,
       answered: false,
@@ -392,8 +393,7 @@ export class ContentStreams {
       giveWay: () => finish("yielded"),
       stop: finish,
     };
-    this.receiving.set(hash, receiving);
-    idle();
+    begin(receiving);
     this.want.request({ hash, offset: start, end }, { target: peer, timeoutMs: Math.min(this.idleMs, wantTimeoutMs) }).then((reply) => {
       if (reply === "busy") finish("busy");
       else if (!reply || reply.size < end) finish("missing");

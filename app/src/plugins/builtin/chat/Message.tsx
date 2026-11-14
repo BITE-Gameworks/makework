@@ -273,61 +273,59 @@ function AttachmentView(props: { context: ChannelContext; attachment: Attachment
   const get = () => setSynced(workspaceId, mark(), true);
 
   return (
-    <>
-      <div class="chat-attachment">
-        <Show when={!(isMedia() && src())} fallback={
-          <div class="chat-media mw-box mw-fade-in" classList={{ audio: a().mime.startsWith("audio/") }}>
-            <Show when={a().mime.startsWith("video/")} fallback={
-              <>
-                <span class="chat-media-name"><Icon name="file" /> {a().name}</span>
-                <audio src={src()!} controls preload="metadata" />
-              </>
-            }>
-              <VideoPlayer src={src()!} width={a().width ?? undefined} height={a().height ?? undefined} fallback={
-                <Show when={desktop?.openContent && refHash(a().url)}>
-                  {(hash) => (
-                    <button class="mw-button mw-box" onClick={() => void desktop!.openContent!(hash(), a().name).then((err) => err && console.warn(err))}>
-                      <Icon name="play" /> Open in video player
-                    </button>
-                  )}
-                </Show>
-              } />
-            </Show>
-          </div>
-        }>
-        <Show when={isImage() && (src() || a().thumb)} fallback={<FileCard workspaceId={workspaceId} attachment={a()} onGet={get} onOpen={open} />}>
-          <button class="chat-image mw-box mw-fade-in" classList={{ ghost: !src() }}
-            title={src() ? `Open ${a().name}` : `${a().name} (${formatBytes(a().size)}): click to download`} onClick={open}>
-            <img src={src() ?? a().thumb!} alt={a().name} loading="lazy" width={a().width ?? undefined} height={a().height ?? undefined} />
-            <Show when={!src() || status(workspaceId, a())}>
-              <span class="chat-image-badge mw-box">
-                <Icon name={transferBar(workspaceId, a().url)?.done ? "check" : "download"} /> {status(workspaceId, a()) ?? formatBytes(a().size)}
-              </span>
-            </Show>
-            <TransferProgress bar={transferBar(workspaceId, a().url)} />
-          </button>
-        </Show>
-        </Show>
-        <Show when={downloading()}>
-          <button class="icon-button chat-transfer-cancel mw-box mw-fade-in" title="Cancel download"
-            aria-label={`Cancel downloading ${a().name}`} onClick={() => void cancelDownload(workspaceId, mark(), a().url)}>
-            <Icon name="close" />
-          </button>
-        </Show>
-        <Show when={going() === "cancel"}>
-          <button class="icon-button chat-transfer-cancel mw-box mw-fade-in" title="Cancel upload"
-            aria-label={`Cancel uploading ${a().name}`} onClick={() => cancelSend(workspaceId, a().url)}>
-            <Icon name="close" />
-          </button>
-        </Show>
-        <Show when={going() === "resume"}>
-          <button class="icon-button chat-transfer-cancel mw-box mw-fade-in" title="Upload to the node"
-            aria-label={`Upload ${a().name} to the node`} onClick={() => uploadToNode(workspaceId, a().url, a().size)}>
-            <Icon name="upload" />
-          </button>
-        </Show>
-      </div>
-    </>
+    <div class="chat-attachment">
+      <Show when={!(isMedia() && src())} fallback={
+        <div class="chat-media mw-box mw-fade-in" classList={{ audio: a().mime.startsWith("audio/") }}>
+          <Show when={a().mime.startsWith("video/")} fallback={
+            <>
+              <span class="chat-media-name"><Icon name="file" /> {a().name}</span>
+              <audio src={src()!} controls preload="metadata" />
+            </>
+          }>
+            <VideoPlayer src={src()!} width={a().width ?? undefined} height={a().height ?? undefined} fallback={
+              <Show when={desktop?.openContent && refHash(a().url)}>
+                {(hash) => (
+                  <button class="mw-button mw-box" onClick={() => void desktop!.openContent!(hash(), a().name).then((err) => err && console.warn(err))}>
+                    <Icon name="play" /> Open in video player
+                  </button>
+                )}
+              </Show>
+            } />
+          </Show>
+        </div>
+      }>
+      <Show when={isImage() && (src() || a().thumb)} fallback={<FileCard workspaceId={workspaceId} attachment={a()} onGet={get} onOpen={open} />}>
+        <button class="chat-image mw-box mw-fade-in" classList={{ ghost: !src() }}
+          title={src() ? `Open ${a().name}` : `${a().name} (${formatBytes(a().size)}): click to download`} onClick={open}>
+          <img src={src() ?? a().thumb!} alt={a().name} loading="lazy" width={a().width ?? undefined} height={a().height ?? undefined} />
+          <Show when={!src() || status(workspaceId, a())}>
+            <span class="chat-image-badge mw-box">
+              <Icon name={transferBar(workspaceId, a().url)?.done ? "check" : "download"} /> {status(workspaceId, a()) ?? formatBytes(a().size)}
+            </span>
+          </Show>
+          <TransferProgress bar={transferBar(workspaceId, a().url)} />
+        </button>
+      </Show>
+      </Show>
+      <Show when={downloading()}>
+        <button class="icon-button chat-transfer-cancel mw-box mw-fade-in" title="Cancel download"
+          aria-label={`Cancel downloading ${a().name}`} onClick={() => void cancelDownload(workspaceId, mark(), a().url)}>
+          <Icon name="close" />
+        </button>
+      </Show>
+      <Show when={going() === "cancel"}>
+        <button class="icon-button chat-transfer-cancel mw-box mw-fade-in" title="Cancel upload"
+          aria-label={`Cancel uploading ${a().name}`} onClick={() => cancelSend(workspaceId, a().url)}>
+          <Icon name="close" />
+        </button>
+      </Show>
+      <Show when={going() === "resume"}>
+        <button class="icon-button chat-transfer-cancel mw-box mw-fade-in" title="Upload to the node"
+          aria-label={`Upload ${a().name} to the node`} onClick={() => uploadToNode(workspaceId, a().url, a().size)}>
+          <Icon name="upload" />
+        </button>
+      </Show>
+    </div>
   );
 }
 

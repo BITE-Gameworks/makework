@@ -32,7 +32,7 @@ const maxBatch = 200;
 const maxSubmodules = 200;
 const maxSubPath = 500;
 const shaPattern = /^[0-9a-f]{7,64}$/;
-const providers = ["github", "gitlab", "local"];
+const providers = new Set(["github", "gitlab", "local"]);
 
 // A submodule's path as git writes it: folders inside the repository, separated by "/".
 const validSubPath = (path: string) => path.length > 0 && path.length <= maxSubPath && !path.includes("\\")
@@ -136,7 +136,7 @@ export const git: MockPlugin = {
         { name: "subrepos", type: "bool", required: false, description: "Whether imports bring its submodules too." },
       ],
       (r) => {
-        if (!providers.includes(String(r.args.provider))) throw new InvalidRequest("'provider' must be github, gitlab or local.");
+        if (!providers.has(String(r.args.provider))) throw new InvalidRequest("'provider' must be github, gitlab or local.");
         remove(reposOf(r.args.channel_id));
         return {
           id: data.insert("git_repos", {
@@ -161,7 +161,7 @@ export const git: MockPlugin = {
         for (const s of listed) {
           const sub = String(s?.sub_path ?? "");
           if (!validSubPath(sub) || !inside(sub, parent)) throw new InvalidRequest("A submodule needs a path inside its repository.");
-          if (!providers.includes(String(s.provider))) throw new InvalidRequest("'provider' must be github, gitlab or local.");
+          if (!providers.has(String(s.provider))) throw new InvalidRequest("'provider' must be github, gitlab or local.");
           if (s.pinned && !shaPattern.test(String(s.pinned))) throw new InvalidRequest("'pinned' must be a commit's sha.");
           wanted.set(sub, s);
         }

@@ -70,7 +70,7 @@ export default function LinkPicker(props: {
           )}
         </For>
         <Show when={looksLikeUrl(query())}>
-          <li class="selected" onClick={() => props.onPick(options()[0])}>
+          <li role="option" aria-selected="true" class="selected" onClick={() => props.onPick(options()[0])}>
             <Icon name="link" /> <span class="mw-link-picker-title">Link to {query().trim()}</span>
           </li>
         </Show>

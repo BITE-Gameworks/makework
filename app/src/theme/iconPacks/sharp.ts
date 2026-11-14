@@ -11,7 +11,6 @@ import i_channel_design from "@material-symbols/svg-400/sharp/design_services.sv
 import i_channel_docs from "@material-symbols/svg-400/sharp/menu_book.svg?raw";
 import i_docs_page from "@material-symbols/svg-400/sharp/description.svg?raw";
 import i_channel_code from "@material-symbols/svg-400/sharp/code.svg?raw";
-import i_code_file from "@material-symbols/svg-400/sharp/code.svg?raw";
 import i_code_folder from "@material-symbols/svg-400/sharp/folder_code.svg?raw";
 import i_docs_preview from "@material-symbols/svg-400/sharp/visibility.svg?raw";
 import i_docs_edit from "@material-symbols/svg-400/sharp/edit.svg?raw";
@@ -26,7 +25,6 @@ import i_add from "@material-symbols/svg-400/sharp/add.svg?raw";
 import i_expanded from "@material-symbols/svg-400/sharp/keyboard_arrow_down.svg?raw";
 import i_collapsed from "@material-symbols/svg-400/sharp/chevron_right.svg?raw";
 import i_back from "@material-symbols/svg-400/sharp/chevron_left.svg?raw";
-import i_forward from "@material-symbols/svg-400/sharp/chevron_right.svg?raw";
 import i_profile from "@material-symbols/svg-400/sharp/account_circle.svg?raw";
 import i_sign_out from "@material-symbols/svg-400/sharp/logout.svg?raw";
 import i_volume from "@material-symbols/svg-400/sharp/volume_up.svg?raw";
@@ -35,7 +33,6 @@ import i_volume_off from "@material-symbols/svg-400/sharp/volume_off.svg?raw";
 import i_admin from "@material-symbols/svg-400/sharp/build.svg?raw";
 import i_camera from "@material-symbols/svg-400/sharp/videocam.svg?raw";
 import i_screen_share from "@material-symbols/svg-400/sharp/screen_share.svg?raw";
-import i_mic from "@material-symbols/svg-400/sharp/mic.svg?raw";
 import i_mic_off from "@material-symbols/svg-400/sharp/mic_off.svg?raw";
 import i_headset from "@material-symbols/svg-400/sharp/headphones.svg?raw";
 import i_headset_off from "@material-symbols/svg-400/sharp/headset_off.svg?raw";
@@ -43,7 +40,6 @@ import i_hang_up from "@material-symbols/svg-400/sharp/call_end.svg?raw";
 import i_close from "@material-symbols/svg-400/sharp/close.svg?raw";
 import i_add_reaction from "@material-symbols/svg-400/sharp/add_reaction.svg?raw";
 import i_bot from "@material-symbols/svg-400/sharp/smart_toy.svg?raw";
-import i_file from "@material-symbols/svg-400/sharp/draft.svg?raw";
 import i_image from "@material-symbols/svg-400/sharp/image.svg?raw";
 import i_star from "@material-symbols/svg-400/sharp/star.svg?raw";
 import i_shuffle from "@material-symbols/svg-400/sharp/shuffle.svg?raw";
@@ -52,7 +48,6 @@ import i_info from "@material-symbols/svg-400/sharp/info.svg?raw";
 import i_window_minimize from "@material-symbols/svg-400/sharp/minimize.svg?raw";
 import i_window_maximize from "@material-symbols/svg-400/sharp/crop_square.svg?raw";
 import i_window_restore from "@material-symbols/svg-400/sharp/filter_none.svg?raw";
-import i_window_close from "@material-symbols/svg-400/sharp/close.svg?raw";
 import i_camera_off from "@material-symbols/svg-400/sharp/videocam_off.svg?raw";
 import i_screen_share_stop from "@material-symbols/svg-400/sharp/stop_screen_share.svg?raw";
 import i_fullscreen from "@material-symbols/svg-400/sharp/fullscreen.svg?raw";
@@ -67,7 +62,6 @@ import i_check from "@material-symbols/svg-400/sharp/check.svg?raw";
 import i_menu_up from "@material-symbols/svg-400/sharp/keyboard_arrow_up.svg?raw";
 import i_zoom_in from "@material-symbols/svg-400/sharp/zoom_in.svg?raw";
 import i_zoom_out from "@material-symbols/svg-400/sharp/zoom_out.svg?raw";
-import i_folder from "@material-symbols/svg-400/sharp/folder.svg?raw";
 import i_storage from "@material-symbols/svg-400/sharp/hard_drive.svg?raw";
 import i_folder_add from "@material-symbols/svg-400/sharp/create_new_folder.svg?raw";
 import i_folder_up from "@material-symbols/svg-400/sharp/drive_folder_upload.svg?raw";
@@ -75,7 +69,6 @@ import i_folder_upload from "@material-symbols/svg-400/sharp/drive_file_move.svg
 import i_refresh from "@material-symbols/svg-400/sharp/refresh.svg?raw";
 import i_upload from "@material-symbols/svg-400/sharp/upload.svg?raw";
 import i_delete from "@material-symbols/svg-400/sharp/delete.svg?raw";
-import i_rename from "@material-symbols/svg-400/sharp/edit.svg?raw";
 import i_view_grid from "@material-symbols/svg-400/sharp/grid_view.svg?raw";
 import i_view_list from "@material-symbols/svg-400/sharp/view_list.svg?raw";
 import i_flip from "@material-symbols/svg-400/sharp/flip.svg?raw";
@@ -91,7 +84,6 @@ import i_format_bold from "@material-symbols/svg-400/sharp/format_bold.svg?raw";
 import i_format_italic from "@material-symbols/svg-400/sharp/format_italic.svg?raw";
 import i_format_strike from "@material-symbols/svg-400/sharp/format_strikethrough.svg?raw";
 import i_format_underline from "@material-symbols/svg-400/sharp/format_underlined.svg?raw";
-import i_format_code from "@material-symbols/svg-400/sharp/code.svg?raw";
 import i_format_list from "@material-symbols/svg-400/sharp/format_list_bulleted.svg?raw";
 import i_format_list_ordered from "@material-symbols/svg-400/sharp/format_list_numbered.svg?raw";
 import i_format_quote from "@material-symbols/svg-400/sharp/format_quote.svg?raw";
@@ -147,8 +139,6 @@ import i_design_effects from "@material-symbols/svg-400/sharp/wand_stars.svg?raw
 import i_help from "@material-symbols/svg-400/sharp/help.svg?raw";
 import i_design_clip from "@material-symbols/svg-400/sharp/crop.svg?raw";
 import i_design_auto_width from "@material-symbols/svg-400/sharp/width_full.svg?raw";
-import i_design_auto_height from "@material-symbols/svg-400/sharp/height.svg?raw";
-import i_design_fixed_size from "@material-symbols/svg-400/sharp/fit_screen.svg?raw";
 import i_design_palette from "@material-symbols/svg-400/sharp/palette.svg?raw";
 import i_design_gradient from "@material-symbols/svg-400/sharp/gradient.svg?raw";
 import i_design_detach from "@material-symbols/svg-400/sharp/link_off.svg?raw";
@@ -170,24 +160,16 @@ import i_distribute_v from "@material-symbols/svg-400/sharp/vertical_distribute.
 import i_text_left from "@material-symbols/svg-400/sharp/format_align_left.svg?raw";
 import i_text_center from "@material-symbols/svg-400/sharp/format_align_center.svg?raw";
 import i_text_right from "@material-symbols/svg-400/sharp/format_align_right.svg?raw";
-import i_visible from "@material-symbols/svg-400/sharp/visibility.svg?raw";
 import i_hidden from "@material-symbols/svg-400/sharp/visibility_off.svg?raw";
 import i_lock from "@material-symbols/svg-400/sharp/lock.svg?raw";
 import i_unlock from "@material-symbols/svg-400/sharp/lock_open.svg?raw";
 import i_remove from "@material-symbols/svg-400/sharp/remove.svg?raw";
 import i_plugin from "@material-symbols/svg-400/sharp/extension.svg?raw";
 import i_channel_diagram from "@material-symbols/svg-400/sharp/schema.svg?raw";
-import i_diagram_rect from "@material-symbols/svg-400/sharp/rectangle.svg?raw";
 import i_diagram_rounded from "@material-symbols/svg-400/sharp/check_box_outline_blank.svg?raw";
-import i_diagram_ellipse from "@material-symbols/svg-400/sharp/circle.svg?raw";
-import i_diagram_diamond from "@material-symbols/svg-400/sharp/diamond.svg?raw";
 import i_diagram_cylinder from "@material-symbols/svg-400/sharp/database.svg?raw";
-import i_diagram_document from "@material-symbols/svg-400/sharp/description.svg?raw";
-import i_diagram_actor from "@material-symbols/svg-400/sharp/person.svg?raw";
 import i_diagram_cloud from "@material-symbols/svg-400/sharp/cloud.svg?raw";
 import i_diagram_note from "@material-symbols/svg-400/sharp/sticky_note_2.svg?raw";
-import i_diagram_container from "@material-symbols/svg-400/sharp/crop_free.svg?raw";
-import i_diagram_swimlane from "@material-symbols/svg-400/sharp/view_week.svg?raw";
 import i_text_color from "@material-symbols/svg-400/sharp/format_color_text.svg?raw";
 import i_cell_background from "@material-symbols/svg-400/sharp/format_color_fill.svg?raw";
 
@@ -202,7 +184,7 @@ export const icons: Record<string, string> = {
   "channel-docs": i_channel_docs,
   "docs-page": i_docs_page,
   "channel-code": i_channel_code,
-  "code-file": i_code_file,
+  "code-file": i_channel_code,
   "code-folder": i_code_folder,
   "docs-preview": i_docs_preview,
   "docs-edit": i_docs_edit,
@@ -218,7 +200,7 @@ export const icons: Record<string, string> = {
   "expanded": i_expanded,
   "collapsed": i_collapsed,
   "back": i_back,
-  "forward": i_forward,
+  "forward": i_collapsed,
   "profile": i_profile,
   "sign-out": i_sign_out,
   "volume": i_volume,
@@ -227,7 +209,7 @@ export const icons: Record<string, string> = {
   "admin": i_admin,
   "camera": i_camera,
   "screen-share": i_screen_share,
-  "mic": i_mic,
+  "mic": i_channel_voice,
   "mic-off": i_mic_off,
   "headset": i_headset,
   "headset-off": i_headset_off,
@@ -235,7 +217,7 @@ export const icons: Record<string, string> = {
   "close": i_close,
   "add-reaction": i_add_reaction,
   "bot": i_bot,
-  "file": i_file,
+  "file": i_channel_other,
   "image": i_image,
   "star": i_star,
   "shuffle": i_shuffle,
@@ -244,7 +226,7 @@ export const icons: Record<string, string> = {
   "window-minimize": i_window_minimize,
   "window-maximize": i_window_maximize,
   "window-restore": i_window_restore,
-  "window-close": i_window_close,
+  "window-close": i_close,
   "camera-off": i_camera_off,
   "screen-share-stop": i_screen_share_stop,
   "fullscreen": i_fullscreen,
@@ -259,7 +241,7 @@ export const icons: Record<string, string> = {
   "menu-up": i_menu_up,
   "zoom-in": i_zoom_in,
   "zoom-out": i_zoom_out,
-  "folder": i_folder,
+  "folder": i_channel_files,
   "storage": i_storage,
   "folder-add": i_folder_add,
   "folder-up": i_folder_up,
@@ -267,7 +249,7 @@ export const icons: Record<string, string> = {
   "refresh": i_refresh,
   "upload": i_upload,
   "delete": i_delete,
-  "rename": i_rename,
+  "rename": i_docs_edit,
   "view-grid": i_view_grid,
   "view-list": i_view_list,
   "flip": i_flip,
@@ -284,7 +266,7 @@ export const icons: Record<string, string> = {
   "format-italic": i_format_italic,
   "format-strike": i_format_strike,
   "format-underline": i_format_underline,
-  "format-code": i_format_code,
+  "format-code": i_channel_code,
   "format-list": i_format_list,
   "format-list-ordered": i_format_list_ordered,
   "format-quote": i_format_quote,
@@ -341,8 +323,8 @@ export const icons: Record<string, string> = {
   "help": i_help,
   "design-clip": i_design_clip,
   "design-auto-width": i_design_auto_width,
-  "design-auto-height": i_design_auto_height,
-  "design-fixed-size": i_design_fixed_size,
+  "design-auto-height": i_normalize_height,
+  "design-fixed-size": i_fit_all,
   "design-palette": i_design_palette,
   "design-gradient": i_design_gradient,
   "design-detach": i_design_detach,
@@ -364,24 +346,24 @@ export const icons: Record<string, string> = {
   "text-left": i_text_left,
   "text-center": i_text_center,
   "text-right": i_text_right,
-  "visible": i_visible,
+  "visible": i_docs_preview,
   "hidden": i_hidden,
   "lock": i_lock,
   "unlock": i_unlock,
   "remove": i_remove,
   "plugin": i_plugin,
   "channel-diagram": i_channel_diagram,
-  "diagram-rect": i_diagram_rect,
+  "diagram-rect": i_design_rect,
   "diagram-rounded": i_diagram_rounded,
-  "diagram-ellipse": i_diagram_ellipse,
-  "diagram-diamond": i_diagram_diamond,
+  "diagram-ellipse": i_design_ellipse,
+  "diagram-diamond": i_design_instance,
   "diagram-cylinder": i_diagram_cylinder,
-  "diagram-document": i_diagram_document,
-  "diagram-actor": i_diagram_actor,
+  "diagram-document": i_docs_page,
+  "diagram-actor": i_assignee,
   "diagram-cloud": i_diagram_cloud,
   "diagram-note": i_diagram_note,
-  "diagram-container": i_diagram_container,
-  "diagram-swimlane": i_diagram_swimlane,
+  "diagram-container": i_design_frame,
+  "diagram-swimlane": i_columns,
   "text-color": i_text_color,
   "cell-background": i_cell_background,
 };

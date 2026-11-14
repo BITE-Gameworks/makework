@@ -203,3 +203,13 @@ brings them. A submodule that can't be read here stays listed for a member who c
 clones the submodules that are missing and puts each on its branch (the one `.gitmodules` names, else its remote's
 default), so they can be worked in like the main repository; only where that changes no file, otherwise it stays on its
 pinned commit and says why. Releases, build configurations and adding or moving submodules stay outside the app.
+
+## 0029 Some SonarQube rules don't fit this code
+
+SonarQube (`app/sonar-project.properties`) runs with these rules off, because following them would break things:
+optional chaining in comparisons (S6582: `x?.a !== b` passes when both sides are undefined, and these checks guard
+policy and keys), "opposite operators" for `!(x > 0)` (S1940: the negation also rejects NaN), `codePointAt` for
+`charCodeAt` (S7758: byte conversions and hashes that members must agree on), and `structuredClone` for JSON copies
+(S7784: it refuses Solid store proxies). React-only rules (keys, JSX spacing), copies made before a loop changes the
+collection, the "next free name" loop and fire-and-forget promises are off as noise. Complexity, nesting and size
+warnings stay on as debt; the code is refactored when it is next worked on, not to meet a threshold.

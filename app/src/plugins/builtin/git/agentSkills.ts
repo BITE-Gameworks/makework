@@ -1,5 +1,5 @@
 // Agent skills of version control channels: reading the history, and working in the local copy on this device (desktop).
-import { trimChars } from "../../../core/text";
+import { compareText, trimChars } from "../../../core/text";
 import { decodeEmoji } from "../../../markdown/emoji";
 import { findChannel } from "../../../agents/skillKit";
 import type { AgentSkill, BotContext } from "../../types";
@@ -126,7 +126,7 @@ export const gitSkills: AgentSkill[] = [{
     const { channel, repo, where } = await repoOf(context, String(args.channel), sub);
     const branches = await context.read("git", "git_branches", { repo_id: Number(repo.id) });
     const inside = (await context.read("git", "git_repos", { channel_id: channel.id }))
-      .map((r) => String(r.sub_path ?? "")).filter((path) => path && (sub ? path.startsWith(`${sub}/`) : true)).sort();
+      .map((r) => String(r.sub_path ?? "")).filter((path) => path && (sub ? path.startsWith(`${sub}/`) : true)).sort(compareText);
     const pinned = repo.pinned ? `, pinned at ${String(repo.pinned).slice(0, 7)}` : "";
     return `${where}: ${repo.provider} ${repo.path}${repo.url ? ` (${repo.url})` : ""}, default branch ${repo.default_branch || "unknown"}${pinned}.\nBranches: `
       + (branches.map((b) => `${b.name} at ${String(b.head).slice(0, 7)}`).join(", ") || "none imported")
