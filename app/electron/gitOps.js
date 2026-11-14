@@ -1,5 +1,5 @@
 // Git for version control channels: reading (status, diffs, blame, files, branches) and the few writes the app makes
-// (commits, branches, fetch, push, merging the remote's new commits, cloning missing submodules). Safety comes first, so this file never uses a
+// (commits, branches, fetch, push, merging the remote's new commits, cloning a repository or its missing submodules). Safety comes first, so this file never uses a
 // forcing or history-rewriting option of any kind (tests/electron/gitOps.test.ts checks the source), and every write
 // checks first that it can't lose work:
 // - commits take only the files the user ticked, never an empty or emptied tree, and ask before removing over a
@@ -10,8 +10,8 @@
 //   fast-forwards to it, so the working copy is never left half merged;
 // - branches are deleted only with `branch -d` (git refuses unmerged work), never the current or default one,
 //   never on the remote; switching needs a clean working tree;
-// - missing submodules are cloned only into an empty or missing folder, and a submodule is put on a branch only when
-//   that changes no file;
+// - repositories and missing submodules are cloned only into an empty or missing folder, and a submodule is put on a
+//   branch only when that changes no file;
 // - stashes are restored only when nothing in the way would be overwritten (a failed restore is undone and the stash
 //   kept), and removed from the list only after a clean restore or a confirmed delete, always picked by commit id.
 // Every function takes the `git` runner from createGit, so main.js and the tests share all of it.
@@ -262,19 +262,40 @@ export async function prepareSubmodules(git, cwd, { serial = (_folder, fn) => fn
   return results;
 }
 
-// Clones one submodule that isn't here, signing in through `cloner`; returns why it didn't, or null once it did.
-async function cloneSubmodule(git, cloner, cwd, s) {
-  const dir = subFolder(cwd, s.path);
+// Why nothing may be cloned into `dir`, or null when it is missing or an empty folder.
+async function cloneBlocked(dir) {
   const there = await fs.lstat(dir).catch(() => null);
   if (there?.isSymbolicLink()) return "Its folder is a link, so nothing was cloned into it.";
   if (there && !there.isDirectory()) return "A file is in its place, so nothing was cloned.";
   if (there && (await fs.readdir(dir)).length) return "Its folder already holds files, so nothing was cloned into it.";
+  return null;
+}
+
+// Clones one submodule that isn't here, signing in through `cloner`; returns why it didn't, or null once it did.
+async function cloneSubmodule(git, cloner, cwd, s) {
+  const dir = subFolder(cwd, s.path);
+  const blocked = await cloneBlocked(dir);
+  if (blocked) return blocked;
   // Init copies its link, made whole, into this copy's own config; that is where the clone reads it.
   await run(git, cwd, ["submodule", "init", "--", s.path]);
   const url = (await git(cwd, ["config", "--get", `submodule.${s.name}.url`], { allowCodes: [0, 1] })).out.trim();
   if (!url) return "It has no link to clone from.";
   await remoteRun(cloner, cwd, url, ["submodule", "update", "--checkout", "--", s.path], cloneTimeoutMs);
   return null;
+}
+
+const repositoryCloneTimeoutMs = 60 * 60_000;
+
+// Clones the whole repository at `url` into `target` (an absolute path, missing or an empty folder), signing in as
+// fetch does. Its submodules are left to prepareSubmodules. Git removes what it made when the clone fails.
+export async function cloneRepo(git, url, target) {
+  if (typeof url !== "string" || !url.trim() || url.startsWith("-")) throw new GitRefusal("Not a repository link.");
+  if (typeof target !== "string" || !path.isAbsolute(target)) throw new GitRefusal("Not a folder to clone into.");
+  const blocked = await cloneBlocked(target);
+  if (blocked) throw new GitRefusal(blocked);
+  const parent = path.dirname(target);
+  await fs.mkdir(parent, { recursive: true });
+  await remoteRun(git, parent, url, ["clone", "--no-recurse-submodules", "--", url, target], repositoryCloneTimeoutMs);
 }
 
 // Puts a submodule that is on no branch onto `wanted` (else its remote's default branch), only where that

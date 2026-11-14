@@ -33,6 +33,7 @@ export function prepareSubmodules(git: Git, cwd: string, options?: {
   serial?: <T>(folder: string, fn: () => Promise<T>) => Promise<T>;
   gitFor?: (folder: string) => Git;
 }): Promise<GitPreparedSubmodule[]>;
+export function cloneRepo(git: Git, url: string, target: string): Promise<void>;
 export function attachBranch(git: Git, cwd: string, wanted: string | null): Promise<Pick<GitPreparedSubmodule, "onBranch" | "attached" | "left">>;
 export function workingDiff(git: Git, cwd: string, file: string): Promise<GitPatch>;
 export function showCommit(git: Git, cwd: string, sha: string): Promise<GitPatch>;

@@ -36,5 +36,9 @@ export function gitCall<T>(action: (git: LocalGit) => Promise<T>): Promise<T> {
   });
 }
 
+// Clones the whole repository at `url` into `target` (desktop.git.cloneLocation) as a working copy on this computer.
+export const cloneTo = (url: string, target: string, auth: { connection: string } | { token: string }) =>
+  gitCall((git) => git.clone(url, target, auth));
+
 // Commits as a short list line: "abc1234 Subject (Author)".
 export const commitLine = (c: { sha: string; subject: string; author: string }) => `${c.sha.slice(0, 7)} ${c.subject} (${c.author})`;

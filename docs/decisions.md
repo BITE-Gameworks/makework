@@ -213,3 +213,15 @@ policy and keys), "opposite operators" for `!(x > 0)` (S1940: the negation also 
 (S7784: it refuses Solid store proxies). React-only rules (keys, JSX spacing), copies made before a loop changes the
 collection, the "next free name" loop and fire-and-forget promises are off as noise. Complexity, nesting and size
 warnings stay on as debt; the code is refactored when it is next worked on, not to meet a threshold.
+
+## 0030 Links are cloned to the computer and imported whole
+
+Committing, branching and pushing need a working copy, which an import through the host's API doesn't give, so a
+channel set up from a link on the desktop app also clones the repository, by default into
+`~/MakeWork/Repositories/<name>` (the user can pick another parent folder), and uses it as the working copy there.
+Members and devices without a copy get "Clone to this computer" instead of cloning by hand and linking it. The first
+import right after a clone reads the clone's origin branches rather than the host's API: the same branches, without
+the API's rate limit, which a whole history would run into. Later updates read the host again (a clone's origin
+branches are only as fresh as its last fetch). Imports bring the whole history, 1,000 commits per branch at a time
+until nothing is left; channels imported before get the rest on their next update. The web app keeps importing the
+history only.

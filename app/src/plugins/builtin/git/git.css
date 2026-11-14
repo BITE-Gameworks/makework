@@ -1557,3 +1557,27 @@
     border-left: 0;
   }
 }
+
+.git-clone-location,
+.git-clone-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--mw-margin) / 2);
+}
+
+.git-clone-row {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--mw-margin) / 2);
+}
+
+.git-clone-path {
+  flex: 1;
+  min-width: 0;
+  padding: calc(var(--mw-margin) / 2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+  text-align: left;
+}

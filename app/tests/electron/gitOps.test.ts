@@ -6,7 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
-  blame, branches, checkPath, commit, createBranch, credentialName, createGit, deleteBranch, fetchRemote, graph, listFiles, mergeBranch,
+  blame, branches, checkPath, cloneRepo, commit, createBranch, credentialName, createGit, deleteBranch, fetchRemote, graph, listFiles, mergeBranch,
   mergeConflicts, mergeCurrentInto, mergeDiff, mergeFile, mergeRemote, mergeResolved, push, pushCheck, remoteEnv, remoteHost, restoreCommit, showCommit, stashDelete, stashList, stashPush, stashRestore, status, attachBranch, prepareSubmodules, submodules, switchBranch, withCredentials,
 } from "../../electron/gitOps.js";
 
@@ -915,6 +915,42 @@ describe("submodules", () => {
     expect((await status(git, a)).map((f) => [f.path, f.kind, f.submodule ?? false])).toEqual([["a.txt", "modified", false], ["tool", "modified", true]]);
     await commitAll(a, "Move tool");
     expect((await submodules(git, a))[0].pinned).toBe(head(tool));
+  });
+});
+
+describe("git safety: cloning a repository", () => {
+  it("clones the whole history into a missing folder, or an empty one", async () => {
+    write(a, "a.txt", "changed\n");
+    await commitAll(a, "Second commit");
+    expect((await push(git, a)).ok).toBe(true);
+    const target = path.join(root, "clones", "new");
+    await cloneRepo(git, remote, target);
+    expect(head(target)).toBe(remoteHead());
+    expect(sh(target, "rev-list", "--count", "HEAD")).toBe("2");
+    expect(read(target, "a.txt")).toBe("changed\n");
+    const empty = path.join(root, "empty");
+    fs.mkdirSync(empty);
+    await cloneRepo(git, remote, empty);
+    expect(head(empty)).toBe(remoteHead());
+  });
+
+  it("never clones over files, through a link, or from something that isn't a link", async () => {
+    const full = path.join(root, "full");
+    write(full, "keep.txt", "mine\n");
+    await expect(cloneRepo(git, remote, full)).rejects.toThrow(/already holds files/);
+    expect(fs.readdirSync(full)).toEqual(["keep.txt"]);
+    const linked = path.join(root, "linked");
+    fs.mkdirSync(path.join(root, "elsewhere"));
+    fs.symlinkSync(path.join(root, "elsewhere"), linked);
+    await expect(cloneRepo(git, remote, linked)).rejects.toThrow(/is a link/);
+    await expect(cloneRepo(git, "--upload-pack=touch x", path.join(root, "opt"))).rejects.toThrow(/Not a repository link/);
+    await expect(cloneRepo(git, remote, "relative/folder")).rejects.toThrow(/Not a folder/);
+  });
+
+  it("leaves no folder behind when the clone fails", async () => {
+    const target = path.join(root, "failed");
+    await expect(cloneRepo(git, path.join(root, "missing.git"), target)).rejects.toThrow();
+    expect(fs.existsSync(target)).toBe(false);
   });
 });
 
