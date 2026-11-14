@@ -8,9 +8,9 @@ import { can } from "../../../core/roles";
 import { desktop } from "../../../core/desktop";
 import { openChannel } from "../../../core/navigation";
 import { isLooking, notify } from "../../../core/notifier";
-import { loadRepo, readerHere, workingCopies } from "./data";
-import { importRepo } from "./importer";
+import { hostOf, loadRepos, readerHere, workingCopies } from "./data";
 import { gitCall } from "./local";
+import { importChannel } from "./tree";
 
 export const openCheckMs = 60_000;
 export const backgroundCheckMs = 5 * 60_000;
@@ -69,30 +69,34 @@ export function repeat(check: () => Promise<void>, everyMs: number,
   };
 }
 
-// Brings a channel's history up to date if this member may (a GitHub/GitLab channel from the host, a local one from
-// the folder on this device); used after a change was seen. Errors are left to the caller.
-export async function importLatest(workspaceId: string, channelId: number): Promise<number> {
+// Brings a channel's history up to date, its submodules' too, if this member may (a GitHub/GitLab channel from the
+// host, a local one from the folder on this device); used after a change was seen. Errors are left to the caller.
+// `prepare`: missing submodules may be cloned first (an open view; never the background).
+export async function importLatest(workspaceId: string, channelId: number, prepare = true): Promise<number> {
   if (!workspaces.byId[workspaceId] || !can(workspaceId, "edit_content")) return 0;
   const api = workspaceApi(workspaceId).plugin("git");
-  const repo = await loadRepo(api, channelId);
+  const [repo] = await loadRepos(api, channelId);
   if (!repo) return 0;
-  const here = await readerHere(workspaceId, channelId, repo);
+  const here = await readerHere(workspaceId, channelId, repo, undefined, hostOf(repo));
   if (!here) return 0;
-  return (await importRepo(api, channelId, here.reader, "update")).added;
+  return (await importChannel(api, workspaceId, channelId, repo, here.reader, "update", undefined, undefined, "", prepare)).added;
 }
 
-// Channels open in a view check themselves; the background leaves them alone.
+// A repository open in a view checks itself; the background leaves it alone. `sub`: a submodule of the channel's.
 const watchedByView = new Set<string>();
-export function viewWatching(workspaceId: string, channelId: number): () => void {
-  const key = `${workspaceId}:${channelId}`;
+const watchKey = (workspaceId: string, channelId: number, sub: string) => `${workspaceId}:${channelId}:${sub}`;
+export function viewWatching(workspaceId: string, channelId: number, sub = ""): () => void {
+  const key = watchKey(workspaceId, channelId, sub);
   watchedByView.add(key);
   return () => watchedByView.delete(key);
 }
 
-export function channelName(workspaceId: string, channelId: number): string {
+// `sub`: one of its submodules, named with it.
+export function channelName(workspaceId: string, channelId: number, sub = ""): string {
   const server = workspaces.byId[workspaceId];
   const channel = server?.channels.find((c) => c.id === channelId);
-  return channel ? `#${channel.name}${server?.info.name ? ` (${server.info.name})` : ""}` : "a version control channel";
+  const name = channel ? `#${channel.name}${server?.info.name ? ` (${server.info.name})` : ""}` : "a version control channel";
+  return sub ? `${sub} in ${name}` : name;
 }
 
 let started = false;
@@ -101,19 +105,25 @@ export function startBackgroundWatch(): void {
   if (started || !desktop?.git || typeof window === "undefined") return;
   started = true;
   repeat(async () => {
-    for (const { workspaceId, channelId, folder } of workingCopies()) {
-      if (watchedByView.has(`${workspaceId}:${channelId}`) || !workspaces.byId[workspaceId]) continue;
+    // One import per channel and pass, after all of its folders were fetched.
+    const changed = new Set<string>();
+    for (const { workspaceId, channelId, folder, sub } of workingCopies()) {
+      if (watchedByView.has(watchKey(workspaceId, channelId, sub)) || !workspaces.byId[workspaceId]) continue;
       try {
         const changes = (await gitCall((git) => git.fetch(folder))).filter((c) => c.count > 0);
         if (!changes.length) continue;
         const text = describeChanges(changes.map((c) => ({ branch: c.branch, count: c.count, isNew: c.from === null })));
         if (!isLooking(workspaceId, channelId))
-          notify({ tag: `git:${workspaceId}:${channelId}`, title: `New commits in ${channelName(workspaceId, channelId)}`, body: text,
+          notify({ tag: `git:${workspaceId}:${channelId}:${sub}`, title: `New commits in ${channelName(workspaceId, channelId, sub)}`, body: text,
             onClick: () => openChannel(workspaceId, channelId) });
-        await importLatest(workspaceId, channelId).catch((e) => console.warn("History not updated:", e));
+        changed.add(`${workspaceId}:${channelId}`);
       } catch (e) {
         console.warn(`Watching ${folder} failed:`, e);
       }
+    }
+    for (const key of changed) {
+      const at = key.lastIndexOf(":");
+      await importLatest(key.slice(0, at), Number(key.slice(at + 1)), false).catch((e) => console.warn("History not updated:", e));
     }
   }, backgroundCheckMs, { minGapMs: backgroundCheckMs });
 }

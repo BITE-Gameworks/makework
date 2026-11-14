@@ -221,11 +221,12 @@ export const agent: BotType = {
       },
     },
     push: {
-      usage: "/push <git channel>", help: "Pushes the current branch of this device's local copy of a git channel (a member who may, after the Push button).",
+      usage: "/push <git channel> [submodule]", help: "Pushes the current branch of this device's local copy of a git channel, or of one of its submodules (a member who may, after the Push button).",
       run: async (context, call) => {
         if (call.message.authorId !== context.userId && !context.can(call.message.authorId, "manage_bots")) return "Only the member whose device I run on, or someone who manages bots, can push.";
         try {
-          return await pushLocal(context, call.args.trim());
+          const [channel = "", ...sub] = call.args.trim().split(/\s+/);
+          return await pushLocal(context, channel, sub.join(" "));
         } catch (e) {
           return e instanceof Error ? e.message : String(e);
         }

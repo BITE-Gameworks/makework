@@ -217,6 +217,12 @@ export interface DesktopBridge {
     log(folder: string, from: string, skip: number, max: number): Promise<{
       sha: string; parents: string[]; author_name: string; author_email: string; authored_at: string; message: string;
     }[]>;
+    // The repository's submodules as its last commit lists them, with the repository's own origin link. The ones
+    // checked out become folders this app may read, so this comes before anything is asked of such a folder.
+    submodules(folder: string): Promise<{ origin: string; submodules: GitSubmodule[] }>;
+    // The same, after cloning the ones missing here and putting each on its branch where that changes no file
+    // (electron/gitOps.js prepareSubmodules). Talks to their remotes.
+    prepareSubmodules(folder: string): Promise<{ origin: string; submodules: GitPreparedSubmodule[] }>;
     // Reading and the app's safe writes (electron/gitOps.js): never forced, checked before acting.
     status(folder: string): Promise<GitRepoState & { files: GitChange[] }>;
     workingDiff(folder: string, file: string): Promise<GitPatch>;
@@ -448,6 +454,32 @@ export interface GitChange {
   origPath?: string;
   kind: "modified" | "added" | "deleted" | "renamed" | "untracked" | "conflicted";
   staged: boolean;
+  // A submodule: the commit it is at changed (or its own files did), not a file.
+  submodule?: true;
+}
+export interface GitSubmodule {
+  // Its name in .gitmodules.
+  name: string;
+  // Inside the repository it belongs to.
+  path: string;
+  // As .gitmodules has it: it can be relative to the repository's own link.
+  url: string;
+  // The commit the repository's last commit records for it.
+  pinned: string;
+  // Its working copy when it is checked out on this device.
+  folder: string | null;
+  // The branch .gitmodules names for it: null for none, "." for its repository's own current branch.
+  branch: string | null;
+}
+// A submodule after prepareSubmodules: cloned here now, the branch it is on (null for none), put on it now, why it
+// was left as it is, or what went wrong (`auth`: the host whose sign-in is missing).
+export interface GitPreparedSubmodule extends GitSubmodule {
+  cloned: boolean;
+  onBranch: string | null;
+  attached: boolean;
+  left?: string;
+  error?: string;
+  auth?: string;
 }
 export interface GitPatch {
   patch: string;

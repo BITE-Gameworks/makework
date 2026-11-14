@@ -32,8 +32,41 @@ describe("repository links", () => {
   });
 });
 
+const base64 = (text: string) => btoa(String.fromCharCode(...new TextEncoder().encode(text)));
+const gitmodules = { content: base64('[submodule "lib"]\n\tpath = vendor/lib\n\turl = ../lib.git\n[submodule "tool"]\n\tpath = tool\n\turl = https://gitlab.com/g/tool.git\n'
+  + '[submodule "gone"]\n\tpath = gone\n\turl = https://github.com/o/gone\n') };
+
 describe("GitHub reader", () => {
   const api = "https://api.github.com/repos/o/r";
+
+  it("finds the submodules a commit records, with their links made whole", async () => {
+    const { fn, calls } = stubFetch({
+      [`${api}/contents/.gitmodules?ref=abc1234`]: gitmodules,
+      [`${api}/git/trees/abc1234?recursive=1`]: { tree: [
+        { path: "README.md", type: "blob", sha: "f00" }, { path: "vendor/lib", type: "commit", sha: "1111111" }, { path: "tool", type: "commit", sha: "2222222" },
+      ] },
+    });
+    const reader = readerFor({ provider: "github", host: "github.com", path: "o/r" }, null, fn);
+    // "gone" is listed but no longer in the tree.
+    expect(await reader.submodules!("abc1234")).toEqual([
+      { path: "vendor/lib", url: "https://github.com/o/lib.git", pinned: "1111111" },
+      { path: "tool", url: "https://gitlab.com/g/tool.git", pinned: "2222222" },
+    ]);
+    expect(calls).toHaveLength(2);
+  });
+
+  it("asks for nothing more when the repository has no .gitmodules, and path by path when its tree is too large", async () => {
+    const none = stubFetch({});
+    expect(await readerFor({ provider: "github", host: "github.com", path: "o/r" }, null, none.fn).submodules!("main")).toEqual([]);
+    expect(none.calls).toHaveLength(1);
+    const { fn } = stubFetch({
+      [`${api}/contents/.gitmodules?ref=main`]: gitmodules,
+      [`${api}/git/trees/main?recursive=1`]: { tree: [{ path: "tool", type: "commit", sha: "2222222" }], truncated: true },
+      [`${api}/contents/vendor/lib?ref=main`]: { type: "submodule", sha: "1111111" },
+    });
+    const found = await readerFor({ provider: "github", host: "github.com", path: "o/r" }, null, fn).submodules!("main");
+    expect(found.map((s) => [s.path, s.pinned])).toEqual([["vendor/lib", "1111111"], ["tool", "2222222"]]);
+  });
   it("sends the token, pages through commits and stops at what is known", async () => {
     const page1 = Array.from({ length: 100 }, (_, i) => ghCommit(`a${String(i).padStart(3, "0")}`, [`a${String(i + 1).padStart(3, "0")}`]));
     const page2 = [ghCommit("a100", ["0ld"]), ghCommit("0ld", [])];
@@ -95,6 +128,20 @@ describe("GitHub reader", () => {
 });
 
 describe("GitLab reader", () => {
+  it("finds the submodules a commit records in its folders' listings", async () => {
+    const api = "https://gitlab.example.org/api/v4/projects/team%2Fapp";
+    const { fn } = stubFetch({
+      [`${api}/repository/files/.gitmodules?ref=main`]: gitmodules,
+      [`${api}/repository/tree?ref=main&path=vendor&per_page=100&page=1`]: [{ id: "1111111", path: "vendor/lib", type: "commit" }, { id: "d1", path: "vendor/x", type: "tree" }],
+      [`${api}/repository/tree?ref=main&path=&per_page=100&page=1`]: [{ id: "2222222", path: "tool", type: "commit" }, { id: "b1", path: "gone", type: "blob" }],
+    });
+    const reader = readerFor({ provider: "gitlab", host: "gitlab.example.org", path: "team/app" }, null, fn);
+    expect(await reader.submodules!("main")).toEqual([
+      { path: "vendor/lib", url: "https://gitlab.example.org/team/lib.git", pinned: "1111111" },
+      { path: "tool", url: "https://gitlab.com/g/tool.git", pinned: "2222222" },
+    ]);
+  });
+
   it("uses the project API with the PRIVATE-TOKEN header", async () => {
     const api = "https://gitlab.example.org/api/v4/projects/team%2Fapp";
     const { fn, calls } = stubFetch({

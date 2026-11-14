@@ -55,6 +55,12 @@
   gap: 8px;
 }
 
+/* The channel's repositories: long submodule paths are cut, the list shows them whole. */
+.git-repo-pick {
+  min-width: 0;
+  max-width: min(100%, 22em);
+}
+
 .git-setup-buttons {
   display: flex;
   flex-wrap: wrap;
@@ -84,6 +90,16 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* The main repository's name in a submodule's source line: a button that reads like a link. */
+.git-source-link {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: var(--mw-link);
+  cursor: pointer;
 }
 
 .git-source a {

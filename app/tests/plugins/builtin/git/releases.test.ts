@@ -3,7 +3,8 @@ import type { Repo } from "../../../../src/plugins/builtin/git/data";
 import { releaseTarget } from "../../../../src/plugins/builtin/git/releases";
 
 const repo = (fields: Partial<Repo>): Repo => ({
-  id: 1, provider: "github", host: "github.com", path: "o/r", url: "https://github.com/o/r", defaultBranch: "main", importedBy: 1, importedAt: null, ...fields,
+  id: 1, provider: "github", host: "github.com", path: "o/r", url: "https://github.com/o/r", defaultBranch: "main", importedBy: 1, importedAt: null,
+  subPath: "", pinned: "", subrepos: false, ...fields,
 });
 
 describe("where a repository's releases go", () => {

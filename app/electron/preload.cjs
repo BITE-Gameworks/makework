@@ -173,6 +173,8 @@ contextBridge.exposeInMainWorld("makeworkDesktop", {
     openFolder: (folder) => ipcRenderer.invoke("git:open-folder", folder),
     branches: (folder) => ipcRenderer.invoke("git:branches", folder),
     log: (folder, from, skip, max) => ipcRenderer.invoke("git:log", folder, from, skip, max),
+    submodules: (folder) => ipcRenderer.invoke("git:submodules", folder),
+    prepareSubmodules: (folder) => ipcRenderer.invoke("git:prepare-submodules", folder),
     status: (folder) => ipcRenderer.invoke("git:status", folder),
     workingDiff: (folder, file) => ipcRenderer.invoke("git:working-diff", folder, file),
     show: (folder, sha) => ipcRenderer.invoke("git:show", folder, sha),

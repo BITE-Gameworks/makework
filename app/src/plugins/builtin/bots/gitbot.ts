@@ -15,9 +15,10 @@ const toCommit = (row: Record<string, unknown>): Commit => ({
 
 const line = (c: Commit) => `- \`${c.sha.slice(0, 7)}\` ${c.message} (${c.author})`;
 
-// The repo of the channel the command came from, else the only repo (or the first one).
+// The main repository of the channel the command came from, else the only one (or the first one); submodules are
+// further rows of their channel's.
 async function repoFor(context: BotContext, channelId: number): Promise<Record<string, unknown> | null> {
-  const repos = await context.read("git", "git_repos");
+  const repos = (await context.read("git", "git_repos")).filter((repo) => !repo.sub_path);
   return repos.find((repo) => Number(repo.channel_id) === channelId) ?? repos[0] ?? null;
 }
 
@@ -64,7 +65,10 @@ export const gitbot: BotType = {
         const recent = rows.toSorted((a, b) => b.at.localeCompare(a.at));
         const authors = [...new Set(recent.map((c) => c.author))];
         const more = recent.length > showInAnnouncement ? `\n- and ${recent.length - showInAnnouncement} more` : "";
-        await context.send(channel, `**${authors.join(", ")} pushed ${recent.length} commit${recent.length === 1 ? "" : "s"}**\n${recent.slice(0, showInAnnouncement).map(line).join("\n")}${more}`);
+        // Commits into a submodule say which one.
+        const [repo] = await context.read("git", "git_repos", { id: rows[0].repoId });
+        const into = repo?.sub_path ? ` to ${String(repo.sub_path)}` : "";
+        await context.send(channel, `**${authors.join(", ")} pushed ${recent.length} commit${recent.length === 1 ? "" : "s"}${into}**\n${recent.slice(0, showInAnnouncement).map(line).join("\n")}${more}`);
       } catch (e) {
         await context.log(`Announcement failed: ${e instanceof Error ? e.message : String(e)}`);
       }

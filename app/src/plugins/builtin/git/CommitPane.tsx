@@ -12,6 +12,8 @@ import DiffView from "./DiffView";
 export default function CommitPane(props: {
   context: ChannelContext;
   repo: Repo;
+  // The host of the channel's main repository (see readerHere).
+  mainHost: string | null;
   sha: string;
   commit: Commit | null;
   labels: string[];
@@ -25,7 +27,7 @@ export default function CommitPane(props: {
   const ctx = props.context;
   const [diff] = createResource(() => props.sha, async (sha) => {
     if (props.diff) return props.diff(sha);
-    const here = await readerHere(ctx.workspace.id, ctx.channel.id, props.repo);
+    const here = await readerHere(ctx.workspace.id, ctx.channel.id, props.repo, undefined, props.mainHost);
     if (!here) throw new Error("This history came from a folder on another member's device without a link, so its changes can't be read here.");
     return here.reader.diff(sha);
   });

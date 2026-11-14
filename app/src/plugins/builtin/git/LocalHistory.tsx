@@ -23,6 +23,8 @@ import { graphPage, type WorkingCopy } from "./workingCopy";
 export default function LocalHistory(props: {
   context: ChannelContext;
   repo: Repo;
+  // The host of the channel's main repository (see readerHere).
+  mainHost: string | null;
   wc: WorkingCopy;
   onShared: () => void;
   // After something that changes what the channel's history should show (merges, pushes).
@@ -229,7 +231,7 @@ export default function LocalHistory(props: {
         </section>
         <Show when={pane()}>
           {(open) => (
-            <CommitAside context={ctx} repo={props.repo} pane={open()} setPane={setPane} folder={folder()}
+            <CommitAside context={ctx} repo={props.repo} mainHost={props.mainHost} pane={open()} setPane={setPane} folder={folder()}
               commitOf={(sha) => rows().find((r) => r.sha === sha) ?? null}
               labelsOf={(sha) => labelsOf(sha).map((l) => l.name)} onSelect={(sha) => select(sha)}
               diff={async (sha) => {

@@ -2,13 +2,16 @@
 import { For, Show, createMemo, createResource, createSignal } from "solid-js";
 import { userMessage } from "../../../api/client";
 import Select from "../../../ui/Select";
+import { Icon } from "../../../theme/icons";
 import BlameView from "./BlameView";
 import { gitCall } from "./local";
 
 // More matches than this are cut off; the filter narrows them down.
 const shownUpTo = 500;
 
-export default function Files(props: { folder: string; onCommit: (sha: string) => void }) {
+// `openSubmodule`: shows one of the channel's submodules, by its path in this repository; absent for paths that aren't
+// one (a submodule is a commit, not a file, so it has no blame).
+export default function Files(props: { folder: string; onCommit: (sha: string) => void; openSubmodule?: (path: string) => (() => void) | undefined }) {
   const [branches] = createResource(() => props.folder, (folder) => gitCall((git) => git.branchList(folder)));
   const [rev, setRev] = createSignal<string | null>(null);
   const shownRev = () => rev() ?? branches()?.current ?? branches()?.branches[0]?.name ?? null;
@@ -34,7 +37,11 @@ export default function Files(props: { folder: string; onCommit: (sha: string) =
             <For each={matches().slice(0, shownUpTo)} fallback={<li class="view-note">{files.loading ? "Reading files..." : "No files match."}</li>}>
               {(f) => (
                 <li>
-                  <button class="git-file-name" classList={{ active: chosen() === f }} onClick={() => setChosen(f)} title={f}>{f}</button>
+                  <Show when={props.openSubmodule?.(f)} fallback={
+                    <button class="git-file-name" classList={{ active: chosen() === f }} onClick={() => setChosen(f)} title={f}>{f}</button>
+                  }>
+                    {(open) => <button class="git-file-name" onClick={() => open()()} title={`Show the submodule ${f}`}><Icon name="folder" /> {f}</button>}
+                  </Show>
                 </li>
               )}
             </For>

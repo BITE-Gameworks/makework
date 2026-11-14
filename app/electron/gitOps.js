@@ -1,5 +1,5 @@
 // Git for version control channels: reading (status, diffs, blame, files, branches) and the few writes the app makes
-// (commits, branches, fetch, push, merging the remote's new commits). Safety comes first, so this file never uses a
+// (commits, branches, fetch, push, merging the remote's new commits, cloning missing submodules). Safety comes first, so this file never uses a
 // forcing or history-rewriting option of any kind (tests/electron/gitOps.test.ts checks the source), and every write
 // checks first that it can't lose work:
 // - commits take only the files the user ticked, never an empty or emptied tree, and ask before removing over a
@@ -10,6 +10,8 @@
 //   fast-forwards to it, so the working copy is never left half merged;
 // - branches are deleted only with `branch -d` (git refuses unmerged work), never the current or default one,
 //   never on the remote; switching needs a clean working tree;
+// - missing submodules are cloned only into an empty or missing folder, and a submodule is put on a branch only when
+//   that changes no file;
 // - stashes are restored only when nothing in the way would be overwritten (a failed restore is undone and the stash
 //   kept), and removed from the list only after a clean restore or a confirmed delete, always picked by commit id.
 // Every function takes the `git` runner from createGit, so main.js and the tests share all of it.
@@ -144,7 +146,10 @@ const kindOf = (xy) => {
   return "modified";
 };
 
-// Changed files in the working tree and index: { path, origPath?, kind, staged }.
+// Porcelain v2 writes "S..." for a submodule (the commit it is at, not a file) and "N..." for everything else.
+const submoduleMark = (sub) => (sub?.[0] === "S" ? { submodule: true } : {});
+
+// Changed files in the working tree and index: { path, origPath?, kind, staged, submodule? }.
 export async function status(git, cwd) {
   const out = await run(git, cwd, ["status", "--porcelain=v2", "-z", "--untracked-files=all", "--no-renames"]);
   const records = out.split("\0");
@@ -157,16 +162,155 @@ export async function status(git, cwd) {
     else if (type === "1") {
       const parts = record.split(" ");
       const xy = parts[1];
-      files.push({ path: parts.slice(8).join(" "), kind: kindOf(xy), staged: xy[0] !== "." });
+      files.push({ path: parts.slice(8).join(" "), kind: kindOf(xy), staged: xy[0] !== ".", ...submoduleMark(parts[2]) });
     } else if (type === "2") {
       const parts = record.split(" ");
-      files.push({ path: parts.slice(9).join(" "), origPath: records[++i], kind: "renamed", staged: true });
+      files.push({ path: parts.slice(9).join(" "), origPath: records[++i], kind: "renamed", staged: true, ...submoduleMark(parts[2]) });
     } else if (type === "u") {
       const parts = record.split(" ");
-      files.push({ path: parts.slice(10).join(" "), kind: "conflicted", staged: false });
+      files.push({ path: parts.slice(10).join(" "), kind: "conflicted", staged: false, ...submoduleMark(parts[2]) });
     }
   }
   return files;
+}
+
+const maxSubmodules = 200;
+
+// The repository's submodules as its last commit lists them: [{ name, path, url, branch, pinned, folder }]. `url` is
+// as .gitmodules has it (it can be relative to the repository's own link), `branch` the branch .gitmodules names for
+// it (null for none, "." for the repository's own current one), `pinned` the commit recorded for it, `folder` its
+// working copy when it is checked out here, else null. A listed path that isn't a submodule in the commit is left out,
+// and a folder counts only when it is a repository of its own inside this one: .gitmodules is content anyone can write.
+export async function submodules(git, cwd) {
+  const listed = await git(cwd, ["config", "-z", "--blob", "HEAD:.gitmodules", "--get-regexp", "^submodule\\..*\\.(path|url|branch)$"],
+    { allowCodes: [0, 1, 128] });
+  if (listed.code !== 0) return [];
+  const byName = new Map();
+  for (const record of listed.out.split("\0")) {
+    // "submodule.<name>.<key>", a line break, then the value.
+    const at = record.indexOf("\n");
+    const key = /^submodule\.(.*)\.(path|url|branch)$/.exec(at < 0 ? "" : record.slice(0, at));
+    if (!key) continue;
+    const entry = byName.get(key[1]) ?? { name: key[1] };
+    entry[key[2]] = record.slice(at + 1);
+    byName.set(key[1], entry);
+  }
+  const byPath = new Map();
+  for (const { name, path: listedPath, url, branch } of byName.values()) {
+    if (typeof listedPath !== "string" || byPath.size >= maxSubmodules) continue;
+    const subPath = trimEnd(listedPath.replaceAll("\\", "/"), "/");
+    try {
+      checkPath(subPath);
+    } catch {
+      continue;
+    }
+    byPath.set(subPath, { name, url: typeof url === "string" ? url : "", branch: typeof branch === "string" && branch.trim() ? branch.trim() : null });
+  }
+  if (byPath.size === 0) return [];
+  const tree = await run(git, cwd, ["ls-tree", "-z", "HEAD", "--", ...byPath.keys()]);
+  const root = await fs.realpath(cwd);
+  const found = [];
+  for (const record of tree.split("\0")) {
+    const tab = record.indexOf("\t");
+    if (tab < 0) continue;
+    const [mode, , pinned] = record.slice(0, tab).split(" ");
+    const subPath = record.slice(tab + 1);
+    if (mode !== "160000" || !byPath.has(subPath)) continue;
+    found.push({ ...byPath.get(subPath), path: subPath, pinned, folder: await checkedOut(git, root, subFolder(cwd, subPath)) });
+  }
+  return found.sort((x, y) => (x.path < y.path ? -1 : x.path > y.path ? 1 : 0));
+}
+
+const subFolder = (cwd, subPath) => path.join(cwd, ...subPath.split("/"));
+const cloneTimeoutMs = 15 * 60_000;
+
+// Gets the repository's submodules ready to work in, one at a time (one failing never stops the others):
+// - a submodule that isn't here is cloned into its folder, at the commit the repository records for it, when that
+//   folder is missing or empty (never over files, never through a link), with git's plain checkout (a repository's
+//   own `update` setting, which can name a command, is never used);
+// - a submodule on no branch is put on its branch (see attachBranch), which never changes a file.
+// Returns submodules() with, for each: cloned, onBranch (its branch now, null for none), attached (put on it now),
+// left (why it stays as it is), error and auth (the host a sign-in is missing for). `serial(folder, fn)` runs `fn`
+// in turn with the other git work in a submodule's folder.
+export async function prepareSubmodules(git, cwd, { serial = (_folder, fn) => fn() } = {}) {
+  const own = (await repoState(git, cwd)).branch;
+  const root = await fs.realpath(cwd);
+  const results = [];
+  for (const s of await submodules(git, cwd)) {
+    const result = { ...s, cloned: false, onBranch: null, attached: false };
+    results.push(result);
+    try {
+      if (!result.folder) {
+        const left = await cloneSubmodule(git, cwd, s);
+        if (left) {
+          result.left = left;
+          continue;
+        }
+        result.folder = await checkedOut(git, root, subFolder(cwd, s.path));
+        result.cloned = !!result.folder;
+        if (!result.folder) continue;
+      }
+      const wanted = s.branch === "." ? own : s.branch;
+      Object.assign(result, await serial(result.folder, () => attachBranch(git, result.folder, wanted)));
+    } catch (e) {
+      const auth = /^\[auth ([\w.-]+)\] ?/.exec(e.message);
+      result.error = auth ? e.message.slice(auth[0].length) : e.message;
+      if (auth) result.auth = auth[1];
+    }
+  }
+  return results;
+}
+
+// Clones one submodule that isn't here; returns why it didn't, or null once it did.
+async function cloneSubmodule(git, cwd, s) {
+  const dir = subFolder(cwd, s.path);
+  const there = await fs.lstat(dir).catch(() => null);
+  if (there?.isSymbolicLink()) return "Its folder is a link, so nothing was cloned into it.";
+  if (there && !there.isDirectory()) return "A file is in its place, so nothing was cloned.";
+  if (there && (await fs.readdir(dir)).length) return "Its folder already holds files, so nothing was cloned into it.";
+  // Init copies its link, made whole, into this copy's own config; that is where the clone reads it.
+  await run(git, cwd, ["submodule", "init", "--", s.path]);
+  const url = (await git(cwd, ["config", "--get", `submodule.${s.name}.url`], { allowCodes: [0, 1] })).out.trim();
+  if (!url) return "It has no link to clone from.";
+  await remoteRun(git, cwd, url, ["submodule", "update", "--checkout", "--", s.path], cloneTimeoutMs);
+  return null;
+}
+
+// Puts a submodule that is on no branch onto `wanted` (else its remote's default branch), only where that
+// changes no file: a new branch made at its commit (following origin's of that name when there is one), or an
+// existing one that is at exactly that commit. Anything else stays as it is, with the reason.
+export async function attachBranch(git, cwd, wanted) {
+  const state = await repoState(git, cwd);
+  if (state.branch) return { onBranch: state.branch };
+  if (state.operation) return { left: `A ${state.operation} is in progress in it, so it stays on its commit.` };
+  if (!state.head) return { left: "It has no commit yet." };
+  const name = wanted || (await remoteDefault(git, cwd));
+  if (!name) return { left: "Its remote names no default branch, so it stays on its commit." };
+  try {
+    await checkBranchName(git, cwd, name);
+  } catch {
+    return { left: `${name} isn't a valid branch name, so it stays on its commit.` };
+  }
+  const local = `refs/heads/${name}`;
+  if (await branchExists(git, cwd, local)) {
+    const at = (await run(git, cwd, ["rev-parse", "--verify", "--end-of-options", local])).trim();
+    if (at !== state.head) return { left: `Its branch ${name} is at another commit, so it stays on the pinned one (switch in Branches).` };
+  } else {
+    await run(git, cwd, ["branch", "--no-track", name, state.head]);
+    if (await branchExists(git, cwd, `refs/remotes/origin/${name}`)) await run(git, cwd, ["branch", `--set-upstream-to=origin/${name}`, name]);
+  }
+  // The branch is at the commit already checked out, so switching changes no file.
+  await run(git, cwd, ["switch", name]);
+  return { onBranch: name, attached: true };
+}
+
+// `dir` as git names it when it is the top of a working copy of its own inside `root` (links followed), else null.
+async function checkedOut(git, root, dir) {
+  const real = await fs.realpath(dir).catch(() => null);
+  if (!real || !real.startsWith(root + path.sep)) return null;
+  const top = (await git(dir, ["rev-parse", "--show-toplevel"], { allowCodes: [0, 128] }).catch(() => ({ out: "" }))).out.trim();
+  if (!top || (await fs.realpath(top).catch(() => null)) !== real) return null;
+  return top;
 }
 
 // The working copy's changes to one file against the last commit (new files against nothing).
@@ -677,11 +821,11 @@ export function authRefusal(host, hadToken = false) {
       : `${name} refused the sign-in; check your git credentials for it.`}`, { auth: host });
 }
 
-// A command that talks to origin, with the environment above; sign-in failures become an auth refusal.
-async function remoteRun(git, cwd, url, args) {
+// A command that talks to `url`, with the environment above; sign-in failures become an auth refusal.
+async function remoteRun(git, cwd, url, args, timeoutMs = remoteTimeoutMs) {
   const extraEnv = await remoteEnv(git, cwd, url);
   try {
-    return await run(git, cwd, args, { timeoutMs: remoteTimeoutMs, extraEnv });
+    return await run(git, cwd, args, { timeoutMs, extraEnv });
   } catch (e) {
     if (authFailure.test(e.message)) throw authRefusal(remoteHost(url), !!extraEnv.MW_GIT_TOKEN);
     throw e;

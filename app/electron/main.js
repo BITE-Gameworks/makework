@@ -1067,6 +1067,16 @@ async function pickedFolder(folder) {
   return folder;
 }
 
+// One at a time: each reads the list and writes it back whole.
+let gitFoldersSaved = Promise.resolve();
+const allowGitFolders = (added) => (gitFoldersSaved = gitFoldersSaved.catch(() => {}).then(async () => {
+  const folders = await readGitFolders();
+  const fresh = added.filter((folder) => !folders.has(folder));
+  if (fresh.length === 0) return;
+  for (const folder of fresh) folders.add(folder);
+  await fs.writeFile(gitFoldersFile(), JSON.stringify([...folders]));
+}));
+
 // MAKEWORK_TEST_GIT_FOLDER replaces the dialog in automated checks.
 ipcMain.handle("git:pick-folder", async (event) => {
   const testFolder = testEnv("MAKEWORK_TEST_GIT_FOLDER");
@@ -1080,9 +1090,7 @@ ipcMain.handle("git:pick-folder", async (event) => {
     throw new Error(String(e.message).startsWith("Git isn't installed") ? e.message : "That folder isn't a git repository.");
   }
   const origin = (await runGit(root, ["remote", "get-url", "origin"]).catch(() => "")).trim();
-  const folders = await readGitFolders();
-  folders.add(root);
-  await fs.writeFile(gitFoldersFile(), JSON.stringify([...folders]));
+  await allowGitFolders([root]);
   return { path: root, name: path.basename(root), origin };
 });
 
@@ -1146,6 +1154,20 @@ const gitNetwork = (channel, fn) => ipcMain.handle(channel, async (_event, folde
   });
   const cwd = await pickedFolder(folder);
   return gitSerial(cwd, () => fn(git, cwd, ...args));
+});
+// A picked repository's submodules. The ones checked out become folders the page may ask about too: main finds them
+// from the picked folder's own last commit and never takes such a path from the page.
+gitRead("git:submodules", async (cwd) => {
+  const found = await gitOps.submodules(gitRunner, cwd);
+  await allowGitFolders(found.flatMap((s) => (s.folder ? [s.folder] : [])));
+  return { origin: (await runGit(cwd, ["remote", "get-url", "origin"]).catch(() => "")).trim(), submodules: found };
+});
+// The same after cloning the missing ones and putting each on its branch (gitOps.js prepareSubmodules). The page's
+// own git work in a submodule's folder waits while its branch is changed.
+gitNetwork("git:prepare-submodules", async (git, cwd) => {
+  const prepared = await gitOps.prepareSubmodules(git, cwd, { serial: gitSerial });
+  await allowGitFolders(prepared.flatMap((s) => (s.folder ? [s.folder] : [])));
+  return { origin: (await runGit(cwd, ["remote", "get-url", "origin"]).catch(() => "")).trim(), submodules: prepared };
 });
 gitRead("git:status", async (cwd) => ({ ...(await gitOps.repoState(gitRunner, cwd)), files: await gitOps.status(gitRunner, cwd) }));
 gitRead("git:working-diff", (cwd, file) => gitOps.workingDiff(gitRunner, cwd, file));

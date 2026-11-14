@@ -176,6 +176,31 @@ describe("server policy", () => {
     await expect(setRepo()).rejects.toThrow(/Edit content/);
   });
 
+  it("lets members with edit content save a repository's submodules and import into them", async () => {
+    const { a, b } = await server();
+    await a.api.plugin("roles").call("ensure-everyone");
+    await sync(a, b);
+    const gitB = b.api.plugin("git");
+    await gitB.call("set-repo", { channel_id: 1, provider: "github", host: "github.com", path: "o/r", subrepos: true });
+    const setSubrepos = () => gitB.call("set-subrepos", {
+      channel_id: 1, subrepos: JSON.stringify([{ sub_path: "lib", provider: "github", host: "github.com", path: "o/lib", pinned: "abcdef1" }]),
+    });
+    const importInto = (sha: string) => gitB.call("import-commits", {
+      channel_id: 1, sub: "lib",
+      commits: JSON.stringify([{ sha, parents: [], author_name: "Ann", author_email: "a@x", authored_at: "2026-01-01T00:00:00.000Z", message: "first" }]),
+    });
+    await setSubrepos();
+    await importInto("aaaaaaa1");
+    await sync(a, b);
+    expect((await a.api.plugin("git").read("git_repos")).map((row) => row.sub_path).sort()).toEqual(["", "lib"]);
+    expect(await a.api.plugin("git").read("git_commits")).toHaveLength(1);
+    const [role] = await a.api.plugin("roles").read("roles_roles");
+    await a.api.plugin("roles").call("edit-role", { id: role.id, name: "everyone", permissions: "send_messages" });
+    await sync(a, b);
+    await expect(gitB.call("set-subrepos", { channel_id: 1, subrepos: "[]" })).rejects.toThrow(/Edit content/);
+    await expect(importInto("aaaaaaa2")).rejects.toThrow(/Edit content/);
+  });
+
   it("lets members with edit content share build configurations, each change naming who made it", async () => {
     const { a, b, c } = await server();
     await a.api.plugin("roles").call("ensure-everyone");

@@ -192,3 +192,14 @@ codes) when the owner turned one on, else a code mailed to the account's email. 
 copy takes its code too, or the email alone would get the key. Sign-ins on a computer that already holds the account
 are local and ask for nothing. Google and GitHub sign-ins are left to those providers. Accounts from before emails,
 without an authenticator app, have nowhere to send a code and sign in with the password.
+
+## 0028 Submodules live in their repository's channel
+
+A version control channel can hold its repository's git submodules too, at every level, instead of a channel for
+each. They are further rows of `git_repos`, named by their path from the main repository's root (`sub_path`, "" for
+the main one), which is the same on every device and is the folder under a working copy; ids would have to be kept
+before their commits settle. Imports from a link bring them when ticked at setup; a folder on the computer always
+brings them. A submodule that can't be read here stays listed for a member who can. In a folder on the computer the app
+clones the submodules that are missing and puts each on its branch (the one `.gitmodules` names, else its remote's
+default), so they can be worked in like the main repository; only where that changes no file, otherwise it stays on its
+pinned commit and says why. Releases, build configurations and adding or moving submodules stay outside the app.

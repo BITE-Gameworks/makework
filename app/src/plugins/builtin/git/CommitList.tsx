@@ -9,7 +9,8 @@ import { layoutGraph } from "./graph";
 
 export interface CommitLabel {
   name: string;
-  kind: "local" | "remote" | "tag" | "detached";
+  // pinned: the commit a submodule's parent records for it.
+  kind: "local" | "remote" | "tag" | "detached" | "pinned";
   // Checked out in this copy.
   head?: boolean;
   isDefault?: boolean;
@@ -44,8 +45,8 @@ export default function CommitList(props: {
                   <For each={props.labelsOf(c.sha)}>
                     {(label) => (
                       <span class={`git-label mw-box ${colorClass(row()?.color ?? 0)}`}
-                        classList={{ default: label.isDefault, remote: label.kind === "remote", tag: label.kind === "tag", head: label.head }}
-                        title={label.head ? `${label.name} (checked out here)` : label.name}
+                        classList={{ default: label.isDefault, remote: label.kind === "remote", tag: label.kind === "tag" || label.kind === "pinned", head: label.head }}
+                        title={label.head ? `${label.name} (checked out here)` : label.kind === "pinned" ? "The commit its repository records for it" : label.name}
                         onContextMenu={props.onLabelMenu && ((e) => { e.preventDefault(); e.stopPropagation(); props.onLabelMenu!(e, label); })}>
                         {label.head ? "● " : ""}{label.name}
                       </span>

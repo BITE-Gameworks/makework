@@ -63,12 +63,16 @@ export function nameGitHubSignIn(login: string | null): void {
   writeList([...list, { key: "github.com", name, host: "github.com", used: stamp(readList()) }]);
 }
 
-// Which connection a channel uses on this computer: a key, or "none" for no token at all.
+// Which connection a channel uses on this computer: a key, or "none" for no token at all. Its submodules on the
+// repository's own host use the same one; a submodule on another host has the channel's pick for that host
+// (`ownHost`), so reading it never replaces the channel's own.
 const choicePrefix = "mw.git.connection.";
-const choiceKey = (workspaceId: string, channelId: number) => `${choicePrefix}${workspaceId}:${channelId}`;
-const readChoice = (workspaceId: string, channelId: number) => readJson<string | null>(choiceKey(workspaceId, channelId), null);
-const writeChoice = (workspaceId: string, channelId: number, key: string) => {
-  writeJson(choiceKey(workspaceId, channelId), key);
+const choiceKey = (workspaceId: string, channelId: number, ownHost?: string) =>
+  `${choicePrefix}${workspaceId}:${channelId}${ownHost ? `@${ownHost.toLowerCase()}` : ""}`;
+const readChoice = (workspaceId: string, channelId: number, ownHost?: string) =>
+  readJson<string | null>(choiceKey(workspaceId, channelId, ownHost), null);
+const writeChoice = (workspaceId: string, channelId: number, key: string, ownHost?: string) => {
+  writeJson(choiceKey(workspaceId, channelId, ownHost), key);
   setRevision((n) => n + 1);
 };
 
@@ -89,28 +93,30 @@ function eachChoice(visit: (storageKey: string, chosen: string) => void): void {
   }
 }
 
-export function useConnection(workspaceId: string, channelId: number, key: string): void {
+// `ownHost`: the pick is for the channel's submodules on that host, which isn't its repository's.
+export function useConnection(workspaceId: string, channelId: number, key: string, ownHost?: string): void {
   const list = readList();
   const at = list.findIndex((c) => c.key === key);
   if (at >= 0) writeJson(listKey(), list.map((c, i) => (i === at ? { ...c, used: stamp(list) } : c)));
-  writeChoice(workspaceId, channelId, key);
+  writeChoice(workspaceId, channelId, key, ownHost);
 }
 
 // The key of the connection a channel uses for `host`, null for none. A channel without a pick here (made before
 // connections had names, or on another computer), or with one for another host (its repository changed), takes the
 // host's own slot when it holds a token (what it used before connections had names), else the latest connection for
 // the host, and keeps it, so connections added later don't change who it acts as. A forgotten one is never replaced
-// by another: the channel asks again.
-export async function channelConnectionKey(workspaceId: string, channelId: number, host: string): Promise<string | null> {
+// by another: the channel asks again. `own`: `host` is a submodule's and not the repository's, with a pick of its own.
+export async function channelConnectionKey(workspaceId: string, channelId: number, host: string, own = false): Promise<string | null> {
   host = host.toLowerCase();
+  const ownHost = own ? host : undefined;
   const connections = await connectionsFor(host);
   // Read after the wait, so a pick made meanwhile (the setup form saves one once the repository is set) wins.
-  const chosen = readChoice(workspaceId, channelId);
+  const chosen = readChoice(workspaceId, channelId, ownHost);
   if (chosen === "none") return null;
   if (chosen?.split("#")[0] === host) return connections.some((c) => c.key === chosen) ? chosen : null;
   const fallback = connections.find((c) => c.key === host) ?? connections[0];
   if (!fallback) return null;
-  writeChoice(workspaceId, channelId, fallback.key);
+  writeChoice(workspaceId, channelId, fallback.key, ownHost);
   return fallback.key;
 }
 
@@ -131,19 +137,20 @@ export async function forgetConnection(key: string): Promise<void> {
   writeList(readList().filter((c) => c.key !== key));
 }
 
-export async function channelToken(workspaceId: string, channelId: number, host: string): Promise<string | null> {
-  const key = await channelConnectionKey(workspaceId, channelId, host);
+export async function channelToken(workspaceId: string, channelId: number, host: string, own = false): Promise<string | null> {
+  const key = await channelConnectionKey(workspaceId, channelId, host, own);
   return key ? getToken(key) : null;
 }
 
 // For the desktop app's fetch, pull and push (electron/main.js `git:account`): each working copy's folder and the key
 // of its channel's connection, "" for no token. Folders whose channel has no pick here are left out (main then uses
 // the plain "<host>" slot, as before connections had names). An emptied plain slot needs no check: main finds it empty.
-export function folderCredentials(copies: { workspaceId: string; channelId: number; folder: string }[]): Record<string, string> {
+// `ownHost`: a submodule's folder whose host isn't the channel's repository's.
+export function folderCredentials(copies: { workspaceId: string; channelId: number; folder: string; ownHost?: string }[]): Record<string, string> {
   const saved = new Set(readList().map((c) => c.key));
   const credentials: Record<string, string> = {};
-  for (const { workspaceId, channelId, folder } of copies) {
-    const chosen = readChoice(workspaceId, channelId);
+  for (const { workspaceId, channelId, folder, ownHost } of copies) {
+    const chosen = readChoice(workspaceId, channelId, ownHost);
     if (!chosen) continue;
     credentials[folder] = chosen === "none" || (chosen.includes("#") && !saved.has(chosen)) ? "" : chosen;
   }

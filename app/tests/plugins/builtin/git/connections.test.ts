@@ -112,6 +112,22 @@ describe("a channel's connection on this computer", () => {
     expect(await channelToken("ws", 1, "gitlab.com")).toBe("lab-token");
   });
 
+  it("keeps its pick while a submodule on another host gets one of its own", async () => {
+    const github = await addConnection({ host: "github.com", provider: "github", token: "gh-token", name: "GitHub" }, silent);
+    const lab = await addConnection({ host: "gitlab.com", provider: "gitlab", token: "lab-token", name: "Lab" }, silent);
+    await addConnection({ host: "gitlab.com", provider: "gitlab", token: "lab-2", name: "Lab 2" }, silent);
+    useConnection("ws", 1, github.key);
+    // The submodule's host takes its latest connection and stays on it; the channel's own pick is untouched.
+    expect(await channelToken("ws", 1, "gitlab.com", true)).toBe("lab-2");
+    expect(await channelToken("ws", 1, "github.com")).toBe("gh-token");
+    useConnection("ws", 1, lab.key, "gitlab.com");
+    expect(await channelToken("ws", 1, "gitlab.com", true)).toBe("lab-token");
+    expect(await channelToken("ws", 1, "github.com")).toBe("gh-token");
+    expect(connectionUses().get(lab.key)).toBe(1);
+    await forgetConnection(lab.key);
+    expect(await channelToken("ws", 1, "gitlab.com", true)).toBeNull();
+  });
+
   it("is none once forgotten, never another one in its place, a new GitHub sign-in included", async () => {
     const work = await addConnection({ host: "github.com", provider: "github", token: "work-token", name: "Work" }, silent);
     await addConnection({ host: "github.com", provider: "github", token: "home-token", name: "Personal" }, silent);
@@ -144,5 +160,18 @@ describe("working copies' connections", () => {
     // No token for none or a forgotten one; the GitHub sign-in by its slot; a channel without a pick is left to the
     // host's own slot.
     expect(folderCredentials(copies)).toEqual({ "/repos/1": work.key, "/repos/2": "", "/repos/3": "", "/repos/4": "github.com" });
+  });
+
+  it("give a submodule's folder its channel's connection, or the channel's pick for its own host", async () => {
+    const work = await addConnection({ host: "github.com", provider: "github", token: "work-token", name: "Work" }, silent);
+    const lab = await addConnection({ host: "gitlab.com", provider: "gitlab", token: "lab-token", name: "Lab" }, silent);
+    useConnection("ws", 1, work.key);
+    useConnection("ws", 1, lab.key, "gitlab.com");
+    expect(folderCredentials([
+      { workspaceId: "ws", channelId: 1, folder: "/repo" },
+      { workspaceId: "ws", channelId: 1, folder: "/repo/lib" },
+      { workspaceId: "ws", channelId: 1, folder: "/repo/tool", ownHost: "gitlab.com" },
+      { workspaceId: "ws", channelId: 1, folder: "/repo/other", ownHost: "example.org" },
+    ])).toEqual({ "/repo": work.key, "/repo/lib": work.key, "/repo/tool": lab.key });
   });
 });

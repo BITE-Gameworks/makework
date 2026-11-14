@@ -4,6 +4,7 @@ import { ShownError } from "../../../api/client";
 import { desktop, desktopError } from "../../../core/desktop";
 import type { ImportedCommit } from "../../../system/git";
 import { hostFile, parseUnifiedDiff, type CommitDiff, type DiffFile } from "./diff";
+import { parseGitmodules, resolveSubmoduleUrl } from "./submodules";
 import { trimChars } from "../../../core/text";
 
 export type Provider = "github" | "gitlab" | "local";
@@ -20,6 +21,18 @@ export interface Branch {
   head: string;
 }
 
+// A submodule as a reader found it in its repository.
+export interface Submodule {
+  // Inside the repository that was read.
+  path: string;
+  // Its whole link; "" when it has none that can be followed.
+  url: string;
+  // The commit the repository records for it.
+  pinned: string;
+  // Its working copy on this device, when the repository was read from a folder and it is checked out there.
+  folder?: string | null;
+}
+
 export interface RepoReader {
   defaultBranch(): Promise<string>;
   branches(): Promise<Branch[]>;
@@ -27,6 +40,8 @@ export interface RepoReader {
   history(from: string, max: number, known: (sha: string) => boolean): Promise<ImportedCommit[]>;
   // A commit's changes, file by file.
   diff(sha: string): Promise<CommitDiff>;
+  // The repository's submodules as the commit or branch `at` records them (a folder: as its last commit does).
+  submodules?(at: string): Promise<Submodule[]>;
   // For watching the remote: the branches, or null when they haven't changed since `etag` (GitHub answers that with
   // 304 Not Modified, which doesn't count against the rate limit; hosts without ETags always send the list).
   watchBranches?(etag: string | null): Promise<{ etag: string | null; branches: Branch[] } | null>;
@@ -106,6 +121,21 @@ async function request(fetchFn: Fetch, url: string, headers: Record<string, stri
     throw new ShownError(`Couldn't reach ${new URL(url).host}.`);
   }
 }
+
+// A file the host sends as JSON with its content in base64; null when the repository has no such file.
+async function fileText(fetchFn: Fetch, url: string, headers: Record<string, string>): Promise<string | null> {
+  const response = await request(fetchFn, url, headers);
+  if (response.status === 404) return null;
+  if (!response.ok) throw refusal(response, url, headers);
+  const { content = "" } = (await response.json()) as { content?: string };
+  return new TextDecoder().decode(Uint8Array.from(atob(content.replace(/\s/g, "")), (c) => c.charCodeAt(0)));
+}
+
+// The listed submodules the host also has a commit for (`pinned`, by path), their links made whole.
+const pinnedSubmodules = (listed: { path: string; url: string }[], pinned: Map<string, string>, repoUrl: string): Submodule[] =>
+  listed.filter((s) => pinned.has(s.path)).map((s) => ({ path: s.path, url: resolveSubmoduleUrl(repoUrl, s.url), pinned: pinned.get(s.path)! }));
+
+const encodedPath = (path: string) => path.split("/").map(encodeURIComponent).join("/");
 
 // Branches with an ETag: null when unchanged (304); a long list is then read in full.
 async function watchedBranches(fetchFn: Fetch, url: string, headers: Record<string, string>, etag: string | null,
@@ -204,6 +234,23 @@ function github(ref: RepoRef, token: string | null, fetchFn: Fetch): RepoReader 
       }
       return { files, truncated: page > maxDiffPages };
     },
+    async submodules(at) {
+      const text = await fileText(fetchFn, `${api}/contents/.gitmodules?ref=${encodeURIComponent(at)}`, headers);
+      const listed = text ? parseGitmodules(text) : [];
+      if (!listed.length) return [];
+      // One request for every submodule's commit; a tree too large for it is asked path by path.
+      const { tree = [], truncated = false } = await get<{ tree?: { path: string; type: string; sha: string }[]; truncated?: boolean }>(
+        `${api}/git/trees/${encodeURIComponent(at)}?recursive=1`);
+      const pinned = new Map(tree.filter((entry) => entry.type === "commit").map((entry) => [entry.path, entry.sha]));
+      if (truncated) {
+        for (const s of listed) {
+          if (pinned.has(s.path)) continue;
+          const entry = await get<{ type?: string; sha?: string }>(`${api}/contents/${encodedPath(s.path)}?ref=${encodeURIComponent(at)}`).catch(() => null);
+          if (entry?.type === "submodule" && entry.sha) pinned.set(s.path, entry.sha);
+        }
+      }
+      return pinnedSubmodules(listed, pinned, `https://github.com/${ref.path}`);
+    },
   };
 }
 
@@ -271,6 +318,19 @@ function gitlab(ref: RepoRef, token: string | null, fetchFn: Fetch): RepoReader 
       }
       return { files, truncated: page > maxDiffPages };
     },
+    async submodules(at) {
+      const text = await fileText(fetchFn, `${api}/repository/files/${encodeURIComponent(".gitmodules")}?ref=${encodeURIComponent(at)}`, headers);
+      const listed = text ? parseGitmodules(text) : [];
+      // A submodule shows in its folder's listing as an entry of type "commit".
+      const folders = new Set(listed.map((s) => s.path.slice(0, Math.max(0, s.path.lastIndexOf("/")))));
+      const pinned = new Map<string, string>();
+      for (const folder of folders) {
+        await pages((page) => get<{ id: string; path: string; type: string }[]>(
+          `${api}/repository/tree?ref=${encodeURIComponent(at)}&path=${encodeURIComponent(folder)}&per_page=${perPage}&page=${page}`),
+        (items) => { for (const entry of items) if (entry.type === "commit") pinned.set(entry.path, entry.id); return true; });
+      }
+      return pinnedSubmodules(listed, pinned, `https://${ref.host}/${ref.path}`);
+    },
   };
 }
 
@@ -295,6 +355,10 @@ function local(ref: RepoRef): RepoReader {
     async diff(sha) {
       const { patch, truncated } = await git.show(ref.path, sha).catch((e) => { throw desktopError(e); });
       return { files: parseUnifiedDiff(patch), truncated };
+    },
+    async submodules() {
+      const { origin, submodules } = await git.submodules(ref.path).catch((e) => { throw desktopError(e); });
+      return submodules.map((s) => ({ path: s.path, url: resolveSubmoduleUrl(origin, s.url), pinned: s.pinned, folder: s.folder }));
     },
   };
 }

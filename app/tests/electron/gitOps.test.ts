@@ -7,7 +7,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   blame, branches, checkPath, commit, createBranch, credentialName, createGit, deleteBranch, fetchRemote, graph, listFiles, mergeBranch,
-  mergeConflicts, mergeCurrentInto, mergeDiff, mergeFile, mergeRemote, mergeResolved, push, pushCheck, remoteEnv, remoteHost, restoreCommit, showCommit, stashDelete, stashList, stashPush, stashRestore, status, switchBranch, withCredentials,
+  mergeConflicts, mergeCurrentInto, mergeDiff, mergeFile, mergeRemote, mergeResolved, push, pushCheck, remoteEnv, remoteHost, restoreCommit, showCommit, stashDelete, stashList, stashPush, stashRestore, status, attachBranch, prepareSubmodules, submodules, switchBranch, withCredentials,
 } from "../../electron/gitOps.js";
 
 let root: string;
@@ -36,7 +36,9 @@ async function commitAll(dir: string, message: string) {
 beforeEach(async () => {
   root = fs.mkdtempSync(path.join(os.tmpdir(), "mw-gitops-"));
   const config = path.join(root, "gitconfig");
-  fs.writeFileSync(config, "[user]\n\tname = Tester\n\temail = t@example.com\n[init]\n\tdefaultBranch = main\n[commit]\n\tgpgsign = false\n");
+  // Git refuses submodules from local folders unless told; the test repositories are all local folders.
+  fs.writeFileSync(config, "[user]\n\tname = Tester\n\temail = t@example.com\n[init]\n\tdefaultBranch = main\n[commit]\n\tgpgsign = false\n"
+    + "[protocol \"file\"]\n\tallow = always\n");
   env = { ...process.env, GIT_CONFIG_GLOBAL: config, GIT_CONFIG_NOSYSTEM: "1", GIT_SSH_COMMAND: "false" };
   git = createGit({ env });
   remote = path.join(root, "remote.git");
@@ -746,6 +748,148 @@ describe("MakeWork's own credentials", () => {
       return { out: "", code: 0, truncated: false };
     }, () => null);
     await expect(fetchRemote(fake, a)).rejects.toThrow(/^\[auth github\.com\] GitHub needs you to sign in/);
+  });
+});
+
+describe("submodules", () => {
+  // A second repository, added to A as a submodule at `sub` (file links between test folders need allowing).
+  function addSubmodule(sub: string, url?: string) {
+    const lib = path.join(root, `${sub.replaceAll("/", "-")}-src`);
+    sh(root, "init", "-q", "-b", "main", lib);
+    write(lib, "lib.txt", "lib\n");
+    sh(lib, "add", ".");
+    sh(lib, "commit", "-q", "-m", "Library");
+    sh(a, "-c", "protocol.file.allow=always", "submodule", "add", "-q", lib, sub);
+    if (url) sh(a, "config", "-f", ".gitmodules", `submodule.${sub}.url`, url);
+    sh(a, "add", ".");
+    sh(a, "commit", "-q", "-m", `Add ${sub}`);
+    return { lib, pinned: head(lib) };
+  }
+
+  it("lists what the last commit records, with the folder of each one checked out here", async () => {
+    expect(await submodules(git, a)).toEqual([]);
+    const lib = addSubmodule("vendor/lib", "../lib.git");
+    const tool = addSubmodule("tool");
+    const found = await submodules(git, a);
+    expect(found.map((s) => [s.name, s.path, s.url, s.pinned, s.branch])).toEqual([
+      ["tool", "tool", tool.lib, tool.pinned, null], ["vendor/lib", "vendor/lib", "../lib.git", lib.pinned, null],
+    ]);
+    expect(found.map((s) => s.folder && fs.realpathSync(s.folder))).toEqual([fs.realpathSync(path.join(a, "tool")), fs.realpathSync(path.join(a, "vendor/lib"))]);
+    // The submodule's folder is a repository of its own.
+    expect((await branches(git, found[0].folder!)).current).toBe("main");
+
+    // A clone that never fetched them: listed, without a folder.
+    sh(a, "push", "-q", "origin", "main");
+    const c = path.join(root, "c");
+    sh(root, "clone", "-q", remote, c);
+    expect((await submodules(git, c)).map((s) => [s.path, s.pinned, s.folder])).toEqual([["tool", tool.pinned, null], ["vendor/lib", lib.pinned, null]]);
+  });
+
+  it("leaves out listed paths that aren't submodules, and never names a folder outside the repository", async () => {
+    addSubmodule("tool");
+    fs.appendFileSync(path.join(a, ".gitmodules"), '[submodule "fake"]\n\tpath = a.txt\n\turl = https://example.com/x.git\n'
+      + '[submodule "out"]\n\tpath = ../b\n\turl = https://example.com/y.git\n');
+    sh(a, "add", ".gitmodules");
+    sh(a, "commit", "-q", "-m", "Odd entries");
+    expect((await submodules(git, a)).map((s) => s.path)).toEqual(["tool"]);
+    // A link in the submodule's place that leads out of the repository isn't a folder of it.
+    fs.rmSync(path.join(a, "tool"), { recursive: true, force: true });
+    fs.symlinkSync(b, path.join(a, "tool"));
+    expect((await submodules(git, a)).map((s) => [s.path, s.folder])).toEqual([["tool", null]]);
+  });
+
+  // A clone of A, after A's submodules were pushed, that has none of them yet.
+  function freshClone() {
+    sh(a, "push", "-q", "origin", "main");
+    const c = path.join(root, "c");
+    sh(root, "clone", "-q", remote, c);
+    return c;
+  }
+  const at = (dir: string) => sh(dir, "rev-parse", "HEAD");
+  const branchOf = (dir: string) => sh(dir, "branch", "--show-current");
+
+  it("clones the missing ones and puts each on its remote's default branch, following it", async () => {
+    const tool = addSubmodule("tool");
+    const lib = addSubmodule("vendor/lib");
+    const c = freshClone();
+    const prepared = await prepareSubmodules(git, c);
+    expect(prepared.map((s) => [s.path, s.cloned, s.onBranch, s.attached, s.error ?? null])).toEqual([
+      ["tool", true, "main", true, null], ["vendor/lib", true, "main", true, null],
+    ]);
+    const toolDir = path.join(c, "tool");
+    expect(fs.realpathSync(prepared[0].folder!)).toBe(fs.realpathSync(toolDir));
+    expect([at(toolDir), at(path.join(c, "vendor/lib"))]).toEqual([tool.pinned, lib.pinned]);
+    expect(sh(toolDir, "rev-parse", "--abbrev-ref", "main@{upstream}")).toBe("origin/main");
+    // Nothing changed for the repository itself.
+    expect(await status(git, c)).toEqual([]);
+    // Again: nothing to do.
+    expect((await prepareSubmodules(git, c)).map((s) => [s.cloned, s.attached, s.onBranch])).toEqual([[false, false, "main"], [false, false, "main"]]);
+  });
+
+  it("takes the branch .gitmodules names, and '.' as the repository's own", async () => {
+    const tool = addSubmodule("tool");
+    sh(tool.lib, "branch", "dev");
+    addSubmodule("same");
+    sh(a, "config", "-f", ".gitmodules", "submodule.tool.branch", "dev");
+    sh(a, "config", "-f", ".gitmodules", "submodule.same.branch", ".");
+    sh(a, "commit", "-q", "-am", "Branches");
+    const c = freshClone();
+    expect((await prepareSubmodules(git, c)).map((s) => [s.path, s.branch, s.onBranch])).toEqual([["same", ".", "main"], ["tool", "dev", "dev"]]);
+    expect(sh(path.join(c, "tool"), "rev-parse", "--abbrev-ref", "dev@{upstream}")).toBe("origin/dev");
+  });
+
+  it("leaves a submodule on its commit when that would change files, or something is in progress", async () => {
+    const tool = addSubmodule("tool");
+    const c = freshClone();
+    await prepareSubmodules(git, c);
+    const dir = path.join(c, "tool");
+    // Its main moves on; the submodule goes back to the pinned commit with a change of its own.
+    write(dir, "later.txt", "later\n");
+    sh(dir, "add", ".");
+    sh(dir, "commit", "-q", "-m", "Later");
+    sh(dir, "switch", "-q", "--detach", tool.pinned);
+    write(dir, "lib.txt", "edited\n");
+    const left = await attachBranch(git, dir, null);
+    expect(left.left).toMatch(/main is at another commit/);
+    expect([at(dir), branchOf(dir), read(dir, "lib.txt")]).toEqual([tool.pinned, "", "edited\n"]);
+
+    // A new branch at the same commit changes nothing, so a change in the way doesn't matter.
+    expect(await attachBranch(git, dir, "fix")).toEqual({ onBranch: "fix", attached: true });
+    expect([at(dir), read(dir, "lib.txt")]).toEqual([tool.pinned, "edited\n"]);
+
+    sh(dir, "switch", "-q", "--detach", tool.pinned);
+    fs.writeFileSync(path.join(sh(dir, "rev-parse", "--absolute-git-dir"), "MERGE_HEAD"), `${tool.pinned}\n`);
+    expect((await attachBranch(git, dir, "other")).left).toMatch(/merge is in progress/);
+    expect(branchOf(dir)).toBe("");
+  });
+
+  it("clones the others when one can't be reached, and never into a folder with files", async () => {
+    addSubmodule("tool");
+    addSubmodule("gone");
+    addSubmodule("full");
+    sh(a, "config", "-f", ".gitmodules", "submodule.gone.url", path.join(root, "nowhere.git"));
+    sh(a, "commit", "-q", "-am", "Moved away");
+    const c = freshClone();
+    write(c, "full/mine.txt", "mine\n");
+    const prepared = await prepareSubmodules(git, c);
+    expect(prepared.map((s) => [s.path, s.cloned, !!s.error, s.left ?? null])).toEqual([
+      ["full", false, false, "Its folder already holds files, so nothing was cloned into it."],
+      ["gone", false, true, null],
+      ["tool", true, false, null],
+    ]);
+    expect(read(c, "full/mine.txt")).toBe("mine\n");
+  });
+
+  it("marks a submodule among the changes once it is at another commit", async () => {
+    addSubmodule("tool");
+    const tool = path.join(a, "tool");
+    write(tool, "more.txt", "more\n");
+    sh(tool, "add", ".");
+    sh(tool, "commit", "-q", "-m", "More");
+    write(a, "a.txt", "changed\n");
+    expect((await status(git, a)).map((f) => [f.path, f.kind, f.submodule ?? false])).toEqual([["a.txt", "modified", false], ["tool", "modified", true]]);
+    await commitAll(a, "Move tool");
+    expect((await submodules(git, a))[0].pinned).toBe(head(tool));
   });
 });
 

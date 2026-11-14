@@ -3,7 +3,7 @@
 import type {
   GitBlameLine, GitBranchList, GitBranchMergeResult, GitChange, GitCommitResult, GitConflictFile, GitConflicts, GitFileTexts, GitGraph,
   GitMergeResult, GitMergeTarget, GitPatch, GitPushCheck, GitPushResult, GitRemoteChange, GitRepoState, GitResolution, GitResolvedResult,
-  GitRevertResult, GitStash, GitStashResult,
+  GitPreparedSubmodule, GitRevertResult, GitStash, GitStashResult, GitSubmodule,
 } from "../src/core/desktop";
 
 export type Git = (cwd: string, args: string[], options?: {
@@ -28,6 +28,11 @@ export function checkPath(p: string): string;
 export function checkBranchName(git: Git, cwd: string, name: string): Promise<string>;
 export function repoState(git: Git, cwd: string): Promise<GitRepoState>;
 export function status(git: Git, cwd: string): Promise<GitChange[]>;
+export function submodules(git: Git, cwd: string): Promise<GitSubmodule[]>;
+export function prepareSubmodules(git: Git, cwd: string, options?: {
+  serial?: <T>(folder: string, fn: () => Promise<T>) => Promise<T>;
+}): Promise<GitPreparedSubmodule[]>;
+export function attachBranch(git: Git, cwd: string, wanted: string | null): Promise<Pick<GitPreparedSubmodule, "onBranch" | "attached" | "left">>;
 export function workingDiff(git: Git, cwd: string, file: string): Promise<GitPatch>;
 export function showCommit(git: Git, cwd: string, sha: string): Promise<GitPatch>;
 export function listFiles(git: Git, cwd: string, rev: string): Promise<string[]>;

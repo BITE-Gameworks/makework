@@ -469,6 +469,20 @@ computer. Releases are offered only with one that may write to the repository; a
 GitHub is not one.
 _Avoid_: login, GitHub account, credentials, saved token
 
+**main repository**:
+The repository a version control channel was connected to, as opposed to the submodules imported with it.
+_Avoid_: root repository, parent repository (a submodule inside another submodule has a parent too)
+
+**submodule**:
+A repository that another repository includes at a path, as git's submodules; a version control channel shows its
+main repository's submodules, at every level, each named by its path from the main repository's root.
+_Avoid_: subrepo, nested repository, child repository
+
+**pinned commit**:
+The commit a repository records for one of its submodules on its default branch: what that submodule is at for
+anyone who checks the repository out.
+_Avoid_: submodule head, recorded sha
+
 **release file**:
 A file attached to a release, built for it or added by hand: an installer, a package, a program or a zip.
 _Avoid_: binary, asset, attachment

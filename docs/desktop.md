@@ -17,6 +17,18 @@ paths.
 - Never move a whole file through IPC or into one ArrayBuffer: Chromium kills the page for IPC messages over about
   128 MB and `fs.readFile` stops at 2 GiB. Use `core/stream.ts` chunks and `mwc://content/<hash>`.
 
+## Git working copies
+
+- The page reads only git folders the user picked in the dialog (`<userData>/git-folders.json`), through one handler
+  per operation in `electron/gitOps.js`; nothing runs git with arguments from the page.
+- A picked folder's checked-out submodules join that list when the page asks for them (`git:submodules`): main finds
+  them from the folder's own last commit and checks each is a repository of its own inside it, never taking a path
+  from the page.
+- `git:prepare-submodules` clones the missing ones (only into a missing or empty folder, never through a link, always
+  with git's plain checkout so a repository's own `update` command never runs) and puts each one that is on no branch
+  on its branch, made at its commit or switched to only when it is at that commit, so no file changes. Opening a
+  channel and importing do it; the background watch only reads.
+
 ## Windows
 
 - View windows (a tab popped out) and terminal windows: decision 0009. Only the main window owns account-wide effects.

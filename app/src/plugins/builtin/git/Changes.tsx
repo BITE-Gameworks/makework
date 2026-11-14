@@ -19,7 +19,8 @@ const kindLabel: Record<GitChange["kind"], string> = {
   modified: "M", added: "A", deleted: "D", renamed: "R", untracked: "New", conflicted: "Conflict",
 };
 
-export default function Changes(props: { folder: string; wc: WorkingCopy; onCommitted: () => void }) {
+// `openSubmodule`: shows one of the channel's submodules, by its path in this repository; absent for paths that aren't one.
+export default function Changes(props: { folder: string; wc: WorkingCopy; onCommitted: () => void; openSubmodule?: (path: string) => (() => void) | undefined }) {
   const [state, { refetch }] = createResource(() => props.folder, (folder) => gitCall((git) => git.status(folder)));
   // Refreshed when the window comes back, e.g. after editing in another program.
   onMount(() => {
@@ -148,7 +149,12 @@ export default function Changes(props: { folder: string; wc: WorkingCopy; onComm
                 <button class="git-change-name" onClick={() => setShown(shown() === f.path ? null : f.path)} title={f.path}>
                   <span class={`git-status git-status-${f.kind === "untracked" ? "added" : f.kind === "conflicted" ? "deleted" : f.kind}`}>{kindLabel[f.kind]}</span>
                   <span class="git-diff-path">{f.path}</span>
+                  <Show when={f.submodule}><span class="muted"> (submodule)</span></Show>
                 </button>
+                <Show when={f.submodule && props.openSubmodule?.(f.path)}>
+                  {(open) => <button class="icon-button" title="Show this submodule" aria-label={`Show the submodule ${f.path}`} onClick={() => open()()}>
+                    <Icon name="folder" /></button>}
+                </Show>
               </div>
             )}
           </For>

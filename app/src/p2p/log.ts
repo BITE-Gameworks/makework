@@ -54,7 +54,9 @@ export const genesisAction = "workspace.create";
 // 9 (2026-10-18): permanently deleting a closed invite (revoked, expired or used up); older apps would refuse
 // those delete commits.
 // 10 (2026-11-03): members' keys in their profiles; older apps would refuse those columns.
-export const logVersion = 10;
+// 11 (2026-11-14): a version control channel's submodules as further rows of git_repos (sub_path, pinned, subrepos);
+// older apps would refuse those columns and take any of the rows for the channel's repository.
+export const logVersion = 11;
 
 // Old signed commits keep their original names and hashes; map them only for replay.
 export function replayCommit(commit: Commit): Commit {
