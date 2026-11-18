@@ -373,13 +373,15 @@ async function receive(sealed: Sealed): Promise<Received> {
   if (mine) message.attachments.forEach((a) => sharedWith(peer).add(a.hash));
   await save(message);
   const looking = isLooking(peer);
+  // Read before the update: the conversation is a live store object.
+  const unreadBefore = c.unread;
   updateConversation(peer, {
     lastAt: Math.max(c.lastAt, message.at), lastText: preview(message), unread: mine || looking ? c.unread : c.unread + 1,
   });
   if (!mine && !looking) {
     playSound("notification");
     notify({
-      tag: `dm:${peer}`, title: c.displayName, body: preview(message), icon: c.avatar.startsWith("data:") ? c.avatar : undefined,
+      kind: "message", again: unreadBefore > 0, tag: `dm:${peer}`, title: c.displayName, body: preview(message), icon: c.avatar.startsWith("data:") ? c.avatar : undefined,
       onClick: () => openConversation(peer),
     });
   }

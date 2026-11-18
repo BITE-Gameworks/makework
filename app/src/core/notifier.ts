@@ -1,6 +1,7 @@
 // Desktop notifications (the system's own, through the web Notification API; Electron passes them to the
-// desktop). Android's WebView has no Notification API, so the Android app shows them through Capacitor. Used for
-// @mentions. Silent: the app plays its own sounds.
+// desktop). Android's WebView has no Notification API, so the Android app shows them through Capacitor. Silent: the
+// app plays its own sounds. The phone is always at hand and the app is mostly out of view there, so it shows only
+// what is addressed to you: mentions, and the first unread private message from someone (ADR 0032).
 import { createSignal } from "solid-js";
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
@@ -73,7 +74,14 @@ export function setGroupMentionsOn(workspaceId: string, change: Partial<GroupMen
   writeJson(groupsKey, groups());
 }
 
+// What a notice is about: a mention of you (you, @everyone/@here or a role of yours), a private message, a reply in
+// your thread, new commits, a friend request, or news about a workspace itself (removed, refused, update needed).
+export type NoticeKind = "mention" | "message" | "reply" | "commits" | "friend" | "workspace";
+
 export interface Notice {
+  kind: NoticeKind;
+  // A private message while an earlier one from the same person is still unread.
+  again?: boolean;
   // A newer notice with the same tag replaces the older one.
   tag: string;
   title: string;
@@ -82,12 +90,17 @@ export interface Notice {
   onClick?: () => void;
 }
 
+// Whether the phone shows this notice.
+export function phoneShows(notice: Pick<Notice, "kind" | "again">): boolean {
+  return notice.kind === "mention" || (notice.kind === "message" && !notice.again);
+}
+
 export function notify(notice: Notice): void {
   // Notifications belong to the main window; a view window showing the same workspace would double them.
   if (isPopout()) return;
   if (onlineStatus() === "dnd" || !on()) return;
   if (phone) {
-    if (permission() !== "granted") return;
+    if (permission() !== "granted" || !phoneShows(notice)) return;
     const id = phoneId(notice.tag);
     phoneClicks.set(id, () => notice.onClick?.());
     void LocalNotifications.schedule({ notifications: [{ id, title: notice.title, body: notice.body, silent: true }] });

@@ -55,6 +55,7 @@ function notifyMention(workspaceId: string, message: ChatMessage) {
   const channel = findChannel(workspaceId, message.channelId)?.name ?? "chat";
   const server = workspaces.byId[workspaceId]?.info.name ?? "";
   notify({
+    kind: "mention",
     tag: `mention:${workspaceId}:${message.channelId}`,
     title: `${author.displayName} mentioned you`,
     body: `#${channel}${server ? ` · ${server}` : ""}\n${snippet(readableMentions(workspaceId, message.body), 140)}`,
@@ -67,6 +68,7 @@ function notifyReply(workspaceId: string, message: ChatMessage) {
   const author = member(workspaceId, message.authorId);
   const channel = findChannel(workspaceId, message.channelId)?.name ?? "chat";
   notify({
+    kind: "reply",
     tag: `reply:${workspaceId}:${message.threadId}`,
     title: `${author.displayName} replied to you`,
     body: `#${channel}\n${snippet(readableMentions(workspaceId, message.body), 140)}`,

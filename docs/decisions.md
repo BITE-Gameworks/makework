@@ -238,3 +238,13 @@ window's friends, so member menus there are right. Rejected: the view window joi
 another device of the account. The room can't tell the account's own devices from the other side, so each window
 would show the person as online whenever the other window was open and wait out the delivery ack on every send, and
 unread counts and the list would have two writers.
+
+## 0032 The phone notifies only for mentions and the first private message
+
+The Android app shows a system notification only for a mention of you (you, @everyone/@here, a role of yours) and
+for the first unread private message from someone; more messages from that person stay quiet until the
+conversation is read. Replies in your threads, new commits, friend requests and workspace news don't notify there.
+The desktop shows them all, because a focused window already hides what you are looking at, but the phone is always
+at hand with the app out of view, so everything that notifies there interrupts. One rule in `core/notifier.ts`
+(`phoneShows`) decides it from the notice's kind. Rejected: a setting per kind of notice (more choices than people
+need for now), and mentions only (a private message would go unnoticed until the app was opened).

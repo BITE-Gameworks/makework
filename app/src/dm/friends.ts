@@ -39,7 +39,7 @@ export function applyRelations(next: Relations): void {
   if (!before) return;
   for (const person of next.incoming.filter((p) => !before.incoming.some((b) => b.id === p.id))) {
     playSound("notification");
-    notify({ tag: `friend:${person.id}`, title: "Friend request", body: `${person.profile.displayName} (@${person.username}) wants to be friends.`, onClick: openFriends });
+    notify({ kind: "friend", tag: `friend:${person.id}`, title: "Friend request", body: `${person.profile.displayName} (@${person.username}) wants to be friends.`, onClick: openFriends });
   }
 }
 

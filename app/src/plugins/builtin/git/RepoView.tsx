@@ -441,7 +441,7 @@ export default function RepoView(props: {
     if (f) void wc.refresh();
     setRemoteNote(`The remote has changes: ${text}.${f ? " Your branches and files aren't touched; Pull brings them in." : ""}`);
     if (!isLooking(workspaceId, channelId))
-      notify({ tag: `git:${workspaceId}:${channelId}:${sub}`, title: `New commits in ${channelName(workspaceId, channelId, sub)}`, body: text,
+      notify({ kind: "commits", tag: `git:${workspaceId}:${channelId}:${sub}`, title: `New commits in ${channelName(workspaceId, channelId, sub)}`, body: text,
         onClick: () => openChannel(workspaceId, channelId) });
     await syncQuietly();
   };

@@ -175,6 +175,7 @@ export async function openWorkspace(entry: WorkspaceEntry, account: Account, arr
       ...(inviteToken ? { inviteToken } : {}),
     },
     onIncompatible: (peer) => notify({
+      kind: "workspace",
       tag: `update-required:${entry.id}`,
       title: "Update MakeWork",
       body: `Member ${peer} is using a version that cannot read this workspace's history.`,
@@ -309,7 +310,7 @@ export async function openWorkspace(entry: WorkspaceEntry, account: Account, arr
     if (!reason || joinRefusalShown) return;
     joinRefusalShown = true;
     notify({
-      tag: `join-refused:${entry.id}`, title: "You couldn't join the workspace",
+      kind: "workspace", tag: `join-refused:${entry.id}`, title: "You couldn't join the workspace",
       body: `${reason} Leave it and join again with a new invite.`,
     });
   };
@@ -367,7 +368,7 @@ export async function openWorkspace(entry: WorkspaceEntry, account: Account, arr
     console.warn("Profile not sent:", e);
     // The invite stopped admitting before the join got this far (expired, deleted, used up): say so.
     if (joining && !isMember(ledger)) notify({
-      tag: `join-refused:${entry.id}`, title: "You couldn't join the workspace",
+      kind: "workspace", tag: `join-refused:${entry.id}`, title: "You couldn't join the workspace",
       body: `${e instanceof Error ? e.message : String(e)} Leave it and join again with a new invite.`,
     });
   });
