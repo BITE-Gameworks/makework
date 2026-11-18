@@ -463,6 +463,11 @@ To decide what a conflict becomes: some lines of either side, both, neither, or 
 can also take one side's version. A merge with conflicts is made only once every one is resolved.
 _Avoid_: fix
 
+**discard** (changes):
+To take uncommitted changes out of the files on this computer, so they are as in the last commit: whole files (new
+ones are deleted) or the changes picked in a file's diff. Undo brings them back until the app closes.
+_Avoid_: revert (that makes a commit), reset, delete
+
 **host connection**:
 A member's named token for a git host (github.com, a GitLab server) on one computer, from MakeWork's GitHub sign-in
 or pasted in; a member can have several per host, and each version control channel uses one of them on that

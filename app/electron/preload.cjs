@@ -205,6 +205,8 @@ contextBridge.exposeInMainWorld("makeworkDesktop", {
     stashPush: (folder, options) => ipcRenderer.invoke("git:stash-push", folder, options),
     stashRestore: (folder, sha) => ipcRenderer.invoke("git:stash-restore", folder, sha),
     stashDelete: (folder, sha) => ipcRenderer.invoke("git:stash-delete", folder, sha),
+    discard: (folder, options) => ipcRenderer.invoke("git:discard", folder, options),
+    applyPatch: (folder, patch, reverse) => ipcRenderer.invoke("git:apply-patch", folder, patch, reverse),
     useAccount: (id, credentials) => ipcRenderer.invoke("git:account", id, credentials),
   },
   web: {

@@ -266,6 +266,10 @@ export interface DesktopBridge {
     stashPush(folder: string, options?: { paths?: string[]; message?: string; includeUntracked?: boolean }): Promise<GitStashResult>;
     stashRestore(folder: string, sha: string): Promise<GitStashResult>;
     stashDelete(folder: string, sha: string): Promise<void>;
+    // Discarding: the chosen files' changes (all, or `paths`) go and come back with the patch it returns (decision
+    // 0033); `applyPatch` applies such a patch, in reverse to take changes out.
+    discard(folder: string, options?: { paths?: string[]; includeUntracked?: boolean }): Promise<GitDiscardResult>;
+    applyPatch(folder: string, patch: string | Uint8Array, reverse: boolean): Promise<void>;
     // A new commit on the current branch whose files are as they were at `sha` (one of its earlier commits).
     revertTo(folder: string, sha: string, options?: { allowMassDelete?: boolean }): Promise<GitRevertResult>;
     // The signed-in account, whose own host connections fetch, pull and push use (the tokens stay in main), and the
@@ -560,6 +564,8 @@ export interface GitStash {
   time: string;
   files: string[];
 }
+// `patch`: the discarded changes in bytes (a file needn't be UTF-8), for undo.
+export type GitDiscardResult = { ok: true; patch: Uint8Array; files: string[] } | { ok: false; reason: "nothing" };
 export type GitStashResult =
   | { ok: true; sha?: string; files: string[] }
   | { ok: false; reason: "nothing" }

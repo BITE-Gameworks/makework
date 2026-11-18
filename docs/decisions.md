@@ -249,3 +249,15 @@ The desktop shows them all, because a focused window already hides what you are 
 at hand with the app out of view, so everything that notifies there interrupts. One rule in `core/notifier.ts`
 (`phoneShows`) decides it from the notice's kind. Rejected: a setting per kind of notice (more choices than people
 need for now), and mentions only (a private message would go unnoticed until the app was opened).
+
+## 0033 Discarded changes are a patch kept for undo
+
+A working copy's uncommitted changes can be discarded, whole files or the lines picked in a file's diff, and undo
+brings them back until the app closes. Every other git write in the app is built so it can't lose work, so a discard
+is one patch: the chosen changes against the last commit (binary, in bytes), which git applies in reverse all or
+nothing after checking that it fits, and which the channel's history keeps; undo applies it forward, redo in reverse
+again. Nothing leaves the files that isn't in that patch, and a patch that no longer fits (the file changed since)
+touches nothing. Picked lines make a smaller patch of their own (`pickedPatch` in plugins/builtin/git/diff.ts).
+Rejected: `restore`, `checkout` or `clean` (nothing to bring back, and outside the rule that writes can't lose work),
+and keeping discards as stashes (picked lines can't be stashed, and the list would fill with them). Changes too big
+to keep (over 32 MB) are refused; stashing and deleting the stash does it on purpose.

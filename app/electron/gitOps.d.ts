@@ -3,16 +3,17 @@
 import type {
   GitBlameLine, GitBranchList, GitBranchMergeResult, GitChange, GitCommitResult, GitConflictFile, GitConflicts, GitFileTexts, GitGraph,
   GitMergeResult, GitMergeTarget, GitPatch, GitPushCheck, GitPushResult, GitRemoteChange, GitRepoState, GitResolution, GitResolvedResult,
-  GitPreparedSubmodule, GitRevertResult, GitStash, GitStashResult, GitSubmodule,
+  GitPreparedSubmodule, GitRevertResult, GitStash, GitStashResult, GitSubmodule, GitDiscardResult,
 } from "../src/core/desktop";
 
 export type Git = (cwd: string, args: string[], options?: {
   timeoutMs?: number; maxBytes?: number; allowCodes?: number[]; truncate?: boolean; extraEnv?: Record<string, string | undefined>;
-  input?: string | null;
+  input?: string | Uint8Array | null; bytes?: boolean;
 }) => Promise<{ out: string; code: number; truncated: boolean }>;
 
 export const shaPattern: RegExp;
 export const massDeleteShare: number;
+export const maxDiscardBytes: number;
 export class GitRefusal extends Error {
   details: Record<string, unknown>;
 }
@@ -53,6 +54,8 @@ export function stashList(git: Git, cwd: string): Promise<GitStash[]>;
 export function stashPush(git: Git, cwd: string, options?: { paths?: string[]; message?: string; includeUntracked?: boolean }): Promise<GitStashResult>;
 export function stashRestore(git: Git, cwd: string, sha: string): Promise<GitStashResult>;
 export function stashDelete(git: Git, cwd: string, sha: string): Promise<void>;
+export function discardFiles(git: Git, cwd: string, options?: { paths?: string[]; includeUntracked?: boolean }): Promise<GitDiscardResult>;
+export function applyPatch(git: Git, cwd: string, options: { patch: string | Uint8Array; reverse?: boolean }): Promise<void>;
 export function remoteHeads(git: Git, cwd: string): Promise<Record<string, string>>;
 export function fetchRemote(git: Git, cwd: string): Promise<GitRemoteChange[]>;
 export function mergeDryRun(git: Git, cwd: string, local: string, remote: string): Promise<{ clean: boolean; conflicts: string[] | null }>;

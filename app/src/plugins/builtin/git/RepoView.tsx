@@ -4,6 +4,7 @@ import { openChannel } from "../../../core/navigation";
 import Skeleton from "../../../ui/Skeleton";
 import { userMessage } from "../../../api/client";
 import { desktop, desktopError, type GitMergeTarget } from "../../../core/desktop";
+import { historyKeys } from "../../../core/history";
 import { isLooking, notify } from "../../../core/notifier";
 import { checkGitHubSignIn, githubLogin, githubRevision, githubSignInReady } from "../../../core/githubAuth";
 import { getToken, tokenRevision, tokenStorage } from "../../../core/secrets";
@@ -14,6 +15,7 @@ import { Icon } from "../../../theme/icons";
 import Collapse from "../../../ui/Collapse";
 import ConfirmPrompt from "../../../ui/ConfirmPrompt";
 import Dialog from "../../../ui/Dialog";
+import HistoryControls from "../../../ui/HistoryControls";
 import type { MenuEntry } from "../../../ui/contextMenu";
 import Select, { type SelectGuide, type SelectOption } from "../../../ui/Select";
 import TabUnderline from "../../../ui/TabUnderline";
@@ -144,6 +146,7 @@ export default function RepoView(props: {
   let lastAdding = { reason: "", add: false };
   const shownAdding = () => (lastAdding = adding() ?? lastAdding);
   const [error, setError] = createSignal("");
+  const undoKeys = historyKeys(ctx.history, (e) => setError(userMessage(e)));
   // Something that didn't stop the import, e.g. a token that couldn't be remembered.
   const [note, setNote] = createSignal("");
   const tokenNotSaved = (e: unknown) =>
@@ -524,7 +527,7 @@ export default function RepoView(props: {
   };
 
   return (
-    <div class="view git mw-fade-in">
+    <div class="view git mw-fade-in" onKeyDown={(e) => local() && undoKeys(e)}>
       <header class="view-header">
         <Show when={props.repos.length > 1 && !changing()}>
           <Select class="git-repo-pick" label="Repository" value={sub} onChange={props.onShow} search={props.repos.length > 8}
@@ -539,6 +542,10 @@ export default function RepoView(props: {
           </Show>
           <Show when={local()}>
             <SyncBar wc={wc} onChanged={changed} onAttention={() => setPushing(true)} onStashes={() => { setShared(false); setTab("changes"); }} />
+            {/* Discarded changes come back from here (Changes). */}
+            <div class="view-tools view-history mw-box">
+              <HistoryControls history={ctx.history} onError={(e) => setError(userMessage(e))} />
+            </div>
           </Show>
           <div class="view-tools mw-box">
             <button class="icon-button" title="Update" aria-label="Update" disabled={!!progress() || !ctx.can("edit_content")}
@@ -734,7 +741,7 @@ export default function RepoView(props: {
           )}
         </Match>
         <Match when={local() && tab() === "changes"}>
-          <Changes folder={folder()!} wc={wc} onCommitted={changed} openSubmodule={openSubmodule} />
+          <Changes folder={folder()!} wc={wc} history={ctx.history} onCommitted={changed} openSubmodule={openSubmodule} />
         </Match>
         <Match when={local() && tab() === "branches"}>
           <Branches folder={folder()!} defaultBranch={repo()!.defaultBranch} onChanged={changed}

@@ -1418,6 +1418,13 @@ gitWrite("git:stash-push", (cwd, options) => gitOps.stashPush(gitRunner, cwd, {
 }));
 gitWrite("git:stash-restore", (cwd, sha) => gitOps.stashRestore(gitRunner, cwd, sha));
 gitWrite("git:stash-delete", (cwd, sha) => gitOps.stashDelete(gitRunner, cwd, sha));
+gitWrite("git:discard", (cwd, options) => gitOps.discardFiles(gitRunner, cwd, {
+  paths: Array.isArray(options?.paths) ? options.paths.filter((p) => typeof p === "string") : [],
+  includeUntracked: options?.includeUntracked !== false,
+}));
+gitWrite("git:apply-patch", (cwd, patch, reverse) => gitOps.applyPatch(gitRunner, cwd, {
+  patch: typeof patch === "string" ? patch : patch instanceof Uint8Array ? Buffer.from(patch) : "", reverse: reverse === true,
+}));
 gitWrite("git:revert-to", (cwd, sha, options) => gitOps.restoreCommit(gitRunner, cwd, sha, { allowMassDelete: options?.allowMassDelete === true }));
 
 // Releases: building a picked folder's project (its chosen branch, in a temporary worktree) and uploading files to a

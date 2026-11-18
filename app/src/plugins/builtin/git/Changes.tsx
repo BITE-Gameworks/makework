@@ -1,16 +1,20 @@
 // Uncommitted changes in the folder on this device: tick files, see each one's diff, write a message, commit to the
-// current branch, or stash them (put aside) and restore them later. The safety checks are in electron/gitOps.js
-// (`commit`, `stashPush`, `stashRestore`); this shows what they say.
-import { For, Show, createMemo, createResource, createSignal, onCleanup, onMount } from "solid-js";
+// current branch, or stash them (put aside) and restore them later. Changes can also be discarded, whole files or the
+// changes ticked in a file's diff, and undo brings them back (decision 0033). The safety checks are in
+// electron/gitOps.js (`commit`, `stashPush`, `stashRestore`, `discardFiles`, `applyPatch`); this shows what they say.
+import { For, Show, createEffect, createMemo, createResource, createSignal, on, onCleanup, onMount } from "solid-js";
+import { createStore, reconcile } from "solid-js/store";
 import { userMessage } from "../../../api/client";
 import type { GitChange, GitStash } from "../../../core/desktop";
+import type { History } from "../../../core/history";
+import { plural } from "../../../core/plural";
 import { relativeTime } from "../../../core/time";
 import { Icon } from "../../../theme/icons";
 import Collapse from "../../../ui/Collapse";
 import ConfirmPrompt from "../../../ui/ConfirmPrompt";
 import { stashMessage, type ActionMessage } from "./actions";
-import { parseUnifiedDiff } from "./diff";
-import DiffView from "./DiffView";
+import { canPickLines, parseUnifiedDiff, pickedPatch } from "./diff";
+import DiffView, { type LinePicking } from "./DiffView";
 import { gitCall } from "./local";
 import TypedConfirm from "./TypedConfirm";
 import type { WorkingCopy } from "./workingCopy";
@@ -20,7 +24,14 @@ const kindLabel: Record<GitChange["kind"], string> = {
 };
 
 // `openSubmodule`: shows one of the channel's submodules, by its path in this repository; absent for paths that aren't one.
-export default function Changes(props: { folder: string; wc: WorkingCopy; onCommitted: () => void; openSubmodule?: (path: string) => (() => void) | undefined }) {
+export default function Changes(props: {
+  folder: string;
+  wc: WorkingCopy;
+  // The channel's undo and redo, which discards go into.
+  history: History;
+  onCommitted: () => void;
+  openSubmodule?: (path: string) => (() => void) | undefined;
+}) {
   const [state, { refetch }] = createResource(() => props.folder, (folder) => gitCall((git) => git.status(folder)));
   // Refreshed when the window comes back, e.g. after editing in another program.
   onMount(() => {
@@ -41,8 +52,26 @@ export default function Changes(props: { folder: string; wc: WorkingCopy; onComm
     setTicked(next);
   };
   const [shown, setShown] = createSignal<string | null>(null);
-  const [diff] = createResource(() => shown() && [props.folder, shown()!] as const,
+  const [diff, { refetch: refetchDiff }] = createResource(() => shown() && [props.folder, shown()!] as const,
     ([folder, path]) => gitCall((git) => git.workingDiff(folder, path)));
+  const shownFiles = createMemo(() => (diff() ? parseUnifiedDiff(diff()!.patch) : []));
+  const shownChange = () => files().find((f) => f.path === shown());
+
+  // Changes ticked in the shown file's diff to discard, by line; a new diff starts with none.
+  const [picks, setPicks] = createStore<Record<number, true | undefined>>({});
+  const clearPicks = () => setPicks(reconcile({}));
+  createEffect(on(diff, clearPicks));
+  const pickedCount = createMemo(() => Object.values(picks).filter(Boolean).length);
+  const picking: LinePicking = {
+    can: (file) => canPickLines(file) && !shownChange()?.submodule,
+    has: (_, line) => !!picks[line],
+    toggle: (_, lines) => {
+      const on = !lines.every((line) => picks[line]);
+      setPicks(Object.fromEntries(lines.map((line) => [line, on || undefined])));
+    },
+    label: "Discard this change",
+  };
+  const pickable = () => !!shownFiles()[0] && picking.can(shownFiles()[0]);
 
   const [subject, setSubject] = createSignal("");
   const [body, setBody] = createSignal("");
@@ -50,6 +79,7 @@ export default function Changes(props: { folder: string; wc: WorkingCopy; onComm
   const [error, setError] = createSignal("");
   const [done, setDone] = createSignal("");
   const [confirmMass, setConfirmMass] = createSignal<{ deleted: number; total: number } | null>(null);
+  const [confirmDiscard, setConfirmDiscard] = createSignal(false);
   const message = () => [subject().trim(), body().trim()].filter(Boolean).join("\n\n");
   const [includeNew, setIncludeNew] = createSignal(true);
 
@@ -95,6 +125,61 @@ export default function Changes(props: { folder: string; wc: WorkingCopy; onComm
       void props.wc.refresh();
     }
   };
+
+  // Shows the files as they are now, after a change to them.
+  const refresh = () => {
+    void refetch();
+    void refetchDiff();
+    void props.wc.refresh();
+  };
+  // A discard's patch applied to the folder it came from: forward to bring the changes back, in reverse to take them
+  // out again.
+  const applyTo = (folder: string, patch: string | Uint8Array, reverse: boolean) =>
+    gitCall((git) => git.applyPatch(folder, patch, reverse)).finally(refresh);
+  const recordDiscard = (label: string, folder: string, patch: string | Uint8Array) => props.history.push({
+    label, icon: "delete", undo: () => applyTo(folder, patch, false), redo: () => applyTo(folder, patch, true),
+  });
+  const discardAct = async (run: () => Promise<void>) => {
+    setBusy(true);
+    setError("");
+    setDone("");
+    try {
+      await run();
+    } catch (e) {
+      setError(userMessage(e));
+    } finally {
+      setBusy(false);
+      refresh();
+    }
+  };
+  const discardWhat = () => {
+    const n = chosen().length;
+    return n === 1 ? chosen()[0] : n ? `${n} files` : null;
+  };
+  // The ticked files, else every change (new files only with "Include new files").
+  const discardFiles = () => discardAct(async () => {
+    setConfirmDiscard(false);
+    const folder = props.folder;
+    const result = await gitCall((git) => git.discard(folder, { paths: chosen(), includeUntracked: includeNew() }));
+    if (!result.ok) return void setDone("There were no changes to discard.");
+    const what = result.files.length === 1 ? result.files[0] : `${result.files.length} files`;
+    if (result.patch.length) recordDiscard(`Discard changes in ${what}`, folder, result.patch);
+    setDone(`Discarded the changes in ${what}. Undo brings them back.`);
+    setTicked(new Set<string>());
+    setShown(null);
+  });
+  const discardPicked = () => discardAct(async () => {
+    const folder = props.folder;
+    const path = shown();
+    const patch = diff() && pickedPatch(diff()!.patch, (line) => !!picks[line]);
+    if (!path || !patch) return;
+    const what = `${plural(pickedCount(), "change")} in ${path}`;
+    await gitCall((git) => git.applyPatch(folder, patch, true));
+    recordDiscard(`Discard ${what}`, folder, patch);
+    setDone(`Discarded ${what}. Undo brings them back.`);
+  });
+  const discardable = () => !busy() && files().length > 0 && !!state()?.head && !state()?.operation
+    && !files().some((f) => f.kind === "conflicted") && !files().some((f) => f.submodule && ticked().has(f.path));
 
   const commit = async (allowMassDelete = false) => {
     setBusy(true);
@@ -163,7 +248,27 @@ export default function Changes(props: { folder: string; wc: WorkingCopy; onComm
           <Show when={shown()} fallback={<p class="view-note">Choose a file to see its changes.</p>}>
             <Show when={!diff.error} fallback={<p class="view-error">{userMessage(diff.error)}</p>}>
               <Show when={diff()} fallback={<p class="view-note">Reading...</p>}>
-                {(d) => <DiffView files={parseUnifiedDiff(d().patch)} truncated={d().truncated} empty="No line changes." />}
+                {(d) => (
+                  <>
+                    <Show when={pickable() && !d().truncated}>
+                      <div class="git-pick-bar">
+                        <Show when={pickedCount()} fallback={<span class="hint">Tick changes below to discard them.</span>}>
+                          {(n) => (
+                            <span class="git-pick-actions mw-fade-in">
+                              <button class="mw-button mw-box danger" disabled={busy() || !!state()?.operation} onClick={() => void discardPicked()}
+                                title="Take these changes out of the file; undo brings them back">
+                                <Icon name="delete" /> Discard {plural(n(), "change")}
+                              </button>
+                              <button class="mw-button mw-box" disabled={busy()} onClick={clearPicks}>Clear</button>
+                            </span>
+                          )}
+                        </Show>
+                      </div>
+                    </Show>
+                    <DiffView files={shownFiles()} truncated={d().truncated} empty="No line changes."
+                      picking={d().truncated ? undefined : picking} />
+                  </>
+                )}
               </Show>
             </Show>
           </Show>
@@ -187,12 +292,19 @@ export default function Changes(props: { folder: string; wc: WorkingCopy; onComm
             title="Put these changes aside (the files go back to the last commit); restore them from Stashes below">
             <Icon name="box" /> {chosen().length ? `Stash ${chosen().length} ${chosen().length === 1 ? "file" : "files"}` : "Stash all changes"}
           </button>
+          <button class="mw-button mw-box danger" type="button" classList={{ active: confirmDiscard() }} disabled={!discardable()}
+            onClick={() => setConfirmDiscard(!confirmDiscard())} aria-expanded={confirmDiscard()}
+            title="Take these changes out of the files (back to the last commit); undo brings them back">
+            <Icon name="delete" /> {chosen().length ? `Discard ${plural(chosen().length, "file")}` : "Discard all changes"}
+          </button>
           <Show when={!chosen().length}>
             <label class="git-check"><input type="checkbox" checked={includeNew()} onChange={(e) => setIncludeNew(e.currentTarget.checked)} /> Include new files</label>
           </Show>
           <span class="hint">Only ticked files go in. Nothing is pushed until you push.</span>
         </div>
       </form>
+      <ConfirmPrompt open={confirmDiscard()} confirmLabel="Discard" onConfirm={() => void discardFiles()} onCancel={() => setConfirmDiscard(false)}
+        question={`${discardWhat() ? `Discard the changes in ${discardWhat()}?` : `Discard all changes${includeNew() ? "" : " except new files"}?`} They go back to the last commit, and new files are deleted. Undo brings them back until you close MakeWork.`} />
       <TypedConfirm open={!!confirmMass()} word={state()?.branch ?? ""} confirmLabel="Commit anyway"
         question={`This commit removes ${confirmMass()?.deleted ?? 0} of the branch's ${confirmMass()?.total ?? 0} files. Are you sure?`}
         onConfirm={() => void commit(true)} onCancel={() => setConfirmMass(null)} />
