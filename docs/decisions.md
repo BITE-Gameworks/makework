@@ -242,8 +242,9 @@ unread counts and the list would have two writers.
 ## 0032 The phone notifies only for mentions and the first private message
 
 The Android app shows a system notification only for a mention of you (you, @everyone/@here, a role of yours) and
-for the first unread private message from someone; more messages from that person stay quiet until the
-conversation is read. Replies in your threads, new commits, friend requests and workspace news don't notify there.
+for a private message from someone, once: more messages from that person stay quiet until the conversation is read
+on the phone (what was read elsewhere isn't known there). Replies in your threads, new commits, friend requests and
+workspace news don't notify there; workspace problems (an update needed, a refused join) show in the app instead.
 The desktop shows them all, because a focused window already hides what you are looking at, but the phone is always
 at hand with the app out of view, so everything that notifies there interrupts. One rule in `core/notifier.ts`
 (`phoneShows`) decides it from the notice's kind. Rejected: a setting per kind of notice (more choices than people

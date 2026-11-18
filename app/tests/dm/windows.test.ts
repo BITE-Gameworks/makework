@@ -51,10 +51,20 @@ describe("the link between the main window and view windows", () => {
     const main = link("test-tell");
     const view = link("test-tell");
     const toMain = new Promise((resolve) => main.serveViews(calls({}), resolve));
-    const toView = new Promise((resolve) => view.followMain(resolve));
+    const toView = new Promise((resolve) => view.followMain((message) => message.kind !== "started" && resolve(message)));
     view.toMain({ kind: "hello", peer: "p" });
     main.toViews({ kind: "blocked", why: null });
     expect(await toMain).toEqual({ kind: "hello", peer: "p" });
     expect(await toView).toEqual({ kind: "blocked", why: null });
+  });
+
+  it("tells view windows when a main window starts, and fails what the one before never answered", async () => {
+    const view = link("test-restart");
+    const heard = new Promise((resolve) => view.followMain(resolve));
+    // Asked of a main window that is gone: nothing serves it yet.
+    const unanswered = view.askMain("read", { peer: "p" });
+    link("test-restart").serveViews(calls({}), () => {});
+    expect(await heard).toEqual({ kind: "started" });
+    await expect(unanswered).rejects.toThrow("The main window restarted. Try again.");
   });
 });

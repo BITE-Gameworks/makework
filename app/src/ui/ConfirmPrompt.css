@@ -43,7 +43,7 @@
 .mw-confirm-beside {
   display: flex;
   flex: none;
-  padding-right: 4px;
+  padding-right: calc(var(--mw-margin) / 2);
   opacity: 0;
   transition: opacity var(--mw-duration) var(--mw-ease);
 }

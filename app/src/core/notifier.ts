@@ -1,7 +1,8 @@
 // Desktop notifications (the system's own, through the web Notification API; Electron passes them to the
 // desktop). Android's WebView has no Notification API, so the Android app shows them through Capacitor. Silent: the
 // app plays its own sounds. The phone is always at hand and the app is mostly out of view there, so it shows only
-// what is addressed to you: mentions, and the first unread private message from someone (ADR 0032).
+// what is addressed to you: mentions, and one private message from someone until that conversation is read
+// (ADR 0032).
 import { createSignal } from "solid-js";
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
@@ -80,7 +81,7 @@ export type NoticeKind = "mention" | "message" | "reply" | "commits" | "friend" 
 
 export interface Notice {
   kind: NoticeKind;
-  // A private message while an earlier one from the same person is still unread.
+  // A private message from someone whose earlier one already notified since the conversation was last read.
   again?: boolean;
   // A newer notice with the same tag replaces the older one.
   tag: string;
@@ -95,18 +96,19 @@ export function phoneShows(notice: Pick<Notice, "kind" | "again">): boolean {
   return notice.kind === "mention" || (notice.kind === "message" && !notice.again);
 }
 
-export function notify(notice: Notice): void {
+// Returns whether a notification went to the system.
+export function notify(notice: Notice): boolean {
   // Notifications belong to the main window; a view window showing the same workspace would double them.
-  if (isPopout()) return;
-  if (onlineStatus() === "dnd" || !on()) return;
+  if (isPopout()) return false;
+  if (onlineStatus() === "dnd" || !on()) return false;
   if (phone) {
-    if (permission() !== "granted" || !phoneShows(notice)) return;
+    if (permission() !== "granted" || !phoneShows(notice)) return false;
     const id = phoneId(notice.tag);
     phoneClicks.set(id, () => notice.onClick?.());
     void LocalNotifications.schedule({ notifications: [{ id, title: notice.title, body: notice.body, silent: true }] });
-    return;
+    return true;
   }
-  if (!supported() || Notification.permission !== "granted") return;
+  if (!supported() || Notification.permission !== "granted") return false;
   const shown = new Notification(notice.title, { body: notice.body, tag: notice.tag, icon: notice.icon, silent: true });
   shown.onclick = () => {
     if (desktop?.focus) desktop.focus();
@@ -114,6 +116,7 @@ export function notify(notice: Notice): void {
     notice.onClick?.();
     shown.close();
   };
+  return true;
 }
 
 // Whether the user is already looking at that channel: the window has focus and its active tab shows it.

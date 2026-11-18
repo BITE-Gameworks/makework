@@ -10,6 +10,7 @@ import { desktop } from "../core/desktop";
 import { storedBlob } from "../core/content";
 import { snapshotLoader } from "../core/workspaceSnapshots";
 import { notify } from "../core/notifier";
+import { showNotice } from "../core/notices";
 import { isPopout } from "../core/popout";
 import { replacedPeer } from "../core/lastRun";
 import { base64url } from "../core/identity";
@@ -167,6 +168,7 @@ export async function openWorkspace(entry: WorkspaceEntry, account: Account, arr
   if (online) await loadTurn();
   // Before anything joins a room: a failure here then leaves nothing open behind it.
   const folderDescription = await describeFolder(entry, ledger);
+  let updateAsked = false;
   const sync = new WorkspaceSync(ledger, entry.id, entry.secret, {
     network: online, turn: { current: currentTurn, load: () => void loadTurn() }, rtcPolyfill: dtxConnection(),
     recoverySecrets: entry.recoverySecrets,
@@ -174,12 +176,12 @@ export async function openWorkspace(entry: WorkspaceEntry, account: Account, arr
       localAccess: isMember(ledger) ? "member" as const : "invite" as const,
       ...(inviteToken ? { inviteToken } : {}),
     },
-    onIncompatible: (peer) => notify({
-      kind: "workspace",
-      tag: `update-required:${entry.id}`,
-      title: "Update MakeWork",
-      body: `Member ${peer} is using a version that cannot read this workspace's history.`,
-    }),
+    onIncompatible: (peer) => {
+      if (updateAsked) return;
+      updateAsked = true;
+      tellWorkspaceProblem(`update-required:${entry.id}`, "Update MakeWork",
+        `Member ${peer} is using a version that cannot read this workspace's history.`);
+    },
   });
   // A view window is never in a call and says nothing about calls (ADR 0009). After a crash, the call presence names
   // the run's old connection for a minute, so the others drop it at once (core/lastRun.ts).
@@ -309,10 +311,8 @@ export async function openWorkspace(entry: WorkspaceEntry, account: Account, arr
     const reason = mine ? ledger.refusal(mine.commit) : null;
     if (!reason || joinRefusalShown) return;
     joinRefusalShown = true;
-    notify({
-      kind: "workspace", tag: `join-refused:${entry.id}`, title: "You couldn't join the workspace",
-      body: `${reason} Leave it and join again with a new invite.`,
-    });
+    tellWorkspaceProblem(`join-refused:${entry.id}`, "You couldn't join the workspace",
+      `${reason} Leave it and join again with a new invite.`);
   };
   const stopWatching = ledger.subscribe(() => {
     sync.setLocalMember(isMember(ledger));
@@ -367,10 +367,8 @@ export async function openWorkspace(entry: WorkspaceEntry, account: Account, arr
   }).catch((e) => {
     console.warn("Profile not sent:", e);
     // The invite stopped admitting before the join got this far (expired, deleted, used up): say so.
-    if (joining && !isMember(ledger)) notify({
-      kind: "workspace", tag: `join-refused:${entry.id}`, title: "You couldn't join the workspace",
-      body: `${e instanceof Error ? e.message : String(e)} Leave it and join again with a new invite.`,
-    });
+    if (joining && !isMember(ledger)) tellWorkspaceProblem(`join-refused:${entry.id}`, "You couldn't join the workspace",
+      `${e instanceof Error ? e.message : String(e)} Leave it and join again with a new invite.`);
   });
 
   return {
@@ -648,4 +646,12 @@ async function seedWorkspace(api: ApiClient, name: string) {
 
 function randomId() {
   return base64url(crypto.getRandomValues(new Uint8Array(16)));
+}
+
+// A problem with the workspace itself, shown in the app as well as notified: the phone doesn't notify it (only what
+// is addressed to you, core/notifier.ts). Said by the main window, like every account-wide notice.
+function tellWorkspaceProblem(tag: string, title: string, body: string): void {
+  if (isPopout()) return;
+  showNotice(title, body);
+  notify({ kind: "workspace", tag, title, body });
 }

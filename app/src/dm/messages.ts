@@ -18,7 +18,7 @@ import type { Upload } from "../core/files";
 import { current, messagesHome, openConversation } from "../core/navigation";
 import { notify } from "../core/notifier";
 import { onOnlineStatusChange, sharedPresenceStatus } from "../core/onlineStatus";
-import { closeWindow, isPopout } from "../core/popout";
+import { canPopOutWindows, closeWindow, isPopout, openInWindow } from "../core/popout";
 import type { SharedPresenceStatus } from "../core/presence";
 import { readJson, writeJson } from "../core/storage";
 import {
@@ -89,15 +89,20 @@ let started = false;
 let generation = 0;
 const onFocus = () => void checkInbox();
 
+// Conversations that notified since they were last read here: more messages from them don't notify on the phone.
+const notifiedSinceRead = new Set<string>();
+
 // Main window: its link to view windows, and what each view window shows (window id -> peer, and whether it has
 // the focus), so a message read there doesn't count as unread here.
 let views: WindowLink | null = null;
 let stopServing: (() => void) | undefined;
 const viewers = new Map<string, { peer: string; focused: boolean }>();
 
-// View window: the conversation it shows, what the main window says of each room and download, and messages that
-// came in while a conversation's stored messages were still loading.
+// View window: the conversation it shows, how it introduces itself to the main window (again when the main window
+// restarts), what the main window says of each room and download, and messages that came in while a conversation's
+// stored messages were still loading.
 let shownPeer: string | undefined;
+let greetMain: (() => void) | undefined;
 const [mirror, setMirror] = createStore<{
   links: Record<string, { online: boolean; shown: SharedPresenceStatus | null } | undefined>;
   progress: Record<string, number | undefined>;
@@ -208,6 +213,7 @@ export async function loadMessages(peer: string): Promise<void> {
 }
 
 export function markRead(peer: string): void {
+  notifiedSinceRead.delete(peer);
   if (!conversation(peer)?.unread) return;
   if (isPopout()) {
     // The main window keeps the list: it is saved there and comes back here.
@@ -302,8 +308,13 @@ export async function downloadAttachment(peer: string, attachment: Attachment): 
   if (isPopout()) return askMain("download", { peer, attachment: plain(attachment) });
   const link = links.get(peer);
   if (!link?.online) return `${conversation(peer)?.displayName ?? "They"} must be online to send it.`;
-  const result = await link.download(attachment.hash);
-  if (result === "done") return "";
+  const stopTelling = tellProgress(link, attachment.hash);
+  const result = await link.download(attachment.hash).finally(stopTelling);
+  if (result === "done") {
+    // View windows check for content once: this tells them it is stored.
+    views?.toViews({ kind: "downloaded", hash: attachment.hash });
+    return "";
+  }
   if (result === "busy") return "They are sending another file. Try again in a moment.";
   if (result === "missing") return "It isn't on their computer any more.";
   return result === "cancelled" ? "" : "The download stopped. Try again.";
@@ -373,17 +384,16 @@ async function receive(sealed: Sealed): Promise<Received> {
   if (mine) message.attachments.forEach((a) => sharedWith(peer).add(a.hash));
   await save(message);
   const looking = isLooking(peer);
-  // Read before the update: the conversation is a live store object.
-  const unreadBefore = c.unread;
   updateConversation(peer, {
     lastAt: Math.max(c.lastAt, message.at), lastText: preview(message), unread: mine || looking ? c.unread : c.unread + 1,
   });
   if (!mine && !looking) {
     playSound("notification");
-    notify({
-      kind: "message", again: unreadBefore > 0, tag: `dm:${peer}`, title: c.displayName, body: preview(message), icon: c.avatar.startsWith("data:") ? c.avatar : undefined,
-      onClick: () => openConversation(peer),
+    const shown = notify({
+      kind: "message", again: notifiedSinceRead.has(peer), tag: `dm:${peer}`, title: c.displayName, body: preview(message),
+      icon: c.avatar.startsWith("data:") ? c.avatar : undefined, onClick: () => showConversation(peer),
     });
+    if (shown) notifiedSinceRead.add(peer);
   }
   void connect(c);
   return "stored";
@@ -572,7 +582,7 @@ const mainCalls: MainCalls = {
   delete: ({ ref }) => withStored(ref, deleteMessage),
   react: ({ ref, code }) => withStored(ref, (m) => react(m, code)),
   retry: ({ ref }) => withStored(ref, retry),
-  download: ({ peer, attachment }) => downloadForView(peer, attachment),
+  download: ({ peer, attachment }) => downloadAttachment(peer, attachment),
   read: async ({ peer }) => markRead(peer),
   forget: ({ peer }) => deleteConversation(peer),
   closeLink: async ({ peer }) => closeConversationLink(peer),
@@ -586,28 +596,31 @@ async function withStored(ref: MessageRef, act: (message: DmMessage) => Promise<
   if (stored) await act(stored);
 }
 
-// Downloads for a view window, telling it how far the download has come and when the content is stored.
-async function downloadForView(peer: string, attachment: Attachment): Promise<string> {
-  const link = links.get(peer);
-  const stopProgress = link && createRoot((dispose) => {
-    createEffect(() => views?.toViews({ kind: "progress", hash: attachment.hash, value: link.streams.progress(attachment.hash) }));
+// Tells view windows how far a download has come while it runs; returns the stop.
+function tellProgress(link: PairLink, hash: string): () => void {
+  const to = views;
+  if (!to) return () => {};
+  const stop = createRoot((dispose) => {
+    createEffect(() => to.toViews({ kind: "progress", hash, value: link.streams.progress(hash) }));
     return dispose;
   });
-  try {
-    const failed = await downloadAttachment(peer, attachment);
-    if (!failed) views?.toViews({ kind: "downloaded", hash: attachment.hash });
-    return failed;
-  } finally {
-    stopProgress?.();
-    views?.toViews({ kind: "progress", hash: attachment.hash, value: undefined });
-  }
+  return () => {
+    stop();
+    to.toViews({ kind: "progress", hash, value: undefined });
+  };
+}
+
+// A conversation from a notification: its view window comes forward if it has one, else it opens here.
+function showConversation(peer: string) {
+  if ([...viewers.values()].some((viewer) => viewer.peer === peer)) openInWindow({ workspaceId: messagesHome, channelId: null, peer });
+  else openConversation(peer);
 }
 
 // Main window: lets view windows show conversations and act on them through this window. Runs while signed in,
 // also while messages are blocked, so view windows can say why.
 export function serveViewWindows(): void {
   const signed = account();
-  if (isPopout() || !signed) return;
+  if (isPopout() || !signed || !canPopOutWindows()) return;
   stopServing?.();
   viewers.clear();
   const link = (views = windowLinkFor(signed.id));
@@ -627,6 +640,8 @@ export function serveViewWindows(): void {
       if (message.kind === "looking") {
         if (message.peer) viewers.set(message.window, { peer: message.peer, focused: message.focused });
         else viewers.delete(message.window);
+        // Like coming back to this window: messages waiting on the user server come in now.
+        if (message.focused) void checkInbox();
         return;
       }
       link.toViews({ kind: "list", conversations: plain(state.conversations) });
@@ -653,18 +668,43 @@ export function followMessages(peer?: string): void {
   setState("conversations", readJson<Conversation[]>(listKey(signed.id), []));
   const link = windowLinkFor(signed.id);
   link.followMain(fromMain);
-  link.toMain({ kind: "hello", peer });
-  if (!peer) return;
-  const windowId = newId();
+  if (!peer) {
+    greetMain = () => link.toMain({ kind: "hello" });
+    return greetMain();
+  }
+  const windowId = viewWindowId();
   const report = (focused: boolean) => link.toMain({ kind: "looking", window: windowId, peer, focused });
+  greetMain = () => {
+    link.toMain({ kind: "hello", peer });
+    report(document.hasFocus());
+  };
   window.addEventListener("focus", () => report(true));
   window.addEventListener("blur", () => report(false));
   window.addEventListener("pagehide", () => link.toMain({ kind: "looking", window: windowId, peer: null, focused: false }));
-  report(document.hasFocus());
+  greetMain();
+}
+
+// The same id after a reload (a crashed renderer comes back reloaded), so the main window's entry for this window is
+// replaced, never left behind.
+function viewWindowId(): string {
+  const key = "mw.viewWindow";
+  try {
+    const kept = sessionStorage.getItem(key);
+    if (kept) return kept;
+    const id = newId();
+    sessionStorage.setItem(key, id);
+    return id;
+  } catch {
+    return newId();
+  }
 }
 
 function fromMain(message: ToViews) {
   switch (message.kind) {
+    case "started":
+      // A main window that started again knows nothing of this window yet.
+      greetMain?.();
+      break;
     case "list":
       setState("conversations", reconcile(message.conversations, { key: "id" }));
       break;
@@ -699,11 +739,16 @@ async function loadStored(peer: string): Promise<void> {
   const signed = account();
   if (!signed || state.messages[peer] || arriving.has(peer)) return;
   arriving.set(peer, []);
-  const stored = await dbGetRange<DmMessage>("messages", prefixRange(`${signed.id}:${peer}`));
-  const early = arriving.get(peer) ?? [];
-  arriving.delete(peer);
-  setState("messages", peer, stored);
-  early.forEach(takeMessage);
+  try {
+    const stored = await dbGetRange<DmMessage>("messages", prefixRange(`${signed.id}:${peer}`));
+    const early = arriving.get(peer) ?? [];
+    arriving.delete(peer);
+    setState("messages", peer, stored);
+    early.forEach(takeMessage);
+  } finally {
+    // After a failed read nothing waits on it, and the next visit reads again.
+    arriving.delete(peer);
+  }
 }
 
 // View window: a message as the main window stored it, in place of the copy here (the same object, so its card

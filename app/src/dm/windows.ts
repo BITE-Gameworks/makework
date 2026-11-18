@@ -36,6 +36,9 @@ type Result<A extends CallName> = Awaited<ReturnType<MainCalls[A]>>;
 
 // What the main window tells view windows.
 export type ToViews =
+  // The main window started serving (again, after a reload): it knows no view window, and calls made of the one
+  // before get no answer.
+  | { kind: "started" }
   | { kind: "list"; conversations: Conversation[] }
   // A message as it was just stored (new, changed status, edited, deleted or reacted to).
   | { kind: "message"; message: DmMessage }
@@ -53,15 +56,21 @@ export type ToMain =
   // Which conversation a view window shows and whether it has the focus; peer null once it closes.
   | { kind: "looking"; window: string; peer: string | null; focused: boolean };
 
+// After a main window starts, a view window asks which of its waiting calls that window has (`check`); the main
+// window answers with the ones it doesn't (`lost`), which never reached it. Its replies to the others come in order,
+// before that answer or after it, so nothing is failed that will still be answered.
 type Envelope =
   | { to: "main"; message: ToMain }
   | { to: "main"; call: { id: string; action: CallName; args: unknown } }
+  | { to: "main"; check: string[] }
   | { to: "views"; message: ToViews }
-  | { to: "views"; reply: { id: string; value?: unknown; error?: string } };
+  | { to: "views"; reply: { id: string; value?: unknown; error?: string } }
+  | { to: "views"; lost: string[] };
 
 export interface WindowLink {
   readonly name: string;
-  // Main window: runs what view windows ask for and hears what they tell. Returns its unsubscribe.
+  // Main window: runs what view windows ask for and hears what they tell, after telling them it started. Returns its
+  // unsubscribe.
   serveViews(calls: MainCalls, onMessage: (message: ToMain) => void): () => void;
   toViews(message: ToViews): void;
   // View window: hears what the main window tells. Returns its unsubscribe.
@@ -83,8 +92,19 @@ export function createWindowLink(name: string): WindowLink {
     channel.addEventListener("message", onMessage);
     return () => channel.removeEventListener("message", onMessage);
   };
+  const fail = (ids: Iterable<string>, why: string) => {
+    for (const id of ids) {
+      pending.get(id)?.reject(new Error(why));
+      pending.delete(id);
+    }
+  };
   const stopReplies = listen((envelope) => {
-    if (envelope.to !== "views" || !("reply" in envelope)) return;
+    if (envelope.to !== "views") return;
+    if ("message" in envelope) {
+      if (envelope.message.kind === "started" && pending.size) post({ to: "main", check: [...pending.keys()] });
+      return;
+    }
+    if ("lost" in envelope) return fail(envelope.lost, "The main window restarted. Try again.");
     const { id, value, error } = envelope.reply;
     const waiting = pending.get(id);
     if (!waiting) return;
@@ -95,17 +115,29 @@ export function createWindowLink(name: string): WindowLink {
 
   return {
     name,
-    serveViews: (calls, onMessage) => listen((envelope) => {
-      if (envelope.to !== "main") return;
-      if ("message" in envelope) return onMessage(envelope.message);
-      const { id, action, args } = envelope.call;
-      if (!Object.hasOwn(calls, action)) return post({ to: "views", reply: { id, error: `Unknown action ${action}.` } });
-      const run = calls[action] as (args: unknown) => Promise<unknown>;
-      void Promise.resolve().then(() => run(args)).then(
-        (value) => post({ to: "views", reply: { id, value } }),
-        (e: unknown) => post({ to: "views", reply: { id, error: e instanceof Error ? e.message : String(e) } }),
-      );
-    }),
+    serveViews: (calls, onMessage) => {
+      // Calls being run; one done has had its reply sent.
+      const running = new Set<string>();
+      const reply = (id: string, answer: { value?: unknown; error?: string }) => {
+        running.delete(id);
+        post({ to: "views", reply: { id, ...answer } });
+      };
+      const stop = listen((envelope) => {
+        if (envelope.to !== "main") return;
+        if ("message" in envelope) return onMessage(envelope.message);
+        if ("check" in envelope) return post({ to: "views", lost: envelope.check.filter((id) => !running.has(id)) });
+        const { id, action, args } = envelope.call;
+        if (!Object.hasOwn(calls, action)) return post({ to: "views", reply: { id, error: `Unknown action ${action}.` } });
+        const run = calls[action] as (args: unknown) => Promise<unknown>;
+        running.add(id);
+        void Promise.resolve().then(() => run(args)).then(
+          (value) => reply(id, { value }),
+          (e: unknown) => reply(id, { error: e instanceof Error ? e.message : String(e) }),
+        );
+      });
+      post({ to: "views", message: { kind: "started" } });
+      return stop;
+    },
     toViews: (message) => post({ to: "views", message }),
     followMain: (onMessage) => listen((envelope) => {
       if (envelope.to === "views" && "message" in envelope) onMessage(envelope.message);
@@ -119,8 +151,7 @@ export function createWindowLink(name: string): WindowLink {
     close: () => {
       stopReplies();
       channel.close();
-      for (const waiting of pending.values()) waiting.reject(new Error("The window closed its link to the main window."));
-      pending.clear();
+      fail([...pending.keys()], "The window closed its link to the main window.");
     },
   };
 }
