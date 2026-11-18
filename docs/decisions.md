@@ -74,7 +74,8 @@ tab becomes a view window that attaches only its own workspace and hands everyth
 alone owns account-wide effects (notifications, sounds, badge, private messages, calls, bots) and the saved tabs. A view
 window takes no part in call presence, and voice channels never pop out. A code channel's terminal can move to a
 terminal window, which opens no workspace and takes over the running process from the main process. Two windows on
-one channel are two peers, so presence and typing show twice.
+one channel are two peers, so presence and typing show twice. A private conversation can have a view window too, which
+works through the main window (0031).
 
 ## 0010 Channel views are kept
 
@@ -225,3 +226,15 @@ the API's rate limit, which a whole history would run into. Later updates read t
 branches are only as fresh as its last fetch). Imports bring the whole history, 1,000 commits per branch at a time
 until nothing is left; channels imported before get the rest on their next update. The web app keeps importing the
 history only.
+
+## 0031 A conversation's view window works through the main window
+
+A private conversation can be popped out like a channel, but the main window still runs private messages: the
+rooms, the user server's inbox, unread counts, sounds, notifications and the saved conversation list. The view window
+shows the conversation from what this device stored and what the main window tells it over a `BroadcastChannel`
+(`dm/windows.ts`), and asks the main window to send, edit, react, download and change friends. While it has the
+focus, messages from that person don't count as unread in the main window. Every view window also gets the main
+window's friends, so member menus there are right. Rejected: the view window joining the pair's room itself, as
+another device of the account. The room can't tell the account's own devices from the other side, so each window
+would show the person as online whenever the other window was open and wait out the delivery ack on every send, and
+unread counts and the list would have two writers.

@@ -1,15 +1,18 @@
 // Friends, friend requests and blocked people, kept on the user server. They decide who may send private messages:
 // friends only, unless the account allows strangers. The user server enforces it for messages left there; the app
-// drops live messages that break it (dm/messages.ts).
+// drops live messages that break it (dm/messages.ts). The main window keeps them; view windows show its copy and
+// ask it to change them (dm/windows.ts).
 import { userNumberOf } from "../p2p/log";
 import { createSignal } from "solid-js";
 import { account, accountKey } from "../core/account";
 import { openFriends } from "../core/navigation";
 import { notify } from "../core/notifier";
+import { isPopout } from "../core/popout";
 import {
   changeRelation, changeSettings, findPerson, reportAccount, type PublicAccount, type RelationChange, type Relations,
 } from "../core/userServer";
 import { playSound } from "../theme/sounds";
+import { askMain } from "./windows";
 
 const [relations, setRelations] = createSignal<Relations | null>(null);
 export { relations };
@@ -40,7 +43,13 @@ export function applyRelations(next: Relations): void {
   }
 }
 
+// A view window's copy of the main window's relations; the main window told about any new request.
+export function takeRelations(next: Relations | null): void {
+  setRelations(next);
+}
+
 export async function changeFriend(action: RelationChange, id: string): Promise<void> {
+  if (isPopout()) return askMain("friend", { action, id });
   applyRelations(await changeRelation(signer(), action, id));
 }
 
@@ -56,6 +65,7 @@ export function reportPerson(id: string, reason: string): Promise<void> {
 }
 
 export async function setAllowStrangers(allow: boolean): Promise<void> {
+  if (isPopout()) return askMain("allowStrangers", { allow });
   applyRelations(await changeSettings(signer(), { allowStrangers: allow }));
 }
 

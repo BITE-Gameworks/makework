@@ -203,7 +203,7 @@ export default function TabBar() {
       { label: "Duplicate", icon: "copy", disabled: !location, action: () => { selectTab(tab.id); openInNewTab(location!); } },
       "separator",
       ...(type?.ownWindow !== false ? [newWindowEntry("Move to new window", () =>
-        moveToWindow(location!.workspaceId, location!.channelId!, type), windowable)] : []),
+        moveToWindow(location!, type), windowable)] : []),
       "separator",
       { label: "Close", icon: "close", action: () => close([tab.id]) },
       { label: "Close other tabs", disabled: others.length === 0, action: () => close(others) },

@@ -9,6 +9,7 @@ import ChannelDetails from "./ChannelDetails";
 import { bootStatus, narrow, setSidePanel } from "../core/ui";
 import { SwitcherList } from "./QuickSwitcher";
 import LoadingView, { connectingNote } from "./LoadingView";
+import NothingToShow from "./NothingToShow";
 import { isServerless } from "../core/serverless";
 import ChannelHost from "../plugins/ChannelHost";
 import { Icon } from "../theme/icons";
@@ -114,13 +115,7 @@ export default function MainView() {
 
 // Without servers: how to get one. With servers but no channel open: pick one.
 function EmptyState() {
-  // A view window shows the one channel it was popped out for: there is nothing to pick from and nothing to join.
-  if (isPopout()) return (
-    <div class="empty-state mw-fade-in">
-      <h2>Nothing to show</h2>
-      <p>This channel isn't open on this computer. Close this window and open it again from the main window.</p>
-    </div>
-  );
+  if (isPopout()) return <NothingToShow what="This channel" />;
   return (
     <Show when={workspaces.order.length > 0} fallback={<StartPage />}>
       <div class="home-page mw-fade-in">

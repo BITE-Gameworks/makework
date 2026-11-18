@@ -4,24 +4,31 @@
 // until the recipient downloads them from it, while both are online.
 //
 // Conversations are kept per account on this device: the list in localStorage, the messages in IndexedDB.
-import { batch, createSignal } from "solid-js";
+//
+// The main window runs all of this. A view window showing a conversation (decision 0031) opens no rooms and polls
+// nothing: it shows what this device stored and what the main window tells it, and asks the main window to act
+// (dm/windows.ts).
+import { batch, createEffect, createRoot, createSignal, getOwner, runWithOwner } from "solid-js";
 import { createStore, produce, reconcile } from "solid-js/store";
 import { account, accountAgreementKey, accountKey } from "../core/account";
-import { refHash } from "../core/content";
+import { markPresent, refHash } from "../core/content";
 import { dbGet, dbGetRange, dbDeleteRange, dbPut, prefixRange } from "../core/db";
 import { base64url } from "../core/identity";
 import type { Upload } from "../core/files";
 import { current, messagesHome, openConversation } from "../core/navigation";
 import { notify } from "../core/notifier";
 import { onOnlineStatusChange, sharedPresenceStatus } from "../core/onlineStatus";
+import { closeWindow, isPopout } from "../core/popout";
+import type { SharedPresenceStatus } from "../core/presence";
 import { readJson, writeJson } from "../core/storage";
 import {
   confirmMessages, findAccount, findPerson, leaveMessage, waitingMessages, type PublicAccount, type Signer, UserServerError,
 } from "../core/userServer";
 import { playSound } from "../theme/sounds";
-import { applyRelations, mayMessage } from "./friends";
+import { applyRelations, changeFriend, mayMessage, relations, setAllowStrangers, takeRelations } from "./friends";
 import { pairKeys, seal, unseal, isSealed, type Attachment, type Change, type PairKeys, type Payload, type Sealed } from "./crypto";
 import { PairLink } from "./link";
+import { askMain, windowLinkFor, type MainCalls, type MessageRef, type ToViews, type WindowLink } from "./windows";
 
 export type { Attachment };
 
@@ -82,26 +89,49 @@ let started = false;
 let generation = 0;
 const onFocus = () => void checkInbox();
 
+// Main window: its link to view windows, and what each view window shows (window id -> peer, and whether it has
+// the focus), so a message read there doesn't count as unread here.
+let views: WindowLink | null = null;
+let stopServing: (() => void) | undefined;
+const viewers = new Map<string, { peer: string; focused: boolean }>();
+
+// View window: the conversation it shows, what the main window says of each room and download, and messages that
+// came in while a conversation's stored messages were still loading.
+let shownPeer: string | undefined;
+const [mirror, setMirror] = createStore<{
+  links: Record<string, { online: boolean; shown: SharedPresenceStatus | null } | undefined>;
+  progress: Record<string, number | undefined>;
+}>({ links: {}, progress: {} });
+const arriving = new Map<string, DmMessage[]>();
+
 export const conversations = () => state.conversations;
 export const conversation = (id: string | undefined) => state.conversations.find((c) => c.id === id);
 export const messagesWith = (peer: string) => state.messages[peer];
 export const isOnline = (peer: string) => {
+  if (isPopout()) return mirror.links[peer]?.online ?? false;
   linksChanged();
   return links.get(peer)?.online ?? false;
 };
 // Online as the other side chose to be shown (dots and labels); `isOnline` is whether messages go straight across.
 export const appearsStatus = (peer: string) => {
+  if (isPopout()) return mirror.links[peer]?.shown ?? null;
   linksChanged();
   return links.get(peer)?.shownStatus ?? null;
 };
 export const messagesBlocked = blocked;
 
 export const unreadTotal = () => state.conversations.reduce((sum, c) => sum + c.unread, 0);
-export const linkOf = (peer: string) => links.get(peer);
+
+// How far the download of an attachment has come, while one runs.
+export function downloadProgress(peer: string, hash: string): number | undefined {
+  if (isPopout()) return mirror.progress[hash];
+  linksChanged();
+  return links.get(peer)?.streams.progress(hash);
+}
 
 // Starts after sign-in: opens rooms for recent conversations and checks the user server for waiting messages.
 export function startMessages(): void {
-  if (started) return;
+  if (started || isPopout()) return;
   const signed = account();
   const agreementKey = accountAgreementKey();
   if (!signed) return;
@@ -169,6 +199,7 @@ export function openWith(person: PublicAccount): void {
 }
 
 export async function loadMessages(peer: string): Promise<void> {
+  if (isPopout()) return loadStored(peer);
   if (!me || state.messages[peer]) return;
   const stored = await dbGetRange<DmMessage>("messages", prefixRange(`${me.id}:${peer}`));
   setState("messages", peer, stored);
@@ -178,11 +209,18 @@ export async function loadMessages(peer: string): Promise<void> {
 
 export function markRead(peer: string): void {
   if (!conversation(peer)?.unread) return;
+  if (isPopout()) {
+    // The main window keeps the list: it is saved there and comes back here.
+    setState("conversations", (c) => c.id === peer, { unread: 0 });
+    void askMain("read", { peer }).catch((e) => console.warn("Not marked as read:", e));
+    return;
+  }
   updateConversation(peer, { unread: 0 });
 }
 
 // `uploads`: files already copied into the content store (messaging/MessageComposer).
 export async function sendMessage(peer: string, text: string, uploads: Upload[]): Promise<void> {
+  if (isPopout()) return askMain("send", { peer, text, uploads });
   const c = conversation(peer);
   if (!me || !c) return;
   const attachments: Attachment[] = [];
@@ -198,15 +236,18 @@ export async function sendMessage(peer: string, text: string, uploads: Upload[])
 }
 
 export function editMessage(message: DmMessage, text: string): Promise<void> {
+  if (isPopout()) return askMain("edit", { ref: refOf(message), text });
   return sendChange(message, { of: message.id, at: message.at, edit: text });
 }
 
 // Deletes it on both sides.
 export function deleteMessage(message: DmMessage): Promise<void> {
+  if (isPopout()) return askMain("delete", { ref: refOf(message) });
   return sendChange(message, { of: message.id, at: message.at, delete: true });
 }
 
 export function react(message: DmMessage, code: string): Promise<void> {
+  if (isPopout()) return askMain("react", { ref: refOf(message), code });
   const on = !message.reactions?.[code]?.includes(me?.id ?? "");
   return sendChange(message, { of: message.id, at: message.at, react: code, on });
 }
@@ -246,16 +287,19 @@ async function applyChange(peer: string, from: string, at: number, change: Chang
     next = { ...stored, text: change.edit, editedAt: at };
   }
   await dbPut("messages", next, key);
+  tellViews(next);
   if (state.messages[peer]) setState("messages", peer, (m) => m.id === change.of, reconcile(next));
 }
 
 // Sends a message that couldn't be sent again.
 export function retry(message: DmMessage): Promise<void> {
+  if (isPopout()) return askMain("retry", { ref: refOf(message) });
   return deliver(message);
 }
 
 // Downloads an attachment from the other side (both must be online).
 export async function downloadAttachment(peer: string, attachment: Attachment): Promise<string> {
+  if (isPopout()) return askMain("download", { peer, attachment: plain(attachment) });
   const link = links.get(peer);
   if (!link?.online) return `${conversation(peer)?.displayName ?? "They"} must be online to send it.`;
   const result = await link.download(attachment.hash);
@@ -267,6 +311,7 @@ export async function downloadAttachment(peer: string, attachment: Attachment): 
 
 // Forgets the conversation and its messages on this computer.
 export async function deleteConversation(peer: string): Promise<void> {
+  if (isPopout()) return askMain("forget", { peer });
   if (!me) return;
   closeConversationLink(peer);
   keys.delete(peer);
@@ -276,6 +321,7 @@ export async function deleteConversation(peer: string): Promise<void> {
     setState("messages", peer, undefined);
   });
   saveList();
+  views?.toViews({ kind: "forgotten", peer });
   if (current()?.peer === peer) openConversation("");
 }
 
@@ -431,6 +477,10 @@ function updateProfiles(people: PublicAccount[]) {
 
 // Blocking closes the room, so nothing more arrives from them live; it opens again with the conversation.
 export function closeConversationLink(peer: string): void {
+  if (isPopout()) {
+    void askMain("closeLink", { peer }).catch((e) => console.warn("Room not closed:", e));
+    return;
+  }
   links.get(peer)?.close();
   links.delete(peer);
   connecting.delete(peer);
@@ -459,7 +509,9 @@ function updateConversation(peer: string, changes: Partial<Conversation>) {
 }
 
 async function save(message: DmMessage) {
-  await dbPut("messages", { ...message, attachments: [...message.attachments] }, keyOf(message));
+  const stored = { ...message, attachments: [...message.attachments] };
+  await dbPut("messages", stored, keyOf(message));
+  tellViews(stored);
   if (!state.messages[message.peer]) return;
   setState("messages", message.peer, produce((list) => {
     if (!list || list.some((m) => m.id === message.id)) return;
@@ -470,8 +522,9 @@ async function save(message: DmMessage) {
 
 function setStatus(message: DmMessage, status: MessageStatus, error?: string) {
   const stored = { ...message, attachments: [...message.attachments], status, error };
-  void dbPut("messages", stored, keyOf(message));
-  setState("messages", message.peer, (m) => m.id === message.id, { status, error });
+  void dbPut("messages", stored, keyOf(message)).then(() => tellViews(stored));
+  // A view window's message can be sent while this window hasn't loaded the conversation.
+  if (state.messages[message.peer]) setState("messages", message.peer, (m) => m.id === message.id, { status, error });
 }
 
 function sharedWith(peer: string): Set<string> {
@@ -480,9 +533,11 @@ function sharedWith(peer: string): Set<string> {
   return set;
 }
 
+// Whether the conversation shows in a window that has the focus: this one, or a view window.
 function isLooking(peer: string): boolean {
   const here = current();
-  return document.hasFocus() && here?.workspaceId === messagesHome && here.peer === peer;
+  if (document.hasFocus() && here?.workspaceId === messagesHome && here.peer === peer) return true;
+  return [...viewers.values()].some((viewer) => viewer.focused && viewer.peer === peer);
 }
 
 function preview(message: DmMessage): string {
@@ -494,8 +549,171 @@ function preview(message: DmMessage): string {
 
 function saveList() {
   if (me ?? account()) writeJson(listKey((me ?? { id: account()!.id }).id), state.conversations);
+  views?.toViews({ kind: "list", conversations: plain(state.conversations) });
 }
 
 const listKey = (accountId: string) => `mw.conversations.${accountId}`;
-const keyOf = (m: { peer: string; at: number; id: string }) => `${me!.id}:${m.peer}:${String(m.at).padStart(15, "0")}:${m.id}`;
+const keyOf = (m: MessageRef) => `${me!.id}:${m.peer}:${String(m.at).padStart(15, "0")}:${m.id}`;
 const newId = () => base64url(crypto.getRandomValues(new Uint8Array(16)));
+const refOf = (m: MessageRef): MessageRef => ({ peer: m.peer, id: m.id, at: m.at });
+// A copy that can go to another window: what comes from the store here is a proxy, which can't be cloned.
+const plain = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
+
+function tellViews(message: DmMessage) {
+  views?.toViews({ kind: "message", message: plain(message) });
+}
+
+// What view windows ask of the main window, done with the same functions as here.
+const mainCalls: MainCalls = {
+  send: ({ peer, text, uploads }) => sendMessage(peer, text, uploads),
+  edit: ({ ref, text }) => withStored(ref, (m) => editMessage(m, text)),
+  delete: ({ ref }) => withStored(ref, deleteMessage),
+  react: ({ ref, code }) => withStored(ref, (m) => react(m, code)),
+  retry: ({ ref }) => withStored(ref, retry),
+  download: ({ peer, attachment }) => downloadForView(peer, attachment),
+  read: async ({ peer }) => markRead(peer),
+  forget: ({ peer }) => deleteConversation(peer),
+  closeLink: async ({ peer }) => closeConversationLink(peer),
+  friend: ({ action, id }) => changeFriend(action, id),
+  allowStrangers: ({ allow }) => setAllowStrangers(allow),
+};
+
+async function withStored(ref: MessageRef, act: (message: DmMessage) => Promise<void>): Promise<void> {
+  if (!me) throw new Error(blocked() ?? "Private messages are unavailable.");
+  const stored = await dbGet<DmMessage>("messages", keyOf(ref));
+  if (stored) await act(stored);
+}
+
+// Downloads for a view window, telling it how far the download has come and when the content is stored.
+async function downloadForView(peer: string, attachment: Attachment): Promise<string> {
+  const link = links.get(peer);
+  const stopProgress = link && createRoot((dispose) => {
+    createEffect(() => views?.toViews({ kind: "progress", hash: attachment.hash, value: link.streams.progress(attachment.hash) }));
+    return dispose;
+  });
+  try {
+    const failed = await downloadAttachment(peer, attachment);
+    if (!failed) views?.toViews({ kind: "downloaded", hash: attachment.hash });
+    return failed;
+  } finally {
+    stopProgress?.();
+    views?.toViews({ kind: "progress", hash: attachment.hash, value: undefined });
+  }
+}
+
+// Main window: lets view windows show conversations and act on them through this window. Runs while signed in,
+// also while messages are blocked, so view windows can say why.
+export function serveViewWindows(): void {
+  const signed = account();
+  if (isPopout() || !signed) return;
+  stopServing?.();
+  viewers.clear();
+  const link = (views = windowLinkFor(signed.id));
+  stopServing = createRoot((dispose) => {
+    const owner = getOwner();
+    // Peers whose room state view windows get, each from its own effect.
+    const followed = new Set<string>();
+    const tellLink = (peer: string) => link.toViews({ kind: "link", peer, online: isOnline(peer), shown: appearsStatus(peer) });
+    const follow = (peer: string) => {
+      if (followed.has(peer)) return tellLink(peer);
+      followed.add(peer);
+      runWithOwner(owner, () => createEffect(() => tellLink(peer)));
+    };
+    createEffect(() => link.toViews({ kind: "blocked", why: blocked() }));
+    createEffect(() => link.toViews({ kind: "relations", relations: relations() }));
+    const stop = link.serveViews(mainCalls, (message) => {
+      if (message.kind === "looking") {
+        if (message.peer) viewers.set(message.window, { peer: message.peer, focused: message.focused });
+        else viewers.delete(message.window);
+        return;
+      }
+      link.toViews({ kind: "list", conversations: plain(state.conversations) });
+      link.toViews({ kind: "blocked", why: blocked() });
+      link.toViews({ kind: "relations", relations: relations() });
+      if (!message.peer || !conversation(message.peer)) return;
+      // Loaded here too, so a message sent from the view window updates this window's copy as it goes.
+      void loadMessages(message.peer);
+      follow(message.peer);
+    });
+    return () => {
+      stop();
+      dispose();
+    };
+  });
+}
+
+// View window: shows the conversation list as the main window keeps it, the stored messages of `peer` and what the
+// main window tells about them. Every view window follows, for the friends in member menus.
+export function followMessages(peer?: string): void {
+  const signed = account();
+  if (!isPopout() || !signed) return;
+  shownPeer = peer;
+  setState("conversations", readJson<Conversation[]>(listKey(signed.id), []));
+  const link = windowLinkFor(signed.id);
+  link.followMain(fromMain);
+  link.toMain({ kind: "hello", peer });
+  if (!peer) return;
+  const windowId = newId();
+  const report = (focused: boolean) => link.toMain({ kind: "looking", window: windowId, peer, focused });
+  window.addEventListener("focus", () => report(true));
+  window.addEventListener("blur", () => report(false));
+  window.addEventListener("pagehide", () => link.toMain({ kind: "looking", window: windowId, peer: null, focused: false }));
+  report(document.hasFocus());
+}
+
+function fromMain(message: ToViews) {
+  switch (message.kind) {
+    case "list":
+      setState("conversations", reconcile(message.conversations, { key: "id" }));
+      break;
+    case "message":
+      takeMessage(message.message);
+      break;
+    case "forgotten":
+      if (message.peer === shownPeer) closeWindow();
+      else setState("messages", message.peer, undefined);
+      break;
+    case "link":
+      setMirror("links", message.peer, { online: message.online, shown: message.shown });
+      break;
+    case "blocked":
+      setBlocked(message.why);
+      break;
+    case "relations":
+      takeRelations(message.relations);
+      break;
+    case "progress":
+      setMirror("progress", message.hash, message.value);
+      break;
+    case "downloaded":
+      // The main window stored it, where this window reads content too.
+      markPresent(message.hash);
+      break;
+  }
+}
+
+// View window: the stored messages of a conversation, plus any the main window told about while they loaded.
+async function loadStored(peer: string): Promise<void> {
+  const signed = account();
+  if (!signed || state.messages[peer] || arriving.has(peer)) return;
+  arriving.set(peer, []);
+  const stored = await dbGetRange<DmMessage>("messages", prefixRange(`${signed.id}:${peer}`));
+  const early = arriving.get(peer) ?? [];
+  arriving.delete(peer);
+  setState("messages", peer, stored);
+  early.forEach(takeMessage);
+}
+
+// View window: a message as the main window stored it, in place of the copy here (the same object, so its card
+// stays), else added in time order.
+function takeMessage(message: DmMessage) {
+  const early = arriving.get(message.peer);
+  if (early) return void early.push(message);
+  const list = state.messages[message.peer];
+  if (!list) return;
+  if (list.some((m) => m.id === message.id)) setState("messages", message.peer, (m) => m.id === message.id, reconcile(message));
+  else setState("messages", message.peer, produce((all) => {
+    all!.push(message);
+    all!.sort((a, b) => a.at - b.at);
+  }));
+}

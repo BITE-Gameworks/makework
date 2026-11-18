@@ -2,7 +2,8 @@
 //
 // A view window is this same app on the same session (same account, same content), started with `?popout=<place>`.
 // It shows that one tab and nothing account-wide: notifications, sounds, the icon badge, calls and private
-// messages stay in the main window (ADR 0009). Places here are
+// messages stay in the main window (ADR 0009); a conversation shown in one works through the main window (ADR
+// 0031). Places here are
 // WindowPlace (core/desktop.ts), the shape of navigation's Location, repeated so this module doesn't have to
 // import the tab list.
 import { desktop, type WindowPlace } from "./desktop";

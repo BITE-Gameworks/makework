@@ -78,7 +78,7 @@ export function channelMenu(workspaceId: string, channel: Channel): MenuEntry[] 
   return [
     { label: "Open", icon: channelType(channel.type).icon, action: () => openChannel(workspaceId, channel.id) },
     { label: "Open in new tab", icon: "tab-new", action: () => openInNewTab({ workspaceId, channelId: channel.id }) },
-    ...(windowable ? [newWindowEntry("Open in new window", () => moveToWindow(workspaceId, channel.id, channelType(channel.type)))] : []),
+    ...(windowable ? [newWindowEntry("Open in new window", () => moveToWindow({ workspaceId, channelId: channel.id }, channelType(channel.type)))] : []),
     ...folderEntry(workspaceId, channel),
     ...voice,
     ...content,
