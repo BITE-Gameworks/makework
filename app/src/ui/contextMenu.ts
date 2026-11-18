@@ -32,8 +32,17 @@ export interface OpenMenu {
   entries: MenuEntry[];
 }
 
+// Gap kept between a right-click menu and the window's edges, in px.
+export const menuEdge = 4;
+
 const [contextMenu, setContextMenu] = createSignal<OpenMenu | null>(null);
 export { contextMenu };
+
+// Whether the open menu holding `el` can grow `height` px taller and still end inside the window.
+export function menuHasRoom(el: Element, height: number): boolean {
+  const menu = el.closest(".mw-context-menu");
+  return !menu || menu.getBoundingClientRect().bottom + height <= innerHeight - menuEdge;
+}
 
 export function openContextMenu(event: MouseEvent, entries: MenuEntry[]): void {
   event.preventDefault();

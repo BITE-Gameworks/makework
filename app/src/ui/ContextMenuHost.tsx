@@ -1,7 +1,7 @@
 import { For, Show, createEffect, createSignal, onCleanup } from "solid-js";
 import { Icon } from "../theme/icons";
 import Collapse from "./Collapse";
-import { closeContextMenu, contextMenu, type MenuEntry, type MenuItem, type MenuSubmenu, type OpenMenu } from "./contextMenu";
+import { closeContextMenu, contextMenu, menuEdge, type MenuEntry, type MenuItem, type MenuSubmenu, type OpenMenu } from "./contextMenu";
 import { createPresence, motionMs } from "./presence";
 import "./Popover.css";
 
@@ -36,8 +36,8 @@ function Menu(props: { menu: OpenMenu; visible: boolean }) {
     // Kept inside the window: flips left or up near the edges.
     const r = panel.getBoundingClientRect();
     setPlace({
-      x: props.menu.x + r.width > innerWidth - 4 ? Math.max(4, props.menu.x - r.width) : props.menu.x,
-      y: props.menu.y + r.height > innerHeight - 4 ? Math.max(4, props.menu.y - r.height) : props.menu.y,
+      x: props.menu.x + r.width > innerWidth - menuEdge ? Math.max(menuEdge, props.menu.x - r.width) : props.menu.x,
+      y: props.menu.y + r.height > innerHeight - menuEdge ? Math.max(menuEdge, props.menu.y - r.height) : props.menu.y,
     });
     items()[0]?.focus({ preventScroll: true });
 
@@ -53,7 +53,8 @@ function Menu(props: { menu: OpenMenu; visible: boolean }) {
       e.preventDefault();
       e.stopPropagation();
     };
-    // When a submenu opens or closes, the width grows or shrinks to fit instead of jumping.
+    // When a submenu opens or closes, the width grows or shrinks to fit instead of jumping. A menu that grows past the
+    // window's right edge moves left to stay inside it.
     let width = panel.offsetWidth;
     let resizing: Animation | null = null;
     const resize = new ResizeObserver(() => {
@@ -69,6 +70,8 @@ function Menu(props: { menu: OpenMenu; visible: boolean }) {
         };
       }
       width = next;
+      const at = place();
+      if (at.x + next > innerWidth - menuEdge) setPlace({ ...at, x: Math.max(menuEdge, innerWidth - menuEdge - next) });
     });
     resize.observe(panel);
     const close = () => closeContextMenu();

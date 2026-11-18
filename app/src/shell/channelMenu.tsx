@@ -11,8 +11,8 @@ import {
 } from "../core/workspaces";
 import Collapse from "../ui/Collapse";
 import { Icon, type IconName } from "../theme/icons";
-import ConfirmPrompt from "../ui/ConfirmPrompt";
-import { closeContextMenu } from "../ui/contextMenu";
+import ConfirmPrompt, { ConfirmBeside } from "../ui/ConfirmPrompt";
+import { closeContextMenu, menuHasRoom } from "../ui/contextMenu";
 import { saveBlob } from "../ui/download";
 import { isStarred, isUnread, markRead, toggleStar } from "../core/sidebar";
 import { setSidePanel } from "../core/ui";
@@ -204,12 +204,23 @@ export function RenameItem(props: { value: string; label: string; clean: (name: 
   );
 }
 
-// A destructive menu entry that asks inside the menu before it acts.
+// A destructive menu entry that asks inside the menu before it acts. The question expands below the entry; when that
+// would push the menu past the bottom of the window, only the buttons show, beside the entry.
 export function ConfirmItem(props: {
   label: string; question: string; onConfirm: () => Promise<void>; icon?: IconName; confirmLabel?: string;
 }) {
   const [asking, setAsking] = createSignal(false);
+  const [beside, setBeside] = createSignal(false);
   const [error, setError] = createSignal("");
+  let prompt!: HTMLDivElement;
+  const ask = () => {
+    if (asking()) return setAsking(false);
+    setBeside(false);
+    setAsking(true);
+    // The prompt is mounted now but still collapsed, so its full height is known before anything is drawn.
+    const height = prompt.offsetHeight + parseFloat(getComputedStyle(prompt).marginTop);
+    setBeside(!menuHasRoom(prompt, height));
+  };
   const confirm = async () => {
     try {
       await props.onConfirm();
@@ -218,13 +229,19 @@ export function ConfirmItem(props: {
       setError(userMessage(e));
     }
   };
+  const confirmProps = () => ({
+    question: props.question, confirmLabel: props.confirmLabel ?? "Delete",
+    onConfirm: () => void confirm(), onCancel: () => setAsking(false),
+  });
   return (
     <>
-      <button class="mw-menu-item danger" role="menuitem" onClick={() => setAsking(!asking())}>
-        <Icon name={props.icon ?? "delete"} /> {props.label}
-      </button>
-      <ConfirmPrompt open={asking()} question={props.question} confirmLabel={props.confirmLabel ?? "Delete"}
-        onConfirm={() => void confirm()} onCancel={() => setAsking(false)} />
+      <div class="menu-confirm">
+        <button class="mw-menu-item danger" role="menuitem" onClick={ask}>
+          <Icon name={props.icon ?? "delete"} /> {props.label}
+        </button>
+        <ConfirmBeside open={asking() && beside()} {...confirmProps()} />
+      </div>
+      <ConfirmPrompt ref={(el) => (prompt = el)} open={asking() && !beside()} {...confirmProps()} />
       {error() && <p class="warning mw-menu-note">{error()}</p>}
     </>
   );
