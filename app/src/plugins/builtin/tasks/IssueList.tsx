@@ -15,6 +15,7 @@ import {
   issueStatuses, openDependencies, severities, type Board, type IssueStatus, type NewIssue, type Severity, type Tag, type Task,
 } from "./data";
 import { TagChip } from "./TagChip";
+import TitleField from "./TitleField";
 import { createCopied } from "../../../ui/clipboard";
 
 export const severityColor: Record<Severity, string> = {
@@ -280,8 +281,8 @@ function NewIssueForm(props: { context: ChannelContext; onAdd: (issue: NewIssue)
     <form class="issue-new" onSubmit={(e) => void submit(e)}>
       <label class="task-editor-field column">
         <span>Title</span>
-        <input class="mw-input mw-box" value={title()} placeholder="What is wrong, in a few words" aria-label="Title"
-          onInput={(e) => setTitle(e.currentTarget.value)} />
+        <TitleField value={title()} placeholder="What is wrong, in a few words" aria-label="Title"
+          onInput={(e) => setTitle(e.currentTarget.value)} onEnter={() => void submit()} />
       </label>
       <div class="task-editor-field">
         <span>Severity</span>

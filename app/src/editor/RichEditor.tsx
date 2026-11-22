@@ -6,6 +6,7 @@ import { narrow } from "../core/ui";
 import { For, Show, createEffect, createRenderEffect, createRoot, createSignal, on, onCleanup, onMount, type JSX } from "solid-js";
 import { appLink, isLink, linkMenu, openLink, parseLink, resolveLink } from "../core/links";
 import { openContextMenu } from "../ui/contextMenu";
+import { fitHeight } from "../ui/autoGrow";
 import { iconUrl, Icon } from "../theme/icons";
 import LinkPicker, { type Pick } from "./LinkPicker";
 import CommandPicker from "./CommandPicker";
@@ -117,14 +118,10 @@ export default function RichEditor(props: {
   };
 
   const markdown = () => (markdownMode() ? raw.value : nodesToMarkdown(root));
-  const fitRaw = () => {
-    raw.style.height = "auto";
-    raw.style.height = `${raw.scrollHeight}px`;
-  };
   const changed = () => {
     if (markdownMode()) {
       setEmpty(!raw.value.trim());
-      fitRaw();
+      fitHeight(raw);
     } else setEmpty(!root.textContent?.trim() && !root.querySelector("[data-href], [data-mention], li, pre, blockquote"));
     props.onInput?.(markdown());
   };

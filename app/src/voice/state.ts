@@ -14,6 +14,7 @@ import { readJson, writeJson } from "../core/storage";
 import { playSound } from "../theme/sounds";
 import { canCarryMedia, mediaLink, remoteMics, remoteStream, reportedCallSize } from "./media";
 import { createLimiter, isRemoteSpeaking, playRemote, remoteAnalyser, remoteLevel } from "./remote";
+import { cameraChoices, defaultCamera, deviceIdFor, isSystemCamera, systemCameras, type CameraChoice, type CameraFacing } from "./cameras";
 import { createSpeakingDetector, stepLevel } from "./levels";
 import { autoGainDbFor, speechTargetDb, type MicState } from "./micProcessing";
 import { capturingPttKey, inputMode, noiseSuppression, pttKey, sensitivityDb } from "./micSettings";
@@ -167,7 +168,7 @@ const [level, setLevel] = createSignal(0);
 const [voiceError, setVoiceError] = createSignal("");
 const [inputs, setInputs] = createSignal<MediaDeviceInfo[]>([]);
 const [outputs, setOutputs] = createSignal<MediaDeviceInfo[]>([]);
-const [cameras, setCameras] = createSignal<MediaDeviceInfo[]>([]);
+const [cameras, setCameras] = createSignal<CameraChoice[]>([]);
 const [inputId, setInputIdSignal] = createSignal<string>(readJson("mw.voice.input", ""));
 const [outputId, setOutputIdSignal] = createSignal<string>(readJson("mw.voice.output", ""));
 const [cameraId, setCameraIdSignal] = createSignal<string>(readJson("mw.voice.camera", ""));
@@ -461,41 +462,85 @@ export async function toggleCamera(): Promise<void> {
   void pushState();
 }
 
-// The chosen camera, else the system's default (also when the chosen one is unplugged).
-async function openCamera(): Promise<MediaStream> {
-  const id = cameraId();
-  if (id) {
-    try {
-      return await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: id } } });
-    } catch (e) {
-      const name = (e as DOMException).name;
-      if (name !== "OverconstrainedError" && name !== "NotFoundError") throw e;
-    }
+// The chosen camera, else the system's default (also when the chosen one is gone).
+async function openCamera(id = cameraId()): Promise<MediaStream> {
+  const deviceId = deviceIdFor(id, await refreshDevices());
+  if (deviceId) {
+    const stream = await openDevice(deviceId);
+    if (stream) return stream;
   }
-  return navigator.mediaDevices.getUserMedia({ video: true });
+  const facing = cameras().find((c) => c.id === id)?.facing;
+  const stream = await navigator.mediaDevices.getUserMedia({ video: facingVideo(facing) });
+  if (deviceId || !isSystemCamera(id)) return stream;
+  // The WebView names its cameras only once one is open, and may have opened another camera on that side.
+  const chosen = deviceIdFor(id, await refreshDevices());
+  if (!chosen || chosen === stream.getVideoTracks()[0]?.getSettings().deviceId) return stream;
+  stream.getTracks().forEach((t) => t.stop());
+  return (await openDevice(chosen)) ?? navigator.mediaDevices.getUserMedia({ video: facingVideo(facing) });
 }
 
-// A camera that is on switches over at once.
-export async function setCameraDevice(id: string): Promise<void> {
+const facingVideo = (facing: CameraFacing | undefined) => (facing ? { facingMode: facing } : defaultCamera);
+
+// Null when the device is gone: unplugged, or an id from an earlier launch.
+async function openDevice(deviceId: string): Promise<MediaStream | null> {
+  try {
+    return await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId } } });
+  } catch (e) {
+    const name = (e as DOMException).name;
+    if (name !== "OverconstrainedError" && name !== "NotFoundError") throw e;
+    return null;
+  }
+}
+
+function saveCamera(id: string) {
   setCameraIdSignal(id);
   writeJson("mw.voice.camera", id);
+}
+
+// A camera that is on switches over at once. One that fails keeps the camera that was on, and the choice with it.
+export async function setCameraDevice(id: string): Promise<void> {
+  const previous = cameraId();
+  saveCamera(id);
   const old = cameraStream();
   if (!old || startingCamera()) return;
   setStartingCamera(true);
   try {
-    const stream = await openCamera();
+    const stream = await openInstead(old, id);
     if (cameraStream() !== old) {
       stream.getTracks().forEach((t) => t.stop());
       return;
     }
     old.getTracks().forEach((t) => t.stop());
     setCameraStream(stream);
-    void pushState();
   } catch (e) {
     failVoice(mediaError(e, "Camera"));
+    if (cameraId() === id) saveCamera(previous);
+    await restoreCamera(old, previous);
   } finally {
     setStartingCamera(false);
   }
+  void pushState();
+}
+
+// Phones open one camera at a time: when the new one is busy, the one that is on stops first.
+async function openInstead(old: MediaStream, id: string): Promise<MediaStream> {
+  try {
+    return await openCamera(id);
+  } catch (e) {
+    if (!cameraBusy(e)) throw e;
+  }
+  old.getTracks().forEach((t) => t.stop());
+  return openCamera(id);
+}
+
+const cameraBusy = (e: unknown) => ["NotReadableError", "AbortError"].includes((e as DOMException)?.name);
+
+// Reopens the camera that was on when a failed switch had to stop it.
+async function restoreCamera(old: MediaStream, id: string) {
+  if (cameraStream() !== old || old.getVideoTracks().every((t) => t.readyState === "live")) return;
+  const stream = await openCamera(id).catch(() => null);
+  if (cameraStream() !== old) return stream?.getTracks().forEach((t) => t.stop());
+  setCameraStream(stream);
 }
 
 let pickerCancelledAt = -Infinity;
@@ -751,12 +796,13 @@ export function setOutputDevice(id: string): void {
   writeJson("mw.voice.output", id);
 }
 
-export async function refreshDevices(): Promise<void> {
-  if (!navigator.mediaDevices?.enumerateDevices) return;
+export async function refreshDevices(): Promise<MediaDeviceInfo[]> {
+  if (!navigator.mediaDevices?.enumerateDevices) return [];
   const devices = await navigator.mediaDevices.enumerateDevices();
   setInputs(devices.filter((d) => d.kind === "audioinput" && d.label !== screenAudioLabel));
   setOutputs(devices.filter((d) => d.kind === "audiooutput"));
-  setCameras(devices.filter((d) => d.kind === "videoinput"));
+  setCameras(cameraChoices(devices, await systemCameras()));
+  return devices;
 }
 
 if (typeof navigator !== "undefined") navigator.mediaDevices?.addEventListener?.("devicechange", () => void refreshDevices());
@@ -926,6 +972,7 @@ function mediaError(e: unknown, what: string): string {
   const name = (e as DOMException)?.name;
   if (name === "NotAllowedError") return `${what} access was denied.`;
   if (name === "NotFoundError") return `No ${what.toLowerCase()} found.`;
+  if (name === "NotReadableError") return `${what} couldn't be opened. Another app may be using it.`;
   return `${what} is not available here.`;
 }
 

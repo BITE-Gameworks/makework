@@ -63,6 +63,11 @@ const [narrow, setNarrow] = createSignal(narrowQuery?.matches ?? false);
 narrowQuery?.addEventListener("change", (e) => setNarrow(e.matches));
 export { narrow };
 export const [drawerOpen, setDrawerOpen] = createSignal(false);
+// The drawer closes by itself when the place changes (Shell.tsx). A drawer row for the place already open calls this,
+// so picking it again shows its view too.
+export function showOpenPlace(): void {
+  if (narrow()) setDrawerOpen(false);
+}
 
 // While the window is being resized, and `quietMs` after its last step, the root has `window-resizing`: transitions
 // pause then (theme/base.css), or widths that follow the window (the side panel) animated behind its edge and the

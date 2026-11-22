@@ -7,6 +7,7 @@ import WorkspaceBar from "./WorkspaceBar";
 import SidePanel from "./SidePanel";
 import TabBar from "./TabBar";
 import ContextMenu from "../ui/ContextMenuHost";
+import { dialogOpen } from "../ui/Dialog";
 import { watchLongPress } from "../ui/longPress";
 import { createPresence } from "../ui/presence";
 import ViewerOverlay from "./ViewerOverlay";
@@ -27,7 +28,8 @@ import "./shell.css";
 
 export default function Shell() {
   // Narrow: the drawer starts open while nothing is open, and closes once a channel or conversation is picked
-  // (switching workspaces keeps it open on the new channel list), or a page or panel opens over the view.
+  // (switching workspaces keeps it open on the new channel list), or a page, panel or dialog opens over the view. A
+  // dialog would open behind it: the drawer is drawn over dialogs, which stay under popovers.
   let where = current();
   createEffect(on(current, (now) => {
     const before = where;
@@ -37,7 +39,7 @@ export default function Shell() {
     if (before && before.workspaceId !== now.workspaceId) return;
     setDrawerOpen(false);
   }));
-  createEffect(on([overlay, sidePanel], ([o, p]) => (o || p) && setDrawerOpen(false), { defer: true }));
+  createEffect(on([overlay, sidePanel, dialogOpen], ([o, p, d]) => (o || p || d) && setDrawerOpen(false), { defer: true }));
   createEffect(on(narrow, (n) => setDrawerOpen(n && !current()?.channelId && !current()?.peer)));
   const backdrop = createPresence(() => narrow() && drawerOpen());
 

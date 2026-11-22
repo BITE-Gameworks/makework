@@ -85,15 +85,20 @@
   padding: 6px;
 }
 
+/* Top-aligned: the dropdown stays beside the first line of a title that wraps. */
 .tasks-add {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
   padding: 0 6px 6px;
 }
 
-.tasks-add input {
+/* Titles (TitleField.tsx) wrap and grow with their text instead of scrolling. */
+.tasks-title-field {
+  display: block;
   width: 100%;
+  overflow: hidden;
+  resize: none;
 }
 
 .tasks-cards {

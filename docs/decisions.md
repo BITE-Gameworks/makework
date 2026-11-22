@@ -282,3 +282,15 @@ no longer opens the item's menu, so such items get a three-dots button on touch 
 WebView's own drag of `draggable` elements (unreliable on Android, no scrolling while dragging, and it fights the
 long-press menu), a drag-and-drop polyfill library (a dependency for one gesture), and moving only through the menu's
 "Move to" (no order within a column).
+
+## 0036 Android lists cameras from the system
+
+The Android app's camera menu lists the cameras the system says an app can stream from (`CamerasPlugin.java`, read by
+`voice/cameras.ts`), named by side: "Front camera", "Back camera", "Back camera 2". The WebView's own list also has
+depth and infrared sensors that give no picture, and its device ids change with every launch, so a chosen camera is
+kept by the system's camera id and matched to the WebView's device by its label ("camera2 <id>, facing ...") when it
+opens. Until the WebView names its cameras (after one has been open) the camera opens by its side and switches to the
+exact one. Calls on a phone start with the front camera. Switching cameras while one is on stops the old one first
+when the new one is busy, as phones open one camera at a time. Rejected: the WebView's list (cameras that never open,
+a choice lost at every launch) and opening each camera to test it (it lights the camera, takes about a second each,
+and can't run while a camera is on). Other platforms keep the browser's list and its device ids, which last.

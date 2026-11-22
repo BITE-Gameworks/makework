@@ -100,6 +100,8 @@ Other people and agents may be working in the same checkout at the same time. Ei
 - Elements with a themed shape get `class="mw-box"`. Icons via `<Icon name="..."/>`; new names go into `icons.tsx` and
   the Sharp and Phosphor packs.
 - Online dots are `var(--mw-success)`, never the accent.
+- Hover effects go inside `@media (hover: hover)`: touch screens put `:hover` on whatever a finger touches, even while
+  scrolling, and keep it there.
 
 ## Consistency
 
@@ -122,6 +124,7 @@ Every similar thing behaves the same and its code exists once. Before adding UI,
   `toggleSidePanel` or, in plugins, `context.toggleSidePanel`.
 - Other members' pointers: `context.cursors` and `ui/RemoteCursors`. A caller's name: `voice/SpeakerName`.
 - Resizable panels: `ui/ResizeHandle`. Disclosures: `ui/Disclosure` with `Collapse`.
+- Textareas that grow with their text: `autoGrow` or `fitHeight` (`ui/autoGrow.ts`).
 - A plugin's options: `ClientPlugin.settings` (shown by `plugins/PluginSettingsForm`), never a settings page of its own.
 - Dropdowns: `ui/Select`; text fields with suggestions: `ui/Combobox`. Never a native `<select>` or `<datalist>`.
 - Right-click choices from a list: one submenu entry (`{ label, icon, items }`, `ui/contextMenu.ts`).

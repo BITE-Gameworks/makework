@@ -7,7 +7,7 @@ import { fileFromUrl, openFile } from "../core/files";
 import { current, messagesHome, moveToWindow, openConversation, openFriends, openInNewTab, type Location } from "../core/navigation";
 import { isPopout } from "../core/popout";
 import { formatBytes } from "../core/time";
-import { closeOverlays } from "../core/ui";
+import { closeOverlays, showOpenPlace } from "../core/ui";
 import { hostOf } from "../core/userServer";
 import MessageComposer, { type ComposerApi } from "../messaging/MessageComposer";
 import SharedCard from "../messaging/MessageCard";
@@ -104,6 +104,7 @@ export function ConversationList() {
         aria-current={showingMessages() && !current()?.peer ? "page" : undefined}
         onClick={() => {
           closeOverlays();
+          if (showingMessages() && !current()?.peer) showOpenPlace();
           openFriends();
         }}>
         <Icon name="profile" size={22} />
@@ -116,6 +117,7 @@ export function ConversationList() {
         aria-current={showingMessages() && current()?.peer === notesPeer ? "page" : undefined}
         onClick={() => {
           closeOverlays();
+          if (showingMessages() && current()?.peer === notesPeer) showOpenPlace();
           openConversation(notesPeer);
         }}>
         <Icon name="notes" size={22} />
@@ -151,8 +153,9 @@ function ConversationRow(props: { conversation: Conversation }) {
       onMouseDown={(e) => e.button === 1 && e.preventDefault()}
       onClick={(e) => {
         closeOverlays();
-        if (e.ctrlKey || e.metaKey) openInNewTab(place());
-        else openConversation(c().id);
+        if (e.ctrlKey || e.metaKey) return openInNewTab(place());
+        if (active()) showOpenPlace();
+        openConversation(c().id);
       }}>
       <span class="dm-row-avatar">
         <Avatar user={c()} size={32} />

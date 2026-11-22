@@ -25,6 +25,7 @@ import AddForm, { type AddKind } from "./AddForm";
 import { AssigneesProperty, DependenciesProperty, TagsProperty } from "./Properties";
 import IssueList, { severityColor } from "./IssueList";
 import { TagChip } from "./TagChip";
+import TitleField from "./TitleField";
 import { taskActions, type Run, type TaskActions } from "./actions";
 import HistoryControls from "../../../ui/HistoryControls";
 import { historyKeys } from "../../../core/history";
@@ -700,9 +701,9 @@ function TaskEditor(props: {
     <Show when={props.task()} keyed={false}>
       {(task) => (
         <div class="task-editor">
-          <input class="mw-input mw-box task-editor-title" value={task().title} aria-label="Title"
+          <TitleField class="task-editor-title" value={task().title} aria-label="Title"
             onChange={(e) => e.currentTarget.value.trim() ? save({ title: e.currentTarget.value.trim() }) : (e.currentTarget.value = task().title)}
-            onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()} />
+            onEnter={(el) => el.blur()} />
           <Show when={task().kind === "issue"} fallback={
             <label class="task-editor-field">
               <span>Column</span>
