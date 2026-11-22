@@ -90,25 +90,26 @@ export default function MessageCard(props: {
     card?.scrollIntoView({ block: "nearest" });
   });
 
+  // The right-click and long-press menu, also behind the three-dots button on touch screens.
+  const entries = (image?: HTMLImageElement | null): MenuEntry[] => [
+    ...(props.menuStart ?? []),
+    ...(props.reactions ? [{
+      label: "React", icon: "add-reaction", items: [
+        ...quickReactions().map(([code, emoji]) => ({ label: `${emoji}  :${code}:`, action: () => props.reactions!.onToggle(code) })),
+        "separator" as const,
+        { label: "More reactions", icon: "emoji", action: () => setPicking(true) },
+      ],
+    }] : []),
+    ...(props.canEdit ? [{ label: "Edit", icon: "rename", action: startEdit }] : []),
+    image
+      ? { label: "Copy image", icon: "copy", action: () => void copyImageFrom(image.src).then(() => showToast("Image copied"), () => showToast("That image couldn't be copied.")) }
+      : { label: "Copy text", icon: "copy", disabled: !props.body, action: () => void copyText(decodeEmoji(props.body)) },
+    ...(props.menuEnd ?? []),
+    ...(props.canDelete ? ["separator" as const, { label: "Delete", icon: "delete", danger: true, action: () => setConfirmDelete(true) }] : []),
+  ];
   const menu = (e: MouseEvent) => {
     if ((e.target as HTMLElement).closest("a, .mw-link-chip, .mw-editor")) return;
-    const image = (e.target as HTMLElement).closest<HTMLImageElement>(".chat-image:not(.ghost) img");
-    openContextMenu(e, [
-      ...(props.menuStart ?? []),
-      ...(props.reactions ? [{
-        label: "React", icon: "add-reaction", items: [
-          ...quickReactions().map(([code, emoji]) => ({ label: `${emoji}  :${code}:`, action: () => props.reactions!.onToggle(code) })),
-          "separator" as const,
-          { label: "More reactions", icon: "emoji", action: () => setPicking(true) },
-        ],
-      }] : []),
-      ...(props.canEdit ? [{ label: "Edit", icon: "rename", action: startEdit }] : []),
-      image
-        ? { label: "Copy image", icon: "copy", action: () => void copyImageFrom(image.src).then(() => showToast("Image copied"), () => showToast("That image couldn't be copied.")) }
-        : { label: "Copy text", icon: "copy", disabled: !props.body, action: () => void copyText(decodeEmoji(props.body)) },
-      ...(props.menuEnd ?? []),
-      ...(props.canDelete ? ["separator" as const, { label: "Delete", icon: "delete", danger: true, action: () => setConfirmDelete(true) }] : []),
-    ]);
+    openContextMenu(e, entries((e.target as HTMLElement).closest<HTMLImageElement>(".chat-image:not(.ghost) img")));
   };
   const save = (markdown: string) => {
     setEditing(false);
@@ -163,6 +164,10 @@ export default function MessageCard(props: {
                     onClick={() => setConfirmDelete(!confirmDelete())}><Icon name="delete" /></button>
                 </Show>
               </span>
+            </Show>
+            <Show when={!editing()}>
+              <button class="icon-button chat-message-more" title="More" aria-label="Message actions"
+                onClick={(e) => openContextMenu(e, entries())}><Icon name="more" /></button>
             </Show>
           </header>
           <ConfirmPrompt open={confirmDelete()} question="Are you sure you want to delete this message?" confirmLabel="Delete"

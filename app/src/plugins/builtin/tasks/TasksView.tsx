@@ -1,5 +1,5 @@
 import { copyText } from "../../../core/clipboard";
-import { For, Show, createEffect, createSignal, on, onCleanup } from "solid-js";
+import { For, Show, createEffect, createSignal, on, onCleanup, onMount } from "solid-js";
 import Skeleton from "../../../ui/Skeleton";
 import { userMessage } from "../../../api/client";
 import { copyLink } from "../../../core/links";
@@ -34,9 +34,18 @@ import Select from "../../../ui/Select";
 import "../views.css";
 import "./tasks.css";
 import { createCopied } from "../../../ui/clipboard";
+import { holdToDrag, type HoldDrag } from "../../../ui/touchDrag";
 
 const taskType = "application/x-makework-task";
 
+// The card in a column that a card dropped at `y` goes before; null for the column's end.
+function cardBefore(column: HTMLElement, y: number): number | null {
+  for (const card of column.querySelectorAll<HTMLElement>(".task-card")) {
+    const r = card.getBoundingClientRect();
+    if (y < r.top + r.height / 2) return Number(card.dataset.id);
+  }
+  return null;
+}
 
 export default function TasksView(props: { context: ChannelContext }) {
   const ctx = props.context;
@@ -109,6 +118,30 @@ export default function TasksView(props: { context: ChannelContext }) {
     const task = board.value.tasks.find((t) => t.id === id);
     if (task && id !== beforeId) void actions.move(task, columnId, beforeId);
   };
+  // Where a dragged card would land, by the mouse (HTML drag-and-drop) or a finger (ui/touchDrag.ts).
+  const markDrop = (columnId: number, beforeId: number | null) => {
+    const at = dropAt();
+    if (at?.columnId !== columnId || at.beforeId !== beforeId) setDropAt({ columnId, beforeId });
+  };
+  const endDrag = () => {
+    setDragging(null);
+    setDropAt(null);
+  };
+  const dropTask = (id: number) => {
+    const at = dropAt();
+    endDrag();
+    if (id && at) move(id, at.columnId, at.beforeId);
+  };
+  const touchDrag = (task: Task): HoldDrag => ({
+    start: () => setDragging(task.id),
+    move: (x, y) => {
+      const column = document.elementFromPoint(x, y)?.closest<HTMLElement>(".tasks-column[data-column-id]");
+      if (column) markDrop(Number(column.dataset.columnId), cardBefore(column, y));
+      else setDropAt(null);
+    },
+    drop: () => dropTask(task.id),
+    cancel: endDrag,
+  });
   const toggleDone = (task: Task) => {
     const done = doneColumn();
     const open = firstOpenColumn();
@@ -327,31 +360,19 @@ export default function TasksView(props: { context: ChannelContext }) {
               const visible = () => list().filter(shown);
               const [adding, setAdding] = createSignal(false);
               const [renaming, setRenaming] = createSignal(false);
-              const beforeIdAt = (el: HTMLElement, y: number) => {
-                for (const card of el.querySelectorAll<HTMLElement>(".task-card")) {
-                  const r = card.getBoundingClientRect();
-                  if (y < r.top + r.height / 2) return Number(card.dataset.id);
-                }
-                return null;
-              };
               return (
-                <section class="tasks-column mw-box mw-fade-in" aria-label={decodeEmoji(column.name)}
+                <section class="tasks-column mw-box mw-fade-in" aria-label={decodeEmoji(column.name)} data-column-id={column.id}
                   classList={{ "drop-end": dropAt()?.columnId === column.id && dropAt()?.beforeId === null }}
                   onDragOver={(e) => {
                     if (!e.dataTransfer?.types.includes(taskType)) return;
                     e.preventDefault();
-                    const beforeId = beforeIdAt(e.currentTarget, e.clientY);
-                    const at = dropAt();
-                    if (at?.columnId !== column.id || at.beforeId !== beforeId) setDropAt({ columnId: column.id, beforeId });
+                    markDrop(column.id, cardBefore(e.currentTarget, e.clientY));
                   }}
                   onDragLeave={(e) => !e.currentTarget.contains(e.relatedTarget as Node) && setDropAt(null)}
                   onDrop={(e) => {
                     const id = Number(e.dataTransfer?.getData(taskType));
-                    const at = dropAt();
-                    setDropAt(null);
-                    if (!id || !at) return;
-                    e.preventDefault();
-                    move(id, at.columnId, at.beforeId);
+                    if (id && dropAt()) e.preventDefault();
+                    dropTask(id);
                   }}>
                   <header class="tasks-column-header" onContextMenu={(e) => ctx.openContextMenu(e, columnMenu(column, index(), () => setRenaming(true)))}
                     onDblClick={() => setRenaming(true)}>
@@ -392,7 +413,8 @@ export default function TasksView(props: { context: ChannelContext }) {
                           onMenu={(e) => ctx.openContextMenu(e, taskMenu(task))}
                           onToggleDone={() => toggleDone(task)}
                           onDragStart={() => setDragging(task.id)}
-                          onDragEnd={() => { setDragging(null); setDropAt(null); }} />
+                          onDragEnd={endDrag}
+                          touchDrag={touchDrag(task)} />
                       )}
                     </For>
                   </ul>
@@ -548,7 +570,10 @@ function TaskCard(props: {
   onToggleDone: () => void;
   onDragStart: () => void;
   onDragEnd: () => void;
+  touchDrag: HoldDrag;
 }) {
+  let card!: HTMLLIElement;
+  onMount(() => onCleanup(holdToDrag(card, props.touchDrag)));
   const assignees = () => props.task.assigneeIds;
   // Up to three avatars on the card; the rest as a count.
   const shown = () => assignees().slice(0, assignees().length > 3 ? 2 : 3);
@@ -556,7 +581,7 @@ function TaskCard(props: {
   const copyTitle = () => void copy(props.task.title);
   const tags =() => props.task.tagIds.map((id) => props.tags.find((t) => t.id === id)).filter((t): t is Tag => !!t);
   return (
-    <li ref={props.ref} data-id={props.task.id} class="task-card mw-box mw-fade-in" draggable="true"
+    <li ref={(el) => { card = el; props.ref(el); }} data-id={props.task.id} class="task-card mw-box mw-fade-in" draggable="true"
       classList={{ selected: props.selected, viewed: props.viewers.length > 0, "drop-before": props.dropBefore, dragging: props.dragging, done: props.done }}
       style={props.viewers.length > 0 ? { "--who": props.viewers[0].color || "var(--mw-text-muted)" } : undefined}
       onContextMenu={props.onMenu}
@@ -579,6 +604,9 @@ function TaskCard(props: {
         </button>
         <Show when={copied()}><span class="task-copied mw-box mw-fade-in" role="status">Title copied to clipboard!</span></Show>
       </span>
+      <button class="icon-button task-more" title="Task options" aria-label="Task options" onClick={props.onMenu}>
+        <Icon name="more" size={13} />
+      </button>
       <button class="task-open" onClick={props.onOpen} title="Open task">
         <span class="task-title">{props.task.title}</span>
         <Show when={tags().length}>

@@ -203,6 +203,9 @@ function IssueCard(props: {
             </button>
             <Show when={copied()}><span class="task-copied mw-box mw-fade-in" role="status">Title copied to clipboard!</span></Show>
           </span>
+          <button class="icon-button task-more" title="Issue options" aria-label="Issue options" onClick={props.onMenu}>
+            <Icon name="more" size={13} />
+          </button>
           <Select label="Severity" value={issue().severity} options={severityOptions} class="issue-select"
             onChange={(v) => void props.actions.setSeverity(issue(), v)} />
           <Select label="Status" value={issue().status} options={statusOptions} class="issue-select"

@@ -130,6 +130,8 @@ Every similar thing behaves the same and its code exists once. Before adding UI,
   selection frames: `canvas/SelectionHandles`; SVG text: `canvas/text.ts` `wrapText`.
 - Colors: `ui/ColorSwatches`. A channel named in a list: `channelLabel` (`core/workspaces.ts`).
 - Files dragged in: `createFileDrop` and `DropHint` (`ui/FileDrop.tsx`).
+- Dragging with a finger: `holdToDrag` (`ui/touchDrag.ts`): a hold picks the item up; HTML drag-and-drop stays for
+  the mouse.
 - Side panels describing one thing: `ui/InfoPanel`. Show what matters to the user, never raw ids.
 - Something on its way: `.mw-spinner`. Loading inside a view: `ui/Skeleton` in the view's shape; startup: `shell/LoadingView`.
 - A field that takes the keyboard when shown: `ref={focusWhenShown}` (`ui/focus.ts`), never `autofocus`.

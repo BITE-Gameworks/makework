@@ -1,7 +1,7 @@
 import { For, Show, createEffect, createSignal, onCleanup } from "solid-js";
 import { Icon } from "../theme/icons";
 import Collapse from "./Collapse";
-import { closeContextMenu, contextMenu, menuEdge, type MenuEntry, type MenuItem, type MenuSubmenu, type OpenMenu } from "./contextMenu";
+import { closeContextMenu, contextMenu, menuEdge, pressOnOpener, type MenuEntry, type MenuItem, type MenuSubmenu, type OpenMenu } from "./contextMenu";
 import { createPresence, motionMs } from "./presence";
 import "./Popover.css";
 
@@ -41,7 +41,10 @@ function Menu(props: { menu: OpenMenu; visible: boolean }) {
     });
     items()[0]?.focus({ preventScroll: true });
 
-    const onPointer = (e: PointerEvent) => !panel.contains(e.target as Node) && closeContextMenu();
+    const onPointer = (e: PointerEvent) => {
+      const target = e.target as Node;
+      if (!panel.contains(target) && !pressOnOpener(target)) closeContextMenu();
+    };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") closeContextMenu();
       // Arrows move between items, except inside a field in the menu (a rename box).

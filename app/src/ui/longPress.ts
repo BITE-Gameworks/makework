@@ -14,8 +14,10 @@ export function watchLongPress(): () => void {
   const down = (e: PointerEvent) => {
     if (e.pointerType !== "touch" || !e.isPrimary) return;
     cancel();
-    start = { x: e.clientX, y: e.clientY };
     const target = e.target as Element;
+    // A hold there picks the element up (touchDrag.ts).
+    if (target.closest?.("[data-hold-drag]")) return;
+    start = { x: e.clientX, y: e.clientY };
     timer = setTimeout(() => {
       if (!start || !target.isConnected) return;
       swallowClick = true;

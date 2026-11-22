@@ -1,5 +1,5 @@
 /* @refresh reload */
-import { createEffect, createMemo, createSignal, Match, on, onMount, Switch } from "solid-js";
+import { createEffect, createMemo, createSignal, Match, on, onCleanup, onMount, Switch } from "solid-js";
 import { account, restoreSession } from "./core/account";
 import { isConversation, messagesHome, openWorkspace, restoreTabs, seedPopoutTab } from "./core/navigation";
 import { isPopout, popoutPlace } from "./core/popout";
@@ -12,6 +12,7 @@ import { registerBuiltInPlugins } from "./plugins/builtin";
 import { loadInstalledPlugins } from "./plugins/registry";
 import PerfMeter from "./dev/PerfMeter";
 import Auth from "./shell/Auth";
+import { watchBackButton } from "./shell/backButton";
 import OpenLinkPrompt from "./shell/OpenLinkPrompt";
 import { linksReady } from "./core/openLinks";
 import PopoutShell from "./shell/PopoutShell";
@@ -24,6 +25,7 @@ let networkModeChanges = 0;
 export default function App() {
   const [restoring, setRestoring] = createSignal(true);
   onMount(async () => {
+    onCleanup(watchBackButton());
     startIdleTracker();
     try {
       await restoreSession();

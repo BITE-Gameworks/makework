@@ -1,0 +1,10 @@
+/* The copy of an element a finger drags (touchDrag.ts), over everything, popovers (40) included. It follows the
+   finger through `transform`, which changes too often for a transition. */
+.mw-drag-ghost {
+  position: fixed;
+  z-index: 50;
+  margin: 0;
+  list-style: none;
+  pointer-events: none;
+  box-shadow: var(--mw-shadow-panel);
+}

@@ -261,3 +261,24 @@ touches nothing. Picked lines make a smaller patch of their own (`pickedPatch` i
 Rejected: `restore`, `checkout` or `clean` (nothing to bring back, and outside the rule that writes can't lose work),
 and keeping discards as stashes (picked lines can't be stashed, and the list would fill with them). Changes too big
 to keep (over 32 MB) are refused; stashing and deleting the stash does it on purpose.
+
+## 0034 Android's Back steps out one layer, then shows the channel list
+
+On a phone the channel list is a drawer over the view (shell.css `.narrow`). It opens with a swipe to the right that
+starts anywhere on the view, unless what is under the finger takes sideways drags itself (a canvas, a slider, a code
+block that scrolls sideways; `shell/drawerSwipe.ts`), or at the left edge. With Android's gesture navigation the
+edges belong to the system's Back, so Back opens the list too (`shell/backButton.ts`): it closes the top layer first
+(a menu, a dialog, the file viewer, a settings page, the side panel), then opens the channel list, and on the list it
+sends the app to the background. Rejected: Android's own Back (it left the app from any view, so the edge swipe
+couldn't open the list), the edge swipe alone (the system takes it before the page sees it), and routing Back
+through browser history (the app keeps no history entries, and every layer would need one).
+
+## 0035 A finger drags by holding
+
+Lists that move with HTML drag-and-drop (the task board first) move on touch screens by holding an item: after 400
+ms it lifts, a copy follows the finger, the scrollers under it scroll near their edges, and lifting the finger drops
+it where the mouse would (`holdToDrag`, `ui/touchDrag.ts`). A move before then is an ordinary scroll, and a hold there
+no longer opens the item's menu, so such items get a three-dots button on touch screens instead. Rejected: the
+WebView's own drag of `draggable` elements (unreliable on Android, no scrolling while dragging, and it fights the
+long-press menu), a drag-and-drop polyfill library (a dependency for one gesture), and moving only through the menu's
+"Move to" (no order within a column).

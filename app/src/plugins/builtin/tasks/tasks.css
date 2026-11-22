@@ -290,6 +290,28 @@
   opacity: 1;
 }
 
+/* Touch screens only. There a hold drags a board card (ui/touchDrag.ts) instead of opening its menu. */
+.task-card .task-more {
+  display: none;
+  order: 2;
+}
+
+.issue-head .task-more {
+  order: 0;
+}
+
+@media (hover: none) {
+  .task-card .task-more {
+    display: grid;
+  }
+
+  /* A hold picks a board card up; it doesn't select the title (the copy button copies it). */
+  .tasks-cards .task-card {
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+}
+
 .task-copied {
   position: absolute;
   top: 100%;

@@ -18,15 +18,12 @@ import FeedbackDialog from "./FeedbackDialog";
 import Notices from "./Notices";
 import QuickSwitcher from "./QuickSwitcher";
 import { onShortcut } from "./shortcuts";
+import { opensDrawer, swipePx } from "./drawerSwipe";
 import { watchResets } from "../core/resets";
 import { watchProfile } from "../core/account";
 import { watchOwnProfile } from "../core/members";
 import { watchSyncedPrefs } from "../core/syncedPrefs";
 import "./shell.css";
-
-// A swipe from the screen's left edge opens the drawer; one to the left on the open drawer closes it.
-const edgePx = 24;
-const swipePx = 60;
 
 export default function Shell() {
   // Narrow: the drawer starts open while nothing is open, and closes once a channel or conversation is picked
@@ -44,15 +41,19 @@ export default function Shell() {
   createEffect(on(narrow, (n) => setDrawerOpen(n && !current()?.channelId && !current()?.peer)));
   const backdrop = createPresence(() => narrow() && drawerOpen());
 
+  // A swipe to the right opens the drawer (drawerSwipe.ts says where one may start); one to the left on the open
+  // drawer closes it. A long press that opened a menu or started a selection keeps the rest of its touch.
   let swipe: { x: number; y: number; opening: boolean } | null = null;
   const onTouchStart = (e: TouchEvent) => {
     const t = e.touches[0];
     if (!narrow() || e.touches.length !== 1) return;
-    if (!drawerOpen() && t.clientX > edgePx) return;
+    if (!drawerOpen() && !opensDrawer(e.target, t.clientX)) return;
     swipe = { x: t.clientX, y: t.clientY, opening: !drawerOpen() };
   };
   const onTouchEnd = (e: TouchEvent) => {
     const t = e.changedTouches[0];
+    // A touch the page took for itself (a finger dragging a card, ui/touchDrag.ts) isn't a swipe.
+    if (e.defaultPrevented) swipe = null;
     if (!swipe || !t) return;
     const dx = t.clientX - swipe.x;
     const sideways = Math.abs(dx) > Math.abs(t.clientY - swipe.y) * 1.5;
@@ -60,9 +61,13 @@ export default function Shell() {
     if (sideways && !swipe.opening && dx < -swipePx) setDrawerOpen(false);
     swipe = null;
   };
+  // Captured: menus stop the event on its way up.
+  const onContextMenu = () => (swipe = null);
 
   onMount(() => {
     document.addEventListener("keydown", onShortcut);
+    document.addEventListener("contextmenu", onContextMenu, true);
+    onCleanup(() => document.removeEventListener("contextmenu", onContextMenu, true));
     onCleanup(watchResets());
     watchProfile();
     watchOwnProfile();
