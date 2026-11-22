@@ -424,8 +424,9 @@ _Avoid_: primary window, host window
 **view window**:
 A window raised for a single tab (desktop only): that tab shows alone, with no workspace or channel bars. It
 connects only to that tab's workspace, and anything pointing at another workspace opens in the main window. Closing
-it closes its tab. Only a channel whose type can stand alone gets one; a voice channel stays in the main window. It
-is never in a call and says nothing about calls to the other members, so a call in the main window goes on as before.
+it closes its tab. Only a channel whose type can stand alone, or a private conversation, gets one; a voice channel
+stays in the main window. A conversation's view window sends and receives through the main window. It is never in a
+call and says nothing about calls to the other members, so a call in the main window goes on as before.
 _Avoid_: popout window, detached tab, popup, secondary window
 
 **terminal window**:
@@ -461,6 +462,11 @@ _Avoid_: merge error, hunk, chunk
 To decide what a conflict becomes: some lines of either side, both, neither, or a result written by hand; a whole file
 can also take one side's version. A merge with conflicts is made only once every one is resolved.
 _Avoid_: fix
+
+**discard** (changes):
+To take uncommitted changes out of the files on this computer, so they are as in the last commit: whole files (new
+ones are deleted) or the changes picked in a file's diff. Undo brings them back until the app closes.
+_Avoid_: revert (that makes a commit), reset, delete
 
 **host connection**:
 A member's named token for a git host (github.com, a GitLab server) on one computer, from MakeWork's GitHub sign-in

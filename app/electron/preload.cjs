@@ -171,6 +171,9 @@ contextBridge.exposeInMainWorld("makeworkDesktop", {
   git: {
     pickFolder: () => ipcRenderer.invoke("git:pick-folder"),
     openFolder: (folder) => ipcRenderer.invoke("git:open-folder", folder),
+    cloneLocation: (name, parent) => ipcRenderer.invoke("git:clone-location", name, parent),
+    pickCloneParent: () => ipcRenderer.invoke("git:pick-clone-parent"),
+    clone: (url, target, auth) => ipcRenderer.invoke("git:clone", url, target, auth),
     branches: (folder) => ipcRenderer.invoke("git:branches", folder),
     log: (folder, from, skip, max) => ipcRenderer.invoke("git:log", folder, from, skip, max),
     submodules: (folder) => ipcRenderer.invoke("git:submodules", folder),
@@ -202,6 +205,8 @@ contextBridge.exposeInMainWorld("makeworkDesktop", {
     stashPush: (folder, options) => ipcRenderer.invoke("git:stash-push", folder, options),
     stashRestore: (folder, sha) => ipcRenderer.invoke("git:stash-restore", folder, sha),
     stashDelete: (folder, sha) => ipcRenderer.invoke("git:stash-delete", folder, sha),
+    discard: (folder, options) => ipcRenderer.invoke("git:discard", folder, options),
+    applyPatch: (folder, patch, reverse) => ipcRenderer.invoke("git:apply-patch", folder, patch, reverse),
     useAccount: (id, credentials) => ipcRenderer.invoke("git:account", id, credentials),
   },
   web: {

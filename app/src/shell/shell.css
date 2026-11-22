@@ -219,9 +219,16 @@ button:disabled {
   font-size: 0.95em;
 }
 
-.workspace-button:hover,
 .workspace-button.active {
   border-color: var(--mw-accent);
+}
+
+/* Hover effects only where hovering is real: touch screens put :hover on whatever a finger touches, even while it
+   scrolls the drawer, and keep it there. */
+@media (hover: hover) {
+  .workspace-button:hover {
+    border-color: var(--mw-accent);
+  }
 }
 
 .workspace-button.unread::before {
@@ -401,9 +408,14 @@ button:disabled {
   transition: opacity var(--mw-duration) var(--mw-ease), background-color var(--mw-duration) var(--mw-ease);
 }
 
-.channel-section.scratchpad:hover,
 .channel-section.scratchpad:focus-within {
   opacity: 1;
+}
+
+@media (hover: hover) {
+  .channel-section.scratchpad:hover {
+    opacity: 1;
+  }
 }
 
 .channel-section-note {
@@ -444,8 +456,10 @@ button:disabled {
   text-align: left;
 }
 
-.channel-section-toggle:hover {
-  color: var(--mw-text);
+@media (hover: hover) {
+  .channel-section-toggle:hover {
+    color: var(--mw-text);
+  }
 }
 
 .channel-row {
@@ -490,9 +504,14 @@ button:disabled {
   white-space: nowrap;
 }
 
-.channel-row:hover .channel-open,
 .channel-row.unread .channel-open {
   color: var(--mw-text);
+}
+
+@media (hover: hover) {
+  .channel-row:hover .channel-open {
+    color: var(--mw-text);
+  }
 }
 
 /* Unread mentions of you: a count at the end of the channel row, and in the corner of the server button. */
@@ -555,12 +574,14 @@ button:disabled {
   transition: transform var(--mw-duration) var(--mw-ease), opacity var(--mw-duration) var(--mw-ease);
 }
 
-.channel-row:not(.active):hover .channel-open::before {
-  transform: translateY(-50%) scaleX(1);
-}
+@media (hover: hover) {
+  .channel-row:not(.active):hover .channel-open::before {
+    transform: translateY(-50%) scaleX(1);
+  }
 
-.channel-row:not(.active):hover .channel-label {
-  transform: translateX(8px);
+  .channel-row:not(.active):hover .channel-label {
+    transform: translateX(8px);
+  }
 }
 
 /* Selected: a thin line fills the space up to the channel, which sits at the right. The line grows from the
@@ -595,9 +616,26 @@ button:disabled {
   padding: 4px 6px;
 }
 
+.add-channel-step {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .add-channel-row {
   display: flex;
   gap: 4px;
+}
+
+/* Phones (ChannelBar.tsx AddChannelForm): the dialog body is what scrolls the types, one per row. */
+.add-channel.narrow .channel-type-list {
+  grid-template-columns: 1fr;
+  max-height: none;
+}
+
+/* The chosen type, which goes back to the list; its pencil sits at the end. */
+.add-channel-chosen > .mw-icon:last-child {
+  margin-left: auto;
 }
 
 .add-channel-row .mw-select {
@@ -629,10 +667,16 @@ button:disabled {
   transition: opacity var(--mw-duration) var(--mw-ease), color var(--mw-duration) var(--mw-ease);
 }
 
-.add-category-button:hover,
 .add-category-button:focus-visible {
   color: var(--mw-accent);
   opacity: 1;
+}
+
+@media (hover: hover) {
+  .add-category-button:hover {
+    color: var(--mw-accent);
+    opacity: 1;
+  }
 }
 
 /* Workspace: tab bar over the main view and side panel */
@@ -1845,9 +1889,14 @@ button:disabled {
   text-align: left;
 }
 
-.channel-type-option:hover,
 .channel-type-option.active {
   border-color: var(--mw-accent);
+}
+
+@media (hover: hover) {
+  .channel-type-option:hover {
+    border-color: var(--mw-accent);
+  }
 }
 
 .channel-type-option.active {

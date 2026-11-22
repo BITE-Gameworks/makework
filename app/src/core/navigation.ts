@@ -9,6 +9,8 @@ import { readJson, writeJson } from "./storage";
 
 // Private messages show in place of a workspace: `peer` is the account the conversation is with.
 export const messagesHome = "@messages";
+// The peer of your notes (dm/notes.ts), shown like a conversation with yourself.
+export const notesPeer = "@notes";
 
 export interface Location {
   workspaceId: string;
@@ -207,24 +209,31 @@ export function moveTab(id: number, toIndex: number): void {
   save();
 }
 
-// Whether a tab can be given its own window: a channel, not private messages, not the empty tab an emptied
-// workspace leaves behind, and not a type whose view only works in the main window (voice keeps its call there).
-// The channel's type comes from the caller, which knows its plugin; without it the answer is no, so a channel
-// whose data hasn't loaded yet can't slip out.
-export function poppable(location: Location | undefined, channelTypeInfo: Pick<ChannelTypeInfo, "ownWindow"> | undefined): boolean {
-  return !!location && location.workspaceId !== messagesHome && location.channelId !== null
-    && !!channelTypeInfo && channelTypeInfo.ownWindow !== false;
+// A conversation with another account: not the friends page, not your notes.
+export function isConversation(location: Location | undefined): boolean {
+  return location?.workspaceId === messagesHome && !!location.peer && location.peer !== notesPeer;
 }
 
-// Gives a channel its own window. A tab showing it here leaves, since popping out moves a tab and never copies it.
-export function moveToWindow(workspaceId: string, channelId: number, channelTypeInfo: Pick<ChannelTypeInfo, "ownWindow"> | undefined): void {
-  if (isPopout() || !poppable({ workspaceId, channelId }, channelTypeInfo)) return;
+// Whether a tab can be given its own window: a private conversation, or a channel that isn't the empty tab an
+// emptied workspace leaves behind and isn't a type whose view only works in the main window (voice keeps its call
+// there). The channel's type comes from the caller, which knows its plugin; without it the answer is no, so a
+// channel whose data hasn't loaded yet can't slip out.
+export function poppable(location: Location | undefined, channelTypeInfo: Pick<ChannelTypeInfo, "ownWindow"> | undefined): boolean {
+  if (location?.workspaceId === messagesHome) return isConversation(location);
+  return !!location && location.channelId !== null && !!channelTypeInfo && channelTypeInfo.ownWindow !== false;
+}
+
+// Gives a channel or a conversation its own window. A tab showing it here leaves, since popping out moves a tab and
+// never copies it.
+export function moveToWindow(place: Location, channelTypeInfo?: Pick<ChannelTypeInfo, "ownWindow">): void {
+  if (isPopout() || !poppable(place, channelTypeInfo)) return;
+  const { workspaceId, channelId, peer } = place;
   const open = tabs().find((tab) => {
-    const place = tabLocation(tab);
-    return place?.workspaceId === workspaceId && place.channelId === channelId;
+    const shown = tabLocation(tab);
+    return shown?.workspaceId === workspaceId && shown.channelId === channelId && shown.peer === peer;
   });
   if (open) closeTabs([open.id]);
-  openInWindow({ workspaceId, channelId });
+  openInWindow({ workspaceId, channelId, ...(peer && { peer }) });
 }
 
 // A view window starts with the one tab it was opened for, from its URL.

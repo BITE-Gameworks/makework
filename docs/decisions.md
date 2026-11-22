@@ -74,7 +74,8 @@ tab becomes a view window that attaches only its own workspace and hands everyth
 alone owns account-wide effects (notifications, sounds, badge, private messages, calls, bots) and the saved tabs. A view
 window takes no part in call presence, and voice channels never pop out. A code channel's terminal can move to a
 terminal window, which opens no workspace and takes over the running process from the main process. Two windows on
-one channel are two peers, so presence and typing show twice.
+one channel are two peers, so presence and typing show twice. A private conversation can have a view window too, which
+works through the main window (0031).
 
 ## 0010 Channel views are kept
 
@@ -213,3 +214,83 @@ policy and keys), "opposite operators" for `!(x > 0)` (S1940: the negation also 
 (S7784: it refuses Solid store proxies). React-only rules (keys, JSX spacing), copies made before a loop changes the
 collection, the "next free name" loop and fire-and-forget promises are off as noise. Complexity, nesting and size
 warnings stay on as debt; the code is refactored when it is next worked on, not to meet a threshold.
+
+## 0030 Links are cloned to the computer and imported whole
+
+Committing, branching and pushing need a working copy, which an import through the host's API doesn't give, so a
+channel set up from a link on the desktop app also clones the repository, by default into
+`~/MakeWork/Repositories/<name>` (the user can pick another parent folder), and uses it as the working copy there.
+Members and devices without a copy get "Clone to this computer" instead of cloning by hand and linking it. The first
+import right after a clone reads the clone's origin branches rather than the host's API: the same branches, without
+the API's rate limit, which a whole history would run into. Later updates read the host again (a clone's origin
+branches are only as fresh as its last fetch). Imports bring the whole history, 1,000 commits per branch at a time
+until nothing is left; channels imported before get the rest on their next update. The web app keeps importing the
+history only.
+
+## 0031 A conversation's view window works through the main window
+
+A private conversation can be popped out like a channel, but the main window still runs private messages: the
+rooms, the user server's inbox, unread counts, sounds, notifications and the saved conversation list. The view window
+shows the conversation from what this device stored and what the main window tells it over a `BroadcastChannel`
+(`dm/windows.ts`), and asks the main window to send, edit, react, download and change friends. While it has the
+focus, messages from that person don't count as unread in the main window. Every view window also gets the main
+window's friends, so member menus there are right. Rejected: the view window joining the pair's room itself, as
+another device of the account. The room can't tell the account's own devices from the other side, so each window
+would show the person as online whenever the other window was open and wait out the delivery ack on every send, and
+unread counts and the list would have two writers.
+
+## 0032 The phone notifies only for mentions and the first private message
+
+The Android app shows a system notification only for a mention of you (you, @everyone/@here, a role of yours) and
+for a private message from someone, once: more messages from that person stay quiet until the conversation is read
+on the phone (what was read elsewhere isn't known there). Replies in your threads, new commits, friend requests and
+workspace news don't notify there; workspace problems (an update needed, a refused join) show in the app instead.
+The desktop shows them all, because a focused window already hides what you are looking at, but the phone is always
+at hand with the app out of view, so everything that notifies there interrupts. One rule in `core/notifier.ts`
+(`phoneShows`) decides it from the notice's kind. Rejected: a setting per kind of notice (more choices than people
+need for now), and mentions only (a private message would go unnoticed until the app was opened).
+
+## 0033 Discarded changes are a patch kept for undo
+
+A working copy's uncommitted changes can be discarded, whole files or the lines picked in a file's diff, and undo
+brings them back until the app closes. Every other git write in the app is built so it can't lose work, so a discard
+is one patch: the chosen changes against the last commit (binary, in bytes), which git applies in reverse all or
+nothing after checking that it fits, and which the channel's history keeps; undo applies it forward, redo in reverse
+again. Nothing leaves the files that isn't in that patch, and a patch that no longer fits (the file changed since)
+touches nothing. Picked lines make a smaller patch of their own (`pickedPatch` in plugins/builtin/git/diff.ts).
+Rejected: `restore`, `checkout` or `clean` (nothing to bring back, and outside the rule that writes can't lose work),
+and keeping discards as stashes (picked lines can't be stashed, and the list would fill with them). Changes too big
+to keep (over 32 MB) are refused; stashing and deleting the stash does it on purpose.
+
+## 0034 Android's Back steps out one layer, then shows the channel list
+
+On a phone the channel list is a drawer over the view (shell.css `.narrow`). It opens with a swipe to the right that
+starts anywhere on the view, unless what is under the finger takes sideways drags itself (a canvas, a slider, a code
+block that scrolls sideways; `shell/drawerSwipe.ts`), or at the left edge. With Android's gesture navigation the
+edges belong to the system's Back, so Back opens the list too (`shell/backButton.ts`): it closes the top layer first
+(a menu, a dialog, the file viewer, a settings page, the side panel), then opens the channel list, and on the list it
+sends the app to the background. Rejected: Android's own Back (it left the app from any view, so the edge swipe
+couldn't open the list), the edge swipe alone (the system takes it before the page sees it), and routing Back
+through browser history (the app keeps no history entries, and every layer would need one).
+
+## 0035 A finger drags by holding
+
+Lists that move with HTML drag-and-drop (the task board first) move on touch screens by holding an item: after 400
+ms it lifts, a copy follows the finger, the scrollers under it scroll near their edges, and lifting the finger drops
+it where the mouse would (`holdToDrag`, `ui/touchDrag.ts`). A move before then is an ordinary scroll, and a hold there
+no longer opens the item's menu, so such items get a three-dots button on touch screens instead. Rejected: the
+WebView's own drag of `draggable` elements (unreliable on Android, no scrolling while dragging, and it fights the
+long-press menu), a drag-and-drop polyfill library (a dependency for one gesture), and moving only through the menu's
+"Move to" (no order within a column).
+
+## 0036 Android lists cameras from the system
+
+The Android app's camera menu lists the cameras the system says an app can stream from (`CamerasPlugin.java`, read by
+`voice/cameras.ts`), named by side: "Front camera", "Back camera", "Back camera 2". The WebView's own list also has
+depth and infrared sensors that give no picture, and its device ids change with every launch, so a chosen camera is
+kept by the system's camera id and matched to the WebView's device by its label ("camera2 <id>, facing ...") when it
+opens. Until the WebView names its cameras (after one has been open) the camera opens by its side and switches to the
+exact one. Calls on a phone start with the front camera. Switching cameras while one is on stops the old one first
+when the new one is busy, as phones open one camera at a time. Rejected: the WebView's list (cameras that never open,
+a choice lost at every launch) and opening each camera to test it (it lights the camera, takes about a second each,
+and can't run while a camera is on). Other platforms keep the browser's list and its device ids, which last.

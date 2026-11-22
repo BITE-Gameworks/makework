@@ -334,24 +334,33 @@ function gitlab(ref: RepoRef, token: string | null, fetchFn: Fetch): RepoReader 
   };
 }
 
-// A folder on this device (`ref.path`, picked in the desktop app's folder dialog), read with git.
-function local(ref: RepoRef): RepoReader {
+type LocalGit = NonNullable<NonNullable<typeof desktop>["git"]>;
+
+function localGit(): LocalGit {
   const git = desktop?.git;
   if (!git) throw new ShownError("Local folders need the desktop app.");
+  return git;
+}
+
+// Pages of git log in `folder` from `from`, skipping what the server already has.
+async function logHistory(git: LocalGit, folder: string, from: string, max: number, known: (sha: string) => boolean): Promise<ImportedCommit[]> {
+  const found: ImportedCommit[] = [];
+  for (let skip = 0; found.length < max; skip += 1000) {
+    const page = await git.log(folder, from, skip, 1000).catch((e) => { throw desktopError(e); });
+    const fresh = page.filter((c) => !known(c.sha));
+    found.push(...fresh.slice(0, max - found.length));
+    if (page.length < 1000 || fresh.length === 0) break;
+  }
+  return found;
+}
+
+// A folder on this device (`ref.path`, picked in the desktop app's folder dialog), read with git.
+function local(ref: RepoRef): RepoReader {
+  const git = localGit();
   return {
     defaultBranch: async () => (await git.branches(ref.path).catch((e) => { throw desktopError(e); })).current,
     branches: async () => (await git.branches(ref.path).catch((e) => { throw desktopError(e); })).branches,
-    async history(from, max, known) {
-      // Pages of git log, skipping what the server already has.
-      const found: ImportedCommit[] = [];
-      for (let skip = 0; found.length < max; skip += 1000) {
-        const page = await git.log(ref.path, from, skip, 1000).catch((e) => { throw desktopError(e); });
-        const fresh = page.filter((c) => !known(c.sha));
-        found.push(...fresh.slice(0, max - found.length));
-        if (page.length < 1000 || fresh.length === 0) break;
-      }
-      return found;
-    },
+    history: (from, max, known) => logHistory(git, ref.path, from, max, known),
     async diff(sha) {
       const { patch, truncated } = await git.show(ref.path, sha).catch((e) => { throw desktopError(e); });
       return { files: parseUnifiedDiff(patch), truncated };
@@ -360,5 +369,24 @@ function local(ref: RepoRef): RepoReader {
       const { origin, submodules } = await git.submodules(ref.path).catch((e) => { throw desktopError(e); });
       return submodules.map((s) => ({ path: s.path, url: resolveSubmoduleUrl(origin, s.url), pinned: s.pinned, folder: s.folder }));
     },
+  };
+}
+
+// A full commit id (SHA-1 or SHA-256), as the import's frontier gives them.
+const isSha = (ref: string) => /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(ref);
+
+// A clone just made on this device (`folder`), read as its remote: origin's branches as the clone fetched them, never
+// its own. Only right after cloning are those the remote's current ones. `defaultBranch`: the remote's, as its host
+// said.
+export function cloneReader(folder: string, defaultBranch: string): RepoReader {
+  const git = localGit();
+  const own = local({ provider: "local", host: "", path: folder });
+  return {
+    ...own,
+    defaultBranch: async () => defaultBranch,
+    branches: async () => Object.entries(await git.remoteHeads(folder).catch((e) => { throw desktopError(e); }))
+      .map(([name, head]) => ({ name, head })),
+    // A branch is read at origin's ref; a commit id (where older history continues) as it is.
+    history: (from, max, known) => logHistory(git, folder, isSha(from) ? from : `refs/remotes/origin/${from}`, max, known),
   };
 }

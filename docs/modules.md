@@ -48,7 +48,7 @@ A plugin has a **data side** (`system/`, run in the app by `system/backend.ts`, 
   memory, web), `dispatch.ts`, `library.ts`, `locks.ts`, `images.ts` (`agents.md`).
 - `shell/` the layout: `Shell`, `WorkspaceBar`, `ChannelBar`, `MainView`, `TabBar`, `SidePanel`, `Overlays`, settings
   pages, `Auth.tsx` (sign-in), `AccountSecurity.tsx`, `QuickSwitcher`, `channelMenu.tsx`, `userMenu.tsx`, the Nodes page
-  and globe, `shortcuts.ts`.
+  and globe, `shortcuts.ts`, `drawerSwipe.ts` (the phone's channel-list swipe), `backButton.ts` (Android's Back).
 - `messaging/` `MessageCard`, `MessageComposer` and `messageWindow.ts`, shared by chat channels and private messages.
 - `dm/` private messages and friends. `voice/` calls, the mic chain, screen sharing and its quality. `watch/` watch
   parties (decision 0024).

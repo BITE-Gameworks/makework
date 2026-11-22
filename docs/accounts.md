@@ -77,4 +77,5 @@ still link (`p2p/ice.ts`). Calls depend on it: media only goes over direct links
 
 A Trystero room per pair of accounts, sealed with keys from the two accounts' ECDH (`dm/crypto.ts`), with messages left
 on the user server while the other side is offline. Friends are mutual; messages from strangers are refused unless the
-recipient allows them.
+recipient allows them. Only the main window runs them; a conversation popped out into a view window works through it
+(decision 0031).

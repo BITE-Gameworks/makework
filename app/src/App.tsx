@@ -1,10 +1,10 @@
 /* @refresh reload */
-import { createEffect, createMemo, createSignal, Match, on, onMount, Switch } from "solid-js";
+import { createEffect, createMemo, createSignal, Match, on, onCleanup, onMount, Switch } from "solid-js";
 import { account, restoreSession } from "./core/account";
-import { openWorkspace, restoreTabs, seedPopoutTab } from "./core/navigation";
+import { isConversation, messagesHome, openWorkspace, restoreTabs, seedPopoutTab } from "./core/navigation";
 import { isPopout, popoutPlace } from "./core/popout";
 import { onlinePeers, refreshWorkspaceConnections, startServerless, startWorkspace } from "./core/serverless";
-import { startMessages, stopMessages } from "./dm/messages";
+import { followMessages, serveViewWindows, startMessages, stopMessages } from "./dm/messages";
 import { startUpdateChecks } from "./core/updates";
 import { setBootStatus } from "./core/ui";
 import { startIdleTracker } from "./core/idle";
@@ -12,6 +12,7 @@ import { registerBuiltInPlugins } from "./plugins/builtin";
 import { loadInstalledPlugins } from "./plugins/registry";
 import PerfMeter from "./dev/PerfMeter";
 import Auth from "./shell/Auth";
+import { watchBackButton } from "./shell/backButton";
 import OpenLinkPrompt from "./shell/OpenLinkPrompt";
 import { linksReady } from "./core/openLinks";
 import PopoutShell from "./shell/PopoutShell";
@@ -24,6 +25,7 @@ let networkModeChanges = 0;
 export default function App() {
   const [restoring, setRestoring] = createSignal(true);
   onMount(async () => {
+    onCleanup(watchBackButton());
     startIdleTracker();
     try {
       await restoreSession();
@@ -72,16 +74,21 @@ async function start() {
     await loadInstalledPlugins();
     if (!isPopout()) startUpdateChecks();
     if (isPopout()) {
-      // A view window opens the one workspace it was given and shows that one tab. Nothing account-wide (calls,
-      // notifications, private messages, bots) starts here: the main window owns all of that.
+      // A view window opens the one workspace it was given, or shows the one conversation, in that one tab. Nothing
+      // account-wide (calls, notifications, private messages, bots) starts here: the main window owns all of that,
+      // and a conversation shown here goes through it.
       const place = popoutPlace();
+      followMessages(place && isConversation(place) ? place.peer : undefined);
       if (place) {
-        setBootStatus("Opening the workspace...");
-        if (!(await startWorkspace(place.workspaceId))) console.warn(`This computer hasn't joined ${place.workspaceId}.`);
+        if (place.workspaceId !== messagesHome) {
+          setBootStatus("Opening the workspace...");
+          if (!(await startWorkspace(place.workspaceId))) console.warn(`This computer hasn't joined ${place.workspaceId}.`);
+        }
         seedPopoutTab(place);
       }
       return;
     }
+    serveViewWindows();
     setBootStatus("Opening workspaces...");
     const connected = await startServerless();
     // Create the Explore MakeWork preset if none exist and it hasn't been offered yet.
@@ -113,7 +120,8 @@ async function start() {
 async function changeNetworkMode(offline: boolean): Promise<void> {
   networkModeChanges++;
   if (isPopout()) {
-    // A view window only follows its own workspace; private messages and everything account-wide stay in the main.
+    // A view window only follows its own workspace; private messages and everything account-wide stay in the main
+    // window.
     await refreshWorkspaceConnections();
     return;
   }

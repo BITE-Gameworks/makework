@@ -1,5 +1,5 @@
 // Git for version control channels: reading (status, diffs, blame, files, branches) and the few writes the app makes
-// (commits, branches, fetch, push, merging the remote's new commits, cloning missing submodules). Safety comes first, so this file never uses a
+// (commits, branches, fetch, push, merging the remote's new commits, cloning a repository or its missing submodules). Safety comes first, so this file never uses a
 // forcing or history-rewriting option of any kind (tests/electron/gitOps.test.ts checks the source), and every write
 // checks first that it can't lose work:
 // - commits take only the files the user ticked, never an empty or emptied tree, and ask before removing over a
@@ -10,10 +10,12 @@
 //   fast-forwards to it, so the working copy is never left half merged;
 // - branches are deleted only with `branch -d` (git refuses unmerged work), never the current or default one,
 //   never on the remote; switching needs a clean working tree;
-// - missing submodules are cloned only into an empty or missing folder, and a submodule is put on a branch only when
-//   that changes no file;
+// - repositories and missing submodules are cloned only into an empty or missing folder, and a submodule is put on a
+//   branch only when that changes no file;
 // - stashes are restored only when nothing in the way would be overwritten (a failed restore is undone and the stash
-//   kept), and removed from the list only after a clean restore or a confirmed delete, always picked by commit id.
+//   kept), and removed from the list only after a clean restore or a confirmed delete, always picked by commit id;
+// - changes are discarded only as a patch git applies in reverse, all or nothing, and the app keeps that same patch to
+//   bring them back (decision 0033): nothing goes that isn't in it, and nothing is touched if any of it doesn't apply.
 // Every function takes the `git` runner from createGit, so main.js and the tests share all of it.
 import { spawn as nodeSpawn } from "node:child_process";
 import fs from "node:fs/promises";
@@ -35,10 +37,12 @@ export class GitRefusal extends Error {
 
 // Runs git without a shell. Never prompts (credentials come from the user's helpers or fail), stable English output.
 // `allowCodes`: exit codes that aren't errors; `maxBytes` with `truncate`: output beyond it is cut and flagged;
-// `input`: text given to git on stdin.
+// `input`: text or bytes given to git on stdin; `bytes`: the output as a Buffer, not decoded as UTF-8.
 export function createGit({ spawn = nodeSpawn, env = process.env } = {}) {
   return function git(cwd, args, options = {}) {
-    const { timeoutMs = 30_000, maxBytes = 64 * 1024 * 1024, allowCodes = [0], truncate = false, extraEnv = {}, input = null } = options;
+    const {
+      timeoutMs = 30_000, maxBytes = 64 * 1024 * 1024, allowCodes = [0], truncate = false, extraEnv = {}, input = null, bytes = false,
+    } = options;
     return new Promise((resolve, reject) => {
       let child;
       try {
@@ -79,7 +83,8 @@ export function createGit({ spawn = nodeSpawn, env = process.env } = {}) {
       });
       child.on("close", (code, signal) => {
         clearTimeout(timer);
-        const text = Buffer.concat(out).toString("utf8");
+        const data = Buffer.concat(out);
+        const text = bytes ? data : data.toString("utf8");
         if (truncated && truncate) return resolve({ out: text, code: 0, truncated: true });
         if (truncated) return reject(new Error("Git's answer was too large."));
         if (signal) return reject(new Error(`Git took too long (${args[0]}).`));
@@ -262,19 +267,40 @@ export async function prepareSubmodules(git, cwd, { serial = (_folder, fn) => fn
   return results;
 }
 
-// Clones one submodule that isn't here, signing in through `cloner`; returns why it didn't, or null once it did.
-async function cloneSubmodule(git, cloner, cwd, s) {
-  const dir = subFolder(cwd, s.path);
+// Why nothing may be cloned into `dir`, or null when it is missing or an empty folder.
+async function cloneBlocked(dir) {
   const there = await fs.lstat(dir).catch(() => null);
   if (there?.isSymbolicLink()) return "Its folder is a link, so nothing was cloned into it.";
   if (there && !there.isDirectory()) return "A file is in its place, so nothing was cloned.";
   if (there && (await fs.readdir(dir)).length) return "Its folder already holds files, so nothing was cloned into it.";
+  return null;
+}
+
+// Clones one submodule that isn't here, signing in through `cloner`; returns why it didn't, or null once it did.
+async function cloneSubmodule(git, cloner, cwd, s) {
+  const dir = subFolder(cwd, s.path);
+  const blocked = await cloneBlocked(dir);
+  if (blocked) return blocked;
   // Init copies its link, made whole, into this copy's own config; that is where the clone reads it.
   await run(git, cwd, ["submodule", "init", "--", s.path]);
   const url = (await git(cwd, ["config", "--get", `submodule.${s.name}.url`], { allowCodes: [0, 1] })).out.trim();
   if (!url) return "It has no link to clone from.";
   await remoteRun(cloner, cwd, url, ["submodule", "update", "--checkout", "--", s.path], cloneTimeoutMs);
   return null;
+}
+
+const repositoryCloneTimeoutMs = 60 * 60_000;
+
+// Clones the whole repository at `url` into `target` (an absolute path, missing or an empty folder), signing in as
+// fetch does. Its submodules are left to prepareSubmodules. Git removes what it made when the clone fails.
+export async function cloneRepo(git, url, target) {
+  if (typeof url !== "string" || !url.trim() || url.startsWith("-")) throw new GitRefusal("Not a repository link.");
+  if (typeof target !== "string" || !path.isAbsolute(target)) throw new GitRefusal("Not a folder to clone into.");
+  const blocked = await cloneBlocked(target);
+  if (blocked) throw new GitRefusal(blocked);
+  const parent = path.dirname(target);
+  await fs.mkdir(parent, { recursive: true });
+  await remoteRun(git, parent, url, ["clone", "--no-recurse-submodules", "--", url, target], repositoryCloneTimeoutMs);
 }
 
 // Puts a submodule that is on no branch onto `wanted` (else its remote's default branch), only where that
@@ -739,6 +765,87 @@ export async function stashDelete(git, cwd, sha) {
   const entry = await stashRef(git, cwd, sha);
   if (!entry) throw new GitRefusal("That stash isn't here any more.");
   await run(git, cwd, ["stash", "drop", entry.ref]);
+}
+
+// ---- Discarding changes (decision 0033) ----
+
+// Discarded changes are kept as one patch for undo, up to this size.
+export const maxDiscardBytes = 32 * 1024 * 1024;
+const patchFlags = ["--binary", "--no-color", "--no-ext-diff", "--no-textconv"];
+
+// What any change to the files needs first: no merge or other operation going on, and no conflicted files.
+async function readyToChange(git, cwd) {
+  const state = await repoState(git, cwd);
+  if (state.operation) throw new GitRefusal(`A ${state.operation} is in progress; finish it in your git tools first.`);
+  const changed = await status(git, cwd);
+  if (changed.some((f) => f.kind === "conflicted")) throw new GitRefusal("Some files have merge conflicts; resolve them first.");
+  return { state, changed };
+}
+
+// The chosen changes against the last commit as one binary patch, in bytes (a file needn't be UTF-8): what discarding
+// them takes away and undo puts back.
+async function changesPatch(git, cwd, files) {
+  const parts = [];
+  let size = 0;
+  const take = ({ out, truncated }) => {
+    size += out.length;
+    if (truncated || size > maxDiscardBytes) throw new GitRefusal("These changes are too big to keep for undo. Stash them, then delete the stash.");
+    parts.push(out);
+  };
+  const options = (allowCodes) => ({ allowCodes, maxBytes: maxDiscardBytes - size, truncate: true, bytes: true, timeoutMs: 120_000 });
+  const tracked = [...new Set(files.filter((f) => f.kind !== "untracked").flatMap((f) => (f.origPath ? [f.path, f.origPath] : [f.path])))];
+  if (tracked.length) take(await git(cwd, ["diff", ...patchFlags, "--no-renames", "HEAD", "--", ...tracked], options([0])));
+  for (const file of files.filter((f) => f.kind === "untracked")) {
+    // git lists a repository inside the folder (not a submodule) as one entry ending in "/".
+    if (file.path.endsWith("/")) throw new GitRefusal(`${file.path} is a repository of its own; discard its changes there.`);
+    take(await git(cwd, ["diff", "--no-index", ...patchFlags, "--", "/dev/null", file.path], options([0, 1])));
+  }
+  return Buffer.concat(parts);
+}
+
+// Applies a patch to the files (in reverse: takes it out), all or nothing: checked first, so a patch that no longer
+// fits (the files changed since) leaves everything as it is.
+async function applyChecked(git, cwd, patch, reverse) {
+  const args = ["apply", ...(reverse ? ["-R"] : []), "--whitespace=nowarn"];
+  const check = await git(cwd, [...args, "--check"], { input: patch, allowCodes: [0, 1, 128] });
+  if (check.code !== 0) throw new GitRefusal("The files changed since. Refresh and try again.");
+  await run(git, cwd, args, { input: patch, timeoutMs: 120_000 });
+}
+
+// Takes the changes of the chosen files (`paths`, else every change, new files only with `includeUntracked`) out of
+// the files and the index, so they are as in the last commit and new files are gone. Submodules are discarded in the
+// submodule itself; "every change" leaves them out. Returns { ok: true, patch, files }, the patch being what undo
+// applies (`applyPatch`), or { ok: false, reason: "nothing" }.
+export async function discardFiles(git, cwd, { paths = [], includeUntracked = true } = {}) {
+  if (!Array.isArray(paths)) throw new GitRefusal("Choose files to discard.");
+  paths.forEach(checkPath);
+  const { state, changed } = await readyToChange(git, cwd);
+  if (!state.head) throw new GitRefusal("This branch has no commits yet, so there is nothing to go back to.");
+  const byPath = new Map(changed.map((f) => [f.path, f]));
+  for (const p of paths) {
+    const file = byPath.get(p);
+    if (!file) throw new GitRefusal(`${p} has no changes to discard.`);
+    if (file.submodule) throw new GitRefusal(`${p} is a submodule; discard its changes in the submodule itself.`);
+  }
+  const chosen = paths.length ? paths.map((p) => byPath.get(p))
+    : changed.filter((f) => !f.submodule && (includeUntracked || f.kind !== "untracked"));
+  if (!chosen.length) return { ok: false, reason: "nothing" };
+  const patch = await changesPatch(git, cwd, chosen);
+  if (patch.length) await applyChecked(git, cwd, patch, true);
+  // Staged changes go too, so the files match the last commit everywhere and leave the list.
+  const tracked = chosen.filter((f) => f.kind !== "untracked").flatMap((f) => (f.origPath ? [f.path, f.origPath] : [f.path]));
+  if (tracked.length) await run(git, cwd, ["restore", "--staged", "--", ...new Set(tracked)]);
+  return { ok: true, patch, files: chosen.map((f) => f.path) };
+}
+
+// Applies a patch of changes to the files: in reverse to discard picked lines, or to redo a discard; forward to undo
+// one. git refuses paths outside the folder.
+export async function applyPatch(git, cwd, { patch, reverse = false }) {
+  const size = typeof patch === "string" ? Buffer.byteLength(patch) : patch instanceof Uint8Array ? patch.byteLength : 0;
+  if (!size) throw new GitRefusal("There are no changes to apply.");
+  if (size > maxDiscardBytes) throw new GitRefusal("These changes are too big to apply here.");
+  await readyToChange(git, cwd);
+  await applyChecked(git, cwd, patch, reverse);
 }
 
 // ---- The remote ----

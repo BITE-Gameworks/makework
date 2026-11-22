@@ -1,6 +1,6 @@
 // Imports a repository's history into the channel's `git` plugin, for every member: new commits in batches,
-// then the branch list. The first import and each update bring at most 1,000 new commits per branch; "older"
-// continues below what is imported, 1,000 more per branch.
+// then the branch list. The first import and each update bring the whole history: the newest 1,000 commits per
+// branch, then 1,000 more per branch below what is imported until nothing is left. "older" runs one such step.
 //
 // With its submodules (importTree): each is found in its repository's default branch, saved as a repository of the
 // same channel under its path from the main repository's root, imported the same way, and looked into in turn.
@@ -30,29 +30,41 @@ export async function importRepo(api: PluginClient, channelId: number, reader: R
   const lines = async (fn: string) => (await api.call<{ shas: string }>(fn, repo)).shas.split("\n").filter(Boolean);
   const known = new Set(await lines("known-shas"));
   const branches = await reader.branches();
-  // Older history continues at the parents that aren't imported yet.
-  const starts = mode === "older" ? await lines("frontier") : branches.map((b) => b.name);
-  let budget = mode === "older" ? perBranch * Math.max(1, branches.length) : Infinity;
-  const found: ImportedCommit[] = [];
-  for (const from of starts) {
-    signal?.throwIfAborted();
-    if (budget <= 0) break;
-    const commits = await reader.history(from, Math.min(perBranch, budget), (sha) => known.has(sha));
-    for (const c of commits) {
-      known.add(c.sha);
-      // Repositories made on Windows can have \r\n line ends in messages.
-      found.push({ ...c, author_name: encodeEmoji(c.author_name), message: encodeEmoji(c.message.replace(/\r\n?/g, "\n")) });
+  const progress = { read: 0, sent: 0, sub };
+
+  // One step: up to 1,000 commits from each start (at most `budget` in all), sent in batches. Returns how many.
+  const step = async (starts: string[], budget: number): Promise<number> => {
+    const found: ImportedCommit[] = [];
+    for (const from of starts) {
+      signal?.throwIfAborted();
+      if (budget <= 0) break;
+      const commits = await reader.history(from, Math.min(perBranch, budget), (sha) => known.has(sha));
+      for (const c of commits) {
+        known.add(c.sha);
+        // Repositories made on Windows can have \r\n line ends in messages.
+        found.push({ ...c, author_name: encodeEmoji(c.author_name), message: encodeEmoji(c.message.replace(/\r\n?/g, "\n")) });
+      }
+      budget -= commits.length;
+      onProgress({ ...progress, read: progress.read + found.length });
     }
-    budget -= commits.length;
-    onProgress({ read: found.length, sent: 0, sub });
-  }
-  for (let i = 0; i < found.length; i += batch) {
-    signal?.throwIfAborted();
-    await api.call("import-commits", { ...repo, commits: JSON.stringify(found.slice(i, i + batch)) });
-    onProgress({ read: found.length, sent: Math.min(found.length, i + batch), sub });
-  }
-  if (mode !== "older") await api.call("set-branches", { ...repo, branches: JSON.stringify(branches) });
-  return { added: found.length, branches };
+    for (let i = 0; i < found.length; i += batch) {
+      signal?.throwIfAborted();
+      await api.call("import-commits", { ...repo, commits: JSON.stringify(found.slice(i, i + batch)) });
+      onProgress({ ...progress, read: progress.read + found.length, sent: progress.sent + Math.min(found.length, i + batch) });
+    }
+    progress.read += found.length;
+    progress.sent += found.length;
+    return found.length;
+  };
+
+  // Older history continues at the parents that aren't imported yet.
+  const older = async () => step(await lines("frontier"), perBranch * Math.max(1, branches.length));
+  if (mode === "older") return { added: await older(), branches };
+  // A history imported before imports were whole gets the rest here too.
+  let added = await step(branches.map((b) => b.name), Infinity);
+  for (let more = await older(); more > 0; more = await older()) added += more;
+  await api.call("set-branches", { ...repo, branches: JSON.stringify(branches) });
+  return { added, branches };
 }
 
 export interface TreeSource {

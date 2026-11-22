@@ -351,7 +351,7 @@ async function removedFrom(id: string, why: Removal): Promise<void> {
     ? `${who ? `${who} banned you` : "You were banned"}. Changes you make there are refused, so the workspace was removed from this app.`
     : `${who ? `${who} removed you` : "You were removed"}. You can join again with an invite.`;
   showNotice(title, text);
-  notify({ tag: `removed:${id}`, title, body: text });
+  notify({ kind: "workspace", tag: `removed:${id}`, title, body: text });
 }
 
 // Moves the workspace's data to another folder: it is closed (leaving a call in it), moved, and opened again from

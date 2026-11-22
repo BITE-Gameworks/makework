@@ -4,6 +4,7 @@ import { openChannel } from "../../../core/navigation";
 import Skeleton from "../../../ui/Skeleton";
 import { userMessage } from "../../../api/client";
 import { desktop, desktopError, type GitMergeTarget } from "../../../core/desktop";
+import { historyKeys } from "../../../core/history";
 import { isLooking, notify } from "../../../core/notifier";
 import { checkGitHubSignIn, githubLogin, githubRevision, githubSignInReady } from "../../../core/githubAuth";
 import { getToken, tokenRevision, tokenStorage } from "../../../core/secrets";
@@ -13,8 +14,10 @@ import { openSettings } from "../../../core/ui";
 import { Icon } from "../../../theme/icons";
 import Collapse from "../../../ui/Collapse";
 import ConfirmPrompt from "../../../ui/ConfirmPrompt";
+import Dialog from "../../../ui/Dialog";
+import HistoryControls from "../../../ui/HistoryControls";
 import type { MenuEntry } from "../../../ui/contextMenu";
-import Select from "../../../ui/Select";
+import Select, { type SelectGuide, type SelectOption } from "../../../ui/Select";
 import TabUnderline from "../../../ui/TabUnderline";
 import { ProgressBar } from "../../../ui/UploadList";
 import type { ChannelContext } from "../../types";
@@ -30,21 +33,42 @@ import Files from "./Files";
 import { stashMessage, type ActionMessage } from "./actions";
 import { appAccessPage, describeRefusal, whyRefused, whyWriteRefused } from "./githubAccess";
 import SignInPrompt from "./GitHubSignIn";
-import { GitAuthError, gitCall } from "./local";
+import CloneLocation from "./CloneLocation";
+import { GitAuthError, cloneTo, gitCall } from "./local";
 import LocalHistory from "./LocalHistory";
 import MergeResolver from "./MergeResolver";
 import PushPanel from "./PushPanel";
 import SyncBar from "./SyncBar";
 import { createWorkingCopy } from "./workingCopy";
 import { channelName, compareHeads, describeChanges, importLatest, openCheckMs, repeat, viewWatching, type RemoteChange } from "./watch";
-import { createHistory, createRepo, hostOf, loadRepos, localFolder, readerHere, repoName, setLocalFolder, type Repo } from "./data";
+import {
+  createHistory, createRepo, hostOf, loadRepos, localFolder, readerHere, repoName, repoTree, setLocalFolder, type Repo, type RepoTreeRow,
+} from "./data";
 import { describeSkipped, importRepo, type ImportProgress, type Skipped } from "./importer";
 import { describePrepared, findSubFolders, importChannel, type Prepared } from "./tree";
 import ReleasePage from "./ReleasePage";
 import { releaseHost, releaseTarget, type ReleaseHost } from "./releases";
-import { RepoAccessError, parseRepoLink, readerFor, type RepoReader } from "./providers";
+import { RepoAccessError, cloneReader, parseRepoLink, readerFor, type RepoReader } from "./providers";
 
 const pageSize = 100;
+
+// The guide cells before a repository in the picker: a line on for each repository above it with siblings still to
+// come, then its own elbow.
+const guidesOf = (row: RepoTreeRow): SelectGuide[] =>
+  row.depth === 0 ? [] : [...row.parentsLast.map((last): SelectGuide => (last ? "none" : "pass")), row.last ? "last" : "branch"];
+
+// The channel's repositories for the picker, as a tree: the main one with where it comes from, each submodule under
+// the repository holding it with the commit it is pinned at.
+function repoOptions(repos: Repo[]): SelectOption<string>[] {
+  return repoTree(repos).map((row) => {
+    const r = row.repo;
+    return r.subPath
+      ? { value: r.subPath, label: row.name, selectedLabel: r.subPath, icon: "folder", guides: guidesOf(row),
+          detail: r.pinned ? `@${r.pinned.slice(0, 7)}` : undefined }
+      : { value: "", label: row.name, icon: "channel-git", emphasis: true, guides: [],
+          detail: r.provider === "local" ? "folder" : `${r.host}/${r.path}` };
+  });
+}
 
 // Tabs for a channel with a working copy on this device; without one only History exists.
 type Tab = "history" | "changes" | "branches" | "files";
@@ -70,6 +94,7 @@ export default function RepoView(props: {
   const state = createRepo(ctx.api, channelId, sub);
   const repo = () => state.value.repo;
   const main = () => props.repos.find((r) => r.subPath === "") ?? null;
+  const pickerOptions = createMemo(() => repoOptions(props.repos));
   const [changing, setChanging] = createSignal(false);
   const [releasing, setReleasing] = createSignal(false);
   // The host this repository's host connection is for (connections.ts): its own, a folder's by its origin.
@@ -121,15 +146,17 @@ export default function RepoView(props: {
   let lastAdding = { reason: "", add: false };
   const shownAdding = () => (lastAdding = adding() ?? lastAdding);
   const [error, setError] = createSignal("");
+  const undoKeys = historyKeys(ctx.history, (e) => setError(userMessage(e)));
   // Something that didn't stop the import, e.g. a token that couldn't be remembered.
   const [note, setNote] = createSignal("");
   const tokenNotSaved = (e: unknown) =>
     setNote(`The token couldn't be remembered on this device (${userMessage(e)}). It was still used for this import.`);
-  const [progress, setProgress] = createSignal<ImportProgress | null>(null);
+  // `cloning`: the folder a repository is being cloned into before its import.
+  const [progress, setProgress] = createSignal<(ImportProgress & { cloning?: string }) | null>(null);
   // After an update failed without a token: the host to ask one for, and why it failed.
   const [needsToken, setNeedsToken] = createSignal<{ host: string; reason: string } | null>(null);
   // The boxes keep their last content while they slide closed.
-  let lastProgress: ImportProgress = { read: 0, sent: 0 };
+  let lastProgress: ImportProgress & { cloning?: string } = { read: 0, sent: 0 };
   let lastNeed = { host: "", reason: "" };
   const shownProgress = () => (lastProgress = progress() ?? lastProgress);
   // The submodule the import is at, when it isn't the repository shown.
@@ -352,6 +379,37 @@ export default function RepoView(props: {
     }
   };
 
+  // Cloning the channel's repository to this computer when it has no copy here: the link it was imported from (a
+  // folder's by its origin). Submodules are cloned into it afterwards (findFolders).
+  const cloneLink = () => {
+    const r = repo();
+    if (!r || sub !== "") return null;
+    return r.provider === "local" ? parseRepoLink(r.url) : { host: r.host, url: r.url };
+  };
+  const canClone = () => !!desktop?.git && !folder() && !!cloneLink();
+  const [cloneAsk, setCloneAsk] = createSignal(false);
+  const [cloneTarget, setCloneTarget] = createSignal<string | null>(null);
+  const cloneHere = async (into: string) => {
+    const link = cloneLink();
+    if (!link || progress()) return;
+    setCloneAsk(false);
+    setError("");
+    setNote("");
+    setProgress({ read: 0, sent: 0, cloning: into });
+    try {
+      const key = await channelConnectionKey(workspaceId, channelId, link.host);
+      await cloneTo(link.url, into, { connection: key ?? "" });
+      useFolder(into);
+      setNote(`Cloned to ${into}: commits, branches and pushes happen there.`);
+      void findFolders().then(syncQuietly);
+    } catch (e) {
+      if (e instanceof GitAuthError) setSigningIn({ host: e.host, reason: e.message, retry: () => cloneHere(into) });
+      else setError(userMessage(desktopError(e)));
+    } finally {
+      setProgress(null);
+    }
+  };
+
   // Watching the remote while the channel is open: the working copy on this device by fetching (local branches and
   // files are never touched), else the host's branch list (ETags: unchanged answers cost no rate limit).
   const [remoteNote, setRemoteNote] = createSignal("");
@@ -386,7 +444,7 @@ export default function RepoView(props: {
     if (f) void wc.refresh();
     setRemoteNote(`The remote has changes: ${text}.${f ? " Your branches and files aren't touched; Pull brings them in." : ""}`);
     if (!isLooking(workspaceId, channelId))
-      notify({ tag: `git:${workspaceId}:${channelId}:${sub}`, title: `New commits in ${channelName(workspaceId, channelId, sub)}`, body: text,
+      notify({ kind: "commits", tag: `git:${workspaceId}:${channelId}:${sub}`, title: `New commits in ${channelName(workspaceId, channelId, sub)}`, body: text,
         onClick: () => openChannel(workspaceId, channelId) });
     await syncQuietly();
   };
@@ -407,15 +465,17 @@ export default function RepoView(props: {
 
   // Imports with a reader; shows progress, can be cancelled, reports what went wrong (and returns it). The main
   // repository's first import and its updates bring its submodules along (tree.ts); a submodule's own update looks
-  // at it and what is inside it; older commits are only ever this repository's.
-  const run = async (reader: RepoReader, mode: "first" | "update" | "older", before?: () => Promise<unknown>): Promise<unknown> => {
+  // at it and what is inside it; older commits are only ever this repository's. `before` (setup saving the
+  // repository) can give the reader to import with instead: a clone it just made.
+  const run = async (reader: RepoReader, mode: "first" | "update" | "older", before?: () => Promise<RepoReader | void>): Promise<unknown> => {
     running = new AbortController();
     const signal = running.signal;
     setError("");
     setNote("");
     setProgress({ read: 0, sent: 0 });
     try {
-      await before?.();
+      reader = (await before?.()) ?? reader;
+      setProgress({ read: 0, sent: 0 });
       let added: number;
       let skipped: Skipped[] = [];
       if (mode === "older") ({ added } = await importRepo(ctx.api, channelId, reader, mode, setProgress, signal, sub));
@@ -467,11 +527,14 @@ export default function RepoView(props: {
   };
 
   return (
-    <div class="view git mw-fade-in">
+    <div class="view git mw-fade-in" onKeyDown={(e) => local() && undoKeys(e)}>
       <header class="view-header">
         <Show when={props.repos.length > 1 && !changing()}>
           <Select class="git-repo-pick" label="Repository" value={sub} onChange={props.onShow} search={props.repos.length > 8}
-            options={props.repos.map((r) => ({ value: r.subPath, label: repoName(r), icon: r.subPath ? "folder" : "channel-git" }))} />
+            options={pickerOptions()} />
+          <span class="git-repo-count mw-box" title={`${props.repos.length - 1} submodules in this channel`}>
+            <Icon name="folder" size={12} /> {props.repos.length - 1}
+          </span>
         </Show>
         <Show when={repo() && !changing()}>
           <Show when={canRelease() && !releasing()}>
@@ -479,6 +542,10 @@ export default function RepoView(props: {
           </Show>
           <Show when={local()}>
             <SyncBar wc={wc} onChanged={changed} onAttention={() => setPushing(true)} onStashes={() => { setShared(false); setTab("changes"); }} />
+            {/* Discarded changes come back from here (Changes). */}
+            <div class="view-tools view-history mw-box">
+              <HistoryControls history={ctx.history} onError={(e) => setError(userMessage(e))} />
+            </div>
           </Show>
           <div class="view-tools mw-box">
             <button class="icon-button" title="Update" aria-label="Update" disabled={!!progress() || !ctx.can("edit_content")}
@@ -495,6 +562,7 @@ export default function RepoView(props: {
                   ? { label: "Stop using my local copy here", icon: "folder",
                       action: () => { useFolder(null); setTab("history"); setPushing(false); setResolving(null); } }
                   : { label: "Use my local copy...", icon: "folder", action: () => void linkLocalCopy() }] : []),
+                ...(canClone() ? [{ label: "Clone to this computer...", icon: "download", disabled: !!progress(), action: () => setCloneAsk(true) }] : []),
               ] : folder() && desktop?.git ? [{ label: "Open its folder", icon: "folder",
                 action: () => void desktop!.git!.openFolder(folder()!).catch((error) => setError(userMessage(desktopError(error)))) }] : []),
               ...(githubHere() && githubSignInReady() === true ? (githubUser()
@@ -589,6 +657,19 @@ export default function RepoView(props: {
             onResolve={() => { setPushing(false); setResolving({ target: { kind: "pull" }, fromPush: true }); }} />
         </Show>
       </Collapse>
+      <Dialog open={cloneAsk()} title="Clone to this computer" onClose={() => setCloneAsk(false)}>
+        <Show when={repo()}>
+          {(r) => (
+            <div class="git-clone-dialog">
+              <CloneLocation name={repoName(r())} onChange={setCloneTarget} onError={setError} />
+              <div class="git-setup-buttons">
+                <button class="mw-button mw-box" type="button" onClick={() => setCloneAsk(false)}>Cancel</button>
+                <button class="mw-button mw-box accent" type="button" disabled={!cloneTarget()} onClick={() => void cloneHere(cloneTarget()!)}>Clone</button>
+              </div>
+            </div>
+          )}
+        </Show>
+      </Dialog>
       <div class="git-confirm">
         <ConfirmPrompt open={removing()} question="Remove the repository? Its imported history is deleted for everyone."
           confirmLabel="Remove" onConfirm={remove} onCancel={() => setRemoving(false)} />
@@ -627,10 +708,14 @@ export default function RepoView(props: {
       </Collapse>
       <Collapse open={!!progress()}>
         <div class="git-progress mw-box">
-          <span>{shownProgress().sent ? `Importing${importing()}: ${shownProgress().sent} of ${shownProgress().read} commits saved`
-            : `Reading the history${importing()}: ${shownProgress().read} new commits`}</span>
-          <button class="icon-button" title="Stop" aria-label="Stop importing" onClick={() => running?.abort()}><Icon name="close" /></button>
-          <ProgressBar value={shownProgress().read ? shownProgress().sent / shownProgress().read : 0} label="Import" />
+          <Show when={!shownProgress().cloning} fallback={
+            <span><span class="mw-spinner" aria-hidden="true" /> Cloning the whole repository into <code>{shownProgress().cloning}</code>...</span>
+          }>
+            <span>{shownProgress().sent ? `Importing${importing()}: ${shownProgress().sent} of ${shownProgress().read} commits saved`
+              : `Reading the history${importing()}: ${shownProgress().read} new commits`}</span>
+            <button class="icon-button" title="Stop" aria-label="Stop importing" onClick={() => running?.abort()}><Icon name="close" /></button>
+            <ProgressBar value={shownProgress().read ? shownProgress().sent / shownProgress().read : 0} label="Import" />
+          </Show>
         </div>
       </Collapse>
 
@@ -638,7 +723,7 @@ export default function RepoView(props: {
         <Match when={!state.loaded}><Skeleton kind="list" header={false} /></Match>
         <Match when={!repo() || changing()}>
           <Setup context={ctx} busy={!!progress()} onCancel={repo() ? () => setChanging(false) : undefined}
-            onLink={(reader, setRepo) => void run(reader, "first", setRepo)}
+            onLink={(reader, setRepo) => void run(reader, "first", setRepo)} onCloning={(into) => setProgress({ read: 0, sent: 0, cloning: into })}
             onFolder={(reader, setRepo) => void run(reader, "first", setRepo)} onError={setError} onTokenNotSaved={tokenNotSaved} />
         </Match>
         <Match when={releasing() && opened() && repo()}>
@@ -656,7 +741,7 @@ export default function RepoView(props: {
           )}
         </Match>
         <Match when={local() && tab() === "changes"}>
-          <Changes folder={folder()!} wc={wc} onCommitted={changed} openSubmodule={openSubmodule} />
+          <Changes folder={folder()!} wc={wc} history={ctx.history} onCommitted={changed} openSubmodule={openSubmodule} />
         </Match>
         <Match when={local() && tab() === "branches"}>
           <Branches folder={folder()!} defaultBranch={repo()!.defaultBranch} onChanged={changed}
@@ -671,7 +756,8 @@ export default function RepoView(props: {
         </Match>
         <Match when={repo()}>
           {(r) => <History context={ctx} repo={r()} main={main()} folder={folder()} branches={state.value.branches} onOlder={() => void update("older")} onUpdate={() => void update("update")}
-            showCommit={showCommit()} onLocal={local() ? () => setShared(false) : undefined} onShow={props.onShow} />}
+            showCommit={showCommit()} onLocal={local() ? () => setShared(false) : undefined} onShow={props.onShow}
+            onClone={canClone() && !progress() ? () => setCloneAsk(true) : undefined} />}
         </Match>
       </Switch>
     </div>
@@ -684,8 +770,10 @@ function Setup(props: {
   context: ChannelContext;
   busy: boolean;
   onCancel?: () => void;
-  onLink: (reader: RepoReader, setRepo: () => Promise<unknown>) => void;
-  onFolder: (reader: RepoReader, setRepo: () => Promise<unknown>) => void;
+  onLink: (reader: RepoReader, setRepo: () => Promise<RepoReader | void>) => void;
+  onFolder: (reader: RepoReader, setRepo: () => Promise<RepoReader | void>) => void;
+  // The link's repository is being cloned into this folder before it is saved.
+  onCloning: (folder: string) => void;
   onError: (message: string) => void;
   onTokenNotSaved: (e: unknown) => void;
 }) {
@@ -699,6 +787,9 @@ function Setup(props: {
   void tokenStorage().then(setStorage, () => setStorage("none"));
   const parsed = () => parseRepoLink(link());
   const allowed = () => ctx.can("edit_content");
+  // On the desktop app a link is cloned here, into this folder, and becomes the channel's working copy.
+  const cloning = !!desktop?.git;
+  const [target, setTarget] = createSignal<string | null>(null);
   // This member's connections for the link's host; a pick from them, "none" or "new" (a token typed here). Until
   // picked: the one used most recently, else a new token.
   const [saved] = createResource(() => (parsed() ? { host: parsed()!.host, revision: connectionRevision() } : false),
@@ -721,16 +812,26 @@ function Setup(props: {
     const pick = chosen();
     const typed = pick === "new" ? token().trim() : "";
     const reader = readerFor({ provider, host: p.host, path: p.path }, pick === "new" ? typed || null : pick === "none" ? null : await getToken(pick));
+    const into = cloning ? target() : null;
+    if (cloning && !into) return props.onError("Choose where to save the repository first.");
     props.onLink(reader, async () => {
       const defaultBranch = await reader.defaultBranch();
       // Remembering it is a convenience: the import goes on with the typed token either way.
       let key: string | null = pick === "new" ? null : pick;
       if (typed && remember() && storage() !== "none")
         key = (await addConnection({ host: p.host, provider, token: typed, name: name() }).catch((error) => { props.onTokenNotSaved(error); return null; }))?.key ?? null;
+      // Before saving: a clone that fails leaves the channel as it was.
+      if (into) {
+        props.onCloning(into);
+        await cloneTo(p.url, into, typed ? { token: typed } : { connection: key ?? "" });
+      }
       await ctx.api.call("set-repo", { channel_id: ctx.channel.id, provider, host: p.host, path: p.path, url: p.url, default_branch: defaultBranch,
         subrepos: submodules() });
       // Always a pick: a token used once (or none) must not turn into another saved connection on the next update.
       useConnection(ctx.workspace.id, ctx.channel.id, key ?? "none");
+      if (!into) return;
+      setLocalFolder(ctx.workspace.id, ctx.channel.id, into);
+      return cloneReader(into, defaultBranch);
     });
   };
 
@@ -755,7 +856,10 @@ function Setup(props: {
   return (
     <div class="git-setup mw-fade-in">
       <h3>Connect a repository</h3>
-      <p class="hint">Its branches and commit history are imported for everyone in this workspace; nobody else needs access to it.</p>
+      <p class="hint">
+        Its branches and whole commit history are imported for everyone in this workspace; nobody else needs access to it.
+        {cloning ? " A link is also cloned to this computer, so you can commit, branch and push." : ""}
+      </p>
       <form class="git-setup-form" onSubmit={(e) => void submitLink(e)}>
         <label>
           <span>Link</span>
@@ -765,6 +869,12 @@ function Setup(props: {
         <Show when={parsed()?.provider === null}>
           <p class="hint mw-fade-in">{parsed()!.host} is read as a self-hosted GitLab.</p>
         </Show>
+        <Collapse open={cloning && !!parsed()}>
+          <Show when={cloning && parsed()}>
+            {(p) => <CloneLocation name={p().path.split("/").pop() ?? p().path} disabled={!allowed() || props.busy} onChange={setTarget}
+              onError={props.onError} />}
+          </Show>
+        </Collapse>
         <Collapse open={!!known().length}>
           <label>
             <span>Connection <span class="muted">(for private repositories)</span></span>
@@ -806,7 +916,9 @@ function Setup(props: {
           Also import its submodules
         </label>
         <div class="git-setup-buttons">
-          <button class="mw-button mw-box accent" type="submit" disabled={props.busy || !parsed() || !allowed()}>Import</button>
+          <button class="mw-button mw-box accent" type="submit" disabled={props.busy || !parsed() || !allowed() || (cloning && !target())}>
+            {cloning ? "Clone and import" : "Import"}
+          </button>
           <Show when={desktop?.git}>
             <button class="mw-button mw-box" type="button" disabled={props.busy || !allowed()} onClick={() => void pickFolder()}>
               <Icon name="folder" /> Use a folder on this computer...
@@ -836,6 +948,8 @@ function History(props: {
   showCommit: string | null;
   // Switches back to this computer's graph, when there is a working copy here.
   onLocal?: () => void;
+  // Offers cloning the repository to this computer, when it has no copy here.
+  onClone?: () => void;
   // Shows another of the channel's repositories.
   onShow: (sub: string) => void;
 }) {
@@ -898,6 +1012,11 @@ function History(props: {
         </span>
         <Show when={props.onLocal}>
           <button class="mw-button mw-box" onClick={() => props.onLocal!()}>This computer's graph</button>
+        </Show>
+        <Show when={props.onClone}>
+          <button class="mw-button mw-box" title="To commit, branch and push from here" onClick={() => props.onClone!()}>
+            <Icon name="download" /> Clone to this computer
+          </button>
         </Show>
       </p>
       <div class="git-columns">

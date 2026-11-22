@@ -114,7 +114,7 @@ export function startBackgroundWatch(): void {
         if (!changes.length) continue;
         const text = describeChanges(changes.map((c) => ({ branch: c.branch, count: c.count, isNew: c.from === null })));
         if (!isLooking(workspaceId, channelId))
-          notify({ tag: `git:${workspaceId}:${channelId}:${sub}`, title: `New commits in ${channelName(workspaceId, channelId, sub)}`, body: text,
+          notify({ kind: "commits", tag: `git:${workspaceId}:${channelId}:${sub}`, title: `New commits in ${channelName(workspaceId, channelId, sub)}`, body: text,
             onClick: () => openChannel(workspaceId, channelId) });
         changed.add(`${workspaceId}:${channelId}`);
       } catch (e) {

@@ -37,9 +37,12 @@
   transition: border-color var(--mw-duration) var(--mw-ease), background-color var(--mw-duration) var(--mw-ease);
 }
 
-.dm-row:hover {
-  background: var(--mw-dark);
-  color: var(--mw-text);
+/* Only where hovering is real: touch screens put :hover on whatever a finger touches, even while it scrolls. */
+@media (hover: hover) {
+  .dm-row:hover {
+    background: var(--mw-dark);
+    color: var(--mw-text);
+  }
 }
 
 .dm-row.active {

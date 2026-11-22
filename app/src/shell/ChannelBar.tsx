@@ -1,6 +1,6 @@
-import { For, Match, Show, Switch, createEffect, createSignal, on, type JSX } from "solid-js";
+import { For, Match, Show, Switch, createEffect, createSignal, on, onCleanup, type JSX } from "solid-js";
 import { ApiRequestError, userMessage } from "../api/client";
-import { channelType, channelTypes } from "../core/channelTypes";
+import { channelType, channelTypes, type ChannelType } from "../core/channelTypes";
 import { isForgotten } from "../core/content";
 import { canGoBack, canGoForward, current, goBack, goForward, openChannel, openInNewTab, workspaceDirection } from "../core/navigation";
 import { openContextMenu } from "../ui/contextMenu";
@@ -14,7 +14,7 @@ import { categoryOrder, orderedCategories, reorderCategories, setCategoryOrder }
 import { isCollapsed, isStarred, isUnread, mentionCount, starredIds, toggleCollapsed } from "../core/sidebar";
 import { Icon } from "../theme/icons";
 import {
-  channelBarWidth, closeOverlays, saveChannelBarWidth, setChannelBarWidth, overlayShowing, workspacePage, toggleOverlay,
+  channelBarWidth, closeOverlays, narrow, saveChannelBarWidth, setChannelBarWidth, setDrawerOpen, showOpenPlace, overlayShowing, workspacePage, toggleOverlay,
 } from "../core/ui";
 import OverlayButton from "../ui/OverlayButton";
 import { connectingNote } from "./LoadingView";
@@ -51,6 +51,10 @@ const starredSection = 0;
 // A starred channel is listed twice; only the copy that was clicked gets the selection line.
 type RowSection = "starred" | "category";
 const [clickedSection, setClickedSection] = createSignal<RowSection>("category");
+
+// The category a channel is being added to ("workspace:category"). One at a time: a second press on a +, or one on
+// another category's, can't open a second form.
+const [addingTo, setAddingTo] = createSignal<string | null>(null);
 
 export default function ChannelBar() {
   const workspace = () => {
@@ -222,11 +226,22 @@ function Section(props: {
 }
 
 function CategorySection(props: { workspaceId: string; category: Category; channels: Channel[]; open: boolean; categories: Category[]; index: number }) {
-  const [adding, setAdding] = createSignal(false);
+  const key = () => `${props.workspaceId}:${props.category.id}`;
+  const adding = () => addingTo() === key();
+  const startAdding = () => !addingTo() && setAddingTo(key());
+  const stopAdding = () => setAddingTo(null);
+  // On phones the dialog opened over the plugin view (Shell.tsx moves the drawer away for it): leaving without a new
+  // channel goes back to the channel list it came from.
+  const cancelAdding = () => {
+    stopAdding();
+    if (narrow()) setDrawerOpen(true);
+  };
+  // A category that goes away (deleted elsewhere) mustn't keep every other + waiting.
+  onCleanup(() => adding() && setAddingTo(null));
   const add = (
     <Show when={can(props.workspaceId, "manage_channels")}>
       <button class="icon-button" title={`Add a channel to ${props.category.name}`} aria-label="Add channel"
-        onClick={() => setAdding(true)}>
+        onClick={startAdding}>
         <Icon name="add" />
       </button>
     </Show>
@@ -250,16 +265,16 @@ function CategorySection(props: { workspaceId: string; category: Category; chann
           if (ids !== current) setCategoryOrder(props.workspaceId, ids);
         },
       }}
-      onContextMenu={(e) => openContextMenu(e, categoryMenu(props.workspaceId, props.category, () => setAdding(true)))}>
+      onContextMenu={(e) => openContextMenu(e, categoryMenu(props.workspaceId, props.category, startAdding))}>
       <For each={props.channels}>
         {(channel, i) => (
           <ChannelRow workspaceId={props.workspaceId} channel={channel} section="category"
             order={props.open ? undefined : { siblings: props.channels, next: () => props.channels[i() + 1]?.id ?? null }} />
         )}
       </For>
-      <Dialog open={adding()} title={`New channel in ${props.category.name}`} onClose={() => setAdding(false)}>
+      <Dialog open={adding()} title={`New channel in ${props.category.name}`} onClose={cancelAdding}>
         <Show when={adding()}>
-          <AddChannelForm workspaceId={props.workspaceId} categoryId={props.category.id} onDone={() => setAdding(false)} />
+          <AddChannelForm workspaceId={props.workspaceId} categoryId={props.category.id} onDone={stopAdding} onCancel={cancelAdding} />
         </Show>
       </Dialog>
     </Section>
@@ -377,6 +392,7 @@ function ChannelRow(props: {
         onClick={(e) => {
           closeOverlays();
           if (e.ctrlKey || e.metaKey) return openInNewTab({ workspaceId: props.workspaceId, channelId: props.channel.id });
+          if (active()) showOpenPlace();
           pressedLeft = label.getBoundingClientRect().left;
           setClickedSection(props.section);
           openChannel(props.workspaceId, props.channel.id);
@@ -495,7 +511,7 @@ function AddCategory(props: { workspaceId: string }) {
   );
 }
 
-function AddChannelForm(props: { workspaceId: string; categoryId: number; onDone: () => void }) {
+function AddChannelForm(props: { workspaceId: string; categoryId: number; onDone: () => void; onCancel: () => void }) {
   const [name, setName] = createSignal("");
   const [type, setType] = createSignal(channelTypes()[0]?.id ?? "chat");
   const [error, setError] = createSignal("");
@@ -577,32 +593,61 @@ function AddChannelForm(props: { workspaceId: string; categoryId: number; onDone
     }
   };
 
+  // On phones the type is chosen first, on its own, and the name after: the keyboard that a name field brings up
+  // covers the list of types. The name field takes focus by itself only on wider layouts.
+  const [typeChosen, setTypeChosen] = createSignal(false);
+  const choosingType = () => narrow() && !typeChosen();
+  const nameField = () => (
+    <input class="mw-input mw-box" placeholder="channel-name" value={name()} required ref={(el) => !narrow() && focusWhenShown(el)}
+      onInput={(e) => setName(e.currentTarget.value)} aria-label="Channel name" />
+  );
+  const cancelButton = () => <button type="button" class="mw-button mw-box" onClick={props.onCancel}>Cancel</button>;
+  const addButtons = () => (
+    <div class="add-channel-row">
+      <button type="submit" class="mw-button primary mw-box" disabled={busy() || !name().trim()}>Add channel</button>
+      {cancelButton()}
+    </div>
+  );
+  const importButton = () => (
+    <Show when={isServerless(props.workspaceId)}>
+      <button type="button" class="add-category-button" disabled={busy()} onClick={() => picker.click()}>
+        <Icon name="upload" size={14} /> {busy() ? "Importing..." : "Import a channel from .zip"}
+      </button>
+      <input ref={picker} type="file" accept=".zip,application/zip" hidden
+        onChange={(e) => { void importZip(e.currentTarget.files?.[0]); e.currentTarget.value = ""; }} />
+    </Show>
+  );
+
   return (
-    <form class="add-channel" onSubmit={submit}>
-      <input class="mw-input mw-box" placeholder="channel-name" value={name()} required ref={focusWhenShown}
-        onInput={(e) => setName(e.currentTarget.value)} aria-label="Channel name" />
-      <div class="channel-type-list mw-scroll-fade" role="radiogroup" aria-label="Channel type">
-        <For each={channelTypes()}>
-          {(t) => (
-            <button type="button" class="channel-type-option mw-box" classList={{ active: type() === t.id }} role="radio" aria-checked={type() === t.id}
-              onClick={() => setType(t.id)}>
-              <Icon name={t.icon} />
-              <span class="channel-type-text"><span>{t.label}</span><Show when={t.description}><span class="hint">{t.description}</span></Show></span>
+    <form class="add-channel" classList={{ narrow: narrow() }} onSubmit={submit}>
+      <Switch>
+        <Match when={choosingType()}>
+          <div class="add-channel-step mw-fade-in">
+            <ChannelTypeList value={type()} onChoose={(id) => { setType(id); setTypeChosen(true); }} />
+            <div class="add-channel-row">{cancelButton()}</div>
+            {importButton()}
+          </div>
+        </Match>
+        <Match when={narrow()}>
+          <div class="add-channel-step mw-fade-in">
+            <button type="button" class="channel-type-option add-channel-chosen mw-box active" title="Change channel type"
+              aria-label={`Channel type: ${channelType(type()).label}. Change channel type`} onClick={() => setTypeChosen(false)}>
+              <ChannelTypeLabel type={channelType(type())} />
+              <Icon name="rename" />
             </button>
-          )}
-        </For>
-      </div>
-      <div class="add-channel-row">
-        <button type="submit" class="mw-button primary mw-box" disabled={busy() || !name().trim()}>Add channel</button>
-        <button type="button" class="mw-button mw-box" onClick={props.onDone}>Cancel</button>
-      </div>
-      <Show when={isServerless(props.workspaceId)}>
-        <button type="button" class="add-category-button" disabled={busy()} onClick={() => picker.click()}>
-          <Icon name="upload" size={14} /> {busy() ? "Importing..." : "Import a channel from .zip"}
-        </button>
-        <input ref={picker} type="file" accept=".zip,application/zip" hidden
-          onChange={(e) => { void importZip(e.currentTarget.files?.[0]); e.currentTarget.value = ""; }} />
-      </Show>
+            {nameField()}
+            {addButtons()}
+          </div>
+        </Match>
+        <Match when={!narrow()}>
+          <div class="add-channel-step">
+            {nameField()}
+            <ChannelTypeList value={type()} onChoose={setType} />
+            {addButtons()}
+            {importButton()}
+          </div>
+        </Match>
+      </Switch>
       <Show when={adding()}>
         {(pending) => (
           <ConfirmPrompt
@@ -616,6 +661,31 @@ function AddChannelForm(props: { workspaceId: string; categoryId: number; onDone
       </Show>
       <Show when={error()}><p class="warning">{error()}</p></Show>
     </form>
+  );
+}
+
+function ChannelTypeList(props: { value: string; onChoose: (id: string) => void }) {
+  return (
+    <div class="channel-type-list mw-scroll-fade" role="radiogroup" aria-label="Channel type">
+      <For each={channelTypes()}>
+        {(t) => (
+          <button type="button" class="channel-type-option mw-box" classList={{ active: props.value === t.id }} role="radio" aria-checked={props.value === t.id}
+            onClick={() => props.onChoose(t.id)}>
+            <ChannelTypeLabel type={t} />
+          </button>
+        )}
+      </For>
+    </div>
+  );
+}
+
+// A channel type's icon, name and description, inside a `channel-type-option` button.
+function ChannelTypeLabel(props: { type: ChannelType }) {
+  return (
+    <>
+      <Icon name={props.type.icon} />
+      <span class="channel-type-text"><span>{props.type.label}</span><Show when={props.type.description}><span class="hint">{props.type.description}</span></Show></span>
+    </>
   );
 }
 

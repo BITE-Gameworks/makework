@@ -1152,7 +1152,11 @@ const gitNetwork = (channel, fn) => ipcMain.handle(channel, async (_event, folde
 });
 // The runner whose network commands sign in with the connection the page gave the first of `folders` it has one for.
 function signedInGit(account, ...folders) {
-  const chosen = folders.map((f) => gitCredentials.get(f)).find((c) => c !== undefined);
+  return gitAs(account, folders.map((f) => gitCredentials.get(f)).find((c) => c !== undefined));
+}
+// The runner whose network commands sign in with the connection `chosen` (a key, "" for none, undefined for the
+// host's own slot).
+function gitAs(account, chosen) {
   return gitOps.withCredentials(gitRunner, (host) => {
     const name = gitOps.credentialName(host, chosen);
     return account && name ? readSecret(`${account}:${name}`) : null;
@@ -1173,6 +1177,47 @@ gitNetwork("git:prepare-submodules", async (git, cwd) => {
   const prepared = await gitOps.prepareSubmodules(git, cwd, { serial: gitSerial, gitFor: (folder) => signedInGit(account, folder, cwd) });
   await allowGitFolders(prepared.flatMap((s) => (s.folder ? [s.folder] : [])));
   return { origin: (await runGit(cwd, ["remote", "get-url", "origin"]).catch(() => "")).trim(), submodules: prepared };
+});
+// Cloning a repository from a link into a new working copy: by default a folder under ~/MakeWork/Repositories, or
+// under a parent the user picked in the dialog. The page names the folder, so only those parents are accepted.
+const cloneRoot = () => path.join(mirrorRoot(), "Repositories");
+const cloneParents = new Set();
+const allowedCloneParent = (parent) => parent === cloneRoot() || cloneParents.has(parent);
+const emptyOrMissing = async (dir) => {
+  const there = await fs.lstat(dir).catch(() => null);
+  return !there || (there.isDirectory() && !there.isSymbolicLink() && (await fs.readdir(dir)).length === 0);
+};
+// A free folder for the repository `name`: "<parent>/name", else "name 2", "name 3"...
+ipcMain.handle("git:clone-location", async (_event, name, parent) => {
+  const base = typeof parent === "string" && allowedCloneParent(parent) ? parent : cloneRoot();
+  const segment = safeSegment(typeof name === "string" && name.trim() ? name : "repository");
+  for (let n = 1; ; n++) {
+    const folder = path.join(base, n === 1 ? segment : `${segment} ${n}`);
+    if (await emptyOrMissing(folder)) return folder;
+  }
+});
+// MAKEWORK_TEST_CLONE_PARENT replaces the dialog in automated checks.
+ipcMain.handle("git:pick-clone-parent", async (event) => {
+  const testParent = testEnv("MAKEWORK_TEST_CLONE_PARENT");
+  const picked = testParent ? { canceled: false, filePaths: [testParent] }
+    : await dialog.showOpenDialog(BrowserWindow.fromWebContents(event.sender), { title: "Choose where to save the repository",
+      properties: ["openDirectory", "createDirectory"] });
+  if (picked.canceled || !picked.filePaths[0]) return null;
+  cloneParents.add(picked.filePaths[0]);
+  return picked.filePaths[0];
+});
+// `auth`: a host connection's key ("" for none), or a token typed for this import and not kept.
+const cloneRunner = (auth) => {
+  if (typeof auth?.token === "string" && auth.token) return gitOps.withCredentials(gitRunner, () => auth.token);
+  return gitAs(gitAccount, typeof auth?.connection === "string" && connectionPattern.test(auth.connection) ? auth.connection : "");
+};
+ipcMain.handle("git:clone", async (_event, url, target, auth) => {
+  if (typeof target !== "string" || !path.isAbsolute(target) || !allowedCloneParent(path.dirname(target)))
+    throw new Error("Choose where to save the repository again.");
+  await gitOps.cloneRepo(cloneRunner(auth), url, target);
+  await allowGitFolders([target]);
+  const origin = (await runGit(target, ["remote", "get-url", "origin"]).catch(() => "")).trim();
+  return { path: target, name: path.basename(target), origin };
 });
 gitRead("git:status", async (cwd) => ({ ...(await gitOps.repoState(gitRunner, cwd)), files: await gitOps.status(gitRunner, cwd) }));
 gitRead("git:working-diff", (cwd, file) => gitOps.workingDiff(gitRunner, cwd, file));
@@ -1373,6 +1418,13 @@ gitWrite("git:stash-push", (cwd, options) => gitOps.stashPush(gitRunner, cwd, {
 }));
 gitWrite("git:stash-restore", (cwd, sha) => gitOps.stashRestore(gitRunner, cwd, sha));
 gitWrite("git:stash-delete", (cwd, sha) => gitOps.stashDelete(gitRunner, cwd, sha));
+gitWrite("git:discard", (cwd, options) => gitOps.discardFiles(gitRunner, cwd, {
+  paths: Array.isArray(options?.paths) ? options.paths.filter((p) => typeof p === "string") : [],
+  includeUntracked: options?.includeUntracked !== false,
+}));
+gitWrite("git:apply-patch", (cwd, patch, reverse) => gitOps.applyPatch(gitRunner, cwd, {
+  patch: typeof patch === "string" ? patch : patch instanceof Uint8Array ? Buffer.from(patch) : "", reverse: reverse === true,
+}));
 gitWrite("git:revert-to", (cwd, sha, options) => gitOps.restoreCommit(gitRunner, cwd, sha, { allowMassDelete: options?.allowMassDelete === true }));
 
 // Releases: building a picked folder's project (its chosen branch, in a temporary worktree) and uploading files to a

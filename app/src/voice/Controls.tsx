@@ -276,7 +276,7 @@ export function MicButton() {
     <SplitButton
       icon={voiceBlocked() ? "mic-off" : "mic"} off={voiceBlocked()} on={talking()} onToggle={toggleMute}
       title={title()}
-      menuLabel="Microphone" devices={inputs()} selected={inputId()} onSelect={(id) => void setInputDevice(id)}
+      menuLabel="Microphone" devices={deviceChoices(inputs(), "Microphone")} selected={inputId()} onSelect={(id) => void setInputDevice(id)}
       extra={<VolumeSlider label="Mic volume" value={micVolume()} onChange={setMicVolume} />} />
   );
 }
@@ -285,7 +285,7 @@ export function HeadsetButton() {
   return (
     <SplitButton
       icon={deafened() ? "headset-off" : "headset"} off={deafened()} title={deafened() ? "Undeafen" : "Deafen"} onToggle={toggleDeafen}
-      menuLabel="Output" devices={outputs()} selected={outputId()} onSelect={setOutputDevice}
+      menuLabel="Output" devices={deviceChoices(outputs(), "Output")} selected={outputId()} onSelect={setOutputDevice}
       extra={<VolumeSlider label="Output volume" value={outputVolume()} onChange={setOutputVolume} />}
       note={supportsOutputSelection ? undefined : "This app can't switch outputs here yet; sound plays on the system default. Change it in your system sound settings."} />
   );
@@ -307,6 +307,16 @@ export function HangUpButton(props: { wide?: boolean }) {
   );
 }
 
+interface DeviceChoice {
+  id: string;
+  label: string;
+}
+
+// "default" is the system default, which the menu offers first under that name.
+function deviceChoices(devices: MediaDeviceInfo[], kind: string): DeviceChoice[] {
+  return devices.filter((d) => d.deviceId && d.deviceId !== "default").map((d, i) => ({ id: d.deviceId, label: d.label || `${kind} ${i + 1}` }));
+}
+
 function SplitButton(props: {
   icon: "mic" | "mic-off" | "headset" | "headset-off" | "camera" | "camera-off";
   // off: muted or deafened (warning color); on: a camera that is on (accent).
@@ -316,7 +326,7 @@ function SplitButton(props: {
   title: string;
   onToggle: () => void;
   menuLabel: string;
-  devices: MediaDeviceInfo[];
+  devices: DeviceChoice[];
   selected: string;
   onSelect: (id: string) => void;
   note?: string;
@@ -347,11 +357,11 @@ function SplitButton(props: {
           <button class="mw-menu-item" classList={{ selected: !props.selected }} disabled={!!props.note} onClick={() => choose("")}>
             <Icon name="check" /> System default
           </button>
-          <For each={props.devices.filter((d) => d.deviceId && d.deviceId !== "default")}>
-            {(d, i) => (
-              <button class="mw-menu-item" classList={{ selected: props.selected === d.deviceId }} disabled={!!props.note}
-                onClick={() => choose(d.deviceId)}>
-                <Icon name="check" /> {d.label || `${props.menuLabel} ${i() + 1}`}
+          <For each={props.devices}>
+            {(d) => (
+              <button class="mw-menu-item" classList={{ selected: props.selected === d.id }} disabled={!!props.note}
+                onClick={() => choose(d.id)}>
+                <Icon name="check" /> {d.label}
               </button>
             )}
           </For>

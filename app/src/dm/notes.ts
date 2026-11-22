@@ -7,7 +7,7 @@ import { base64url } from "../core/identity";
 import { readJson, writeJson } from "../core/storage";
 import { readVaultDoc, updateVault } from "../core/vault";
 
-export const notesPeer = "@notes";
+export { notesPeer } from "../core/navigation";
 
 export interface Note {
   id: string;

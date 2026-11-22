@@ -24,6 +24,11 @@ paths.
 - A picked folder's checked-out submodules join that list when the page asks for them (`git:submodules`): main finds
   them from the folder's own last commit and checks each is a repository of its own inside it, never taking a path
   from the page.
+- `git:clone` clones a repository from its link (whole history, no submodules: `git:prepare-submodules` brings those)
+  into a folder the page names, which must be missing or empty, never a link, and directly inside
+  `~/MakeWork/Repositories` (`MakeWork-dev` in dev runs) or a folder the user picked this run (`git:pick-clone-parent`).
+  It signs in like fetch, with the channel's host connection or a token typed for that import, and the new folder joins
+  `git-folders.json`.
 - `git:prepare-submodules` clones the missing ones (only into a missing or empty folder, never through a link, always
   with git's plain checkout so a repository's own `update` command never runs) and puts each one that is on no branch
   on its branch, made at its commit or switched to only when it is at that commit, so no file changes. Opening a

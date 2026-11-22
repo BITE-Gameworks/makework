@@ -63,6 +63,52 @@ export const hostOf = (repo: Repo): string | null => (repo.provider === "local" 
 // What a repository is called in a list: the main one by its name, a submodule by its path.
 export const repoName = (repo: Repo): string => repo.subPath || repo.path.split("/").pop() || repo.path;
 
+// A repository's place in the channel's tree: the main one at depth 0, each submodule under the repository whose
+// folder holds it. `name`: its path from that repository's root. `last`: no later sibling; `parentsLast`: the same
+// for each repository above it, from depth 1 down, so guide lines know where they end.
+export interface RepoTreeRow {
+  repo: Repo;
+  depth: number;
+  name: string;
+  last: boolean;
+  parentsLast: boolean[];
+}
+
+// The main repository first, then each repository's submodules by name under it, depth first. A submodule's parent is
+// the one whose path is the longest that starts its own (`vendor/lib` hangs under the main one when there is no
+// `vendor`).
+export function repoTree(repos: Repo[]): RepoTreeRow[] {
+  const paths = new Set(repos.map((r) => r.subPath));
+  const parentOf = (path: string) => {
+    for (let at = path.lastIndexOf("/"); at > 0; at = path.lastIndexOf("/", at - 1))
+      if (paths.has(path.slice(0, at))) return path.slice(0, at);
+    return "";
+  };
+  const children = new Map<string, Repo[]>();
+  for (const r of repos) {
+    if (!r.subPath) continue;
+    const parent = parentOf(r.subPath);
+    const siblings = children.get(parent);
+    if (siblings) siblings.push(r);
+    else children.set(parent, [r]);
+  }
+  const rows: RepoTreeRow[] = [];
+  const walk = (path: string, depth: number, parentsLast: boolean[]) => {
+    const relative = (r: Repo) => (path ? r.subPath.slice(path.length + 1) : r.subPath);
+    const kids = [...(children.get(path) ?? [])].sort((a, b) => compareText(relative(a), relative(b)));
+    kids.forEach((r, i) => {
+      const last = i === kids.length - 1;
+      rows.push({ repo: r, depth, name: relative(r), last, parentsLast });
+      walk(r.subPath, depth + 1, [...parentsLast, last]);
+    });
+  };
+  const main = repos.find((r) => !r.subPath);
+  if (main) rows.push({ repo: main, depth: 0, name: repoName(main), last: true, parentsLast: [] });
+  // Without a main repository (it was removed while a view was open), its submodules still show from the top.
+  walk("", 1, []);
+  return rows;
+}
+
 const toCommit = (r: Row): Commit => ({
   id: Number(r.id), sha: String(r.sha), parents: String(r.parents ?? "").split(" ").filter(Boolean),
   authorName: decodeEmoji(String(r.author_name ?? "")), authorEmail: String(r.author_email ?? ""),

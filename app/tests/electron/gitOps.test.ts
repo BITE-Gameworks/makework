@@ -6,9 +6,11 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
-  blame, branches, checkPath, commit, createBranch, credentialName, createGit, deleteBranch, fetchRemote, graph, listFiles, mergeBranch,
+  blame, branches, checkPath, cloneRepo, commit, createBranch, credentialName, createGit, deleteBranch, fetchRemote, graph, listFiles, mergeBranch,
   mergeConflicts, mergeCurrentInto, mergeDiff, mergeFile, mergeRemote, mergeResolved, push, pushCheck, remoteEnv, remoteHost, restoreCommit, showCommit, stashDelete, stashList, stashPush, stashRestore, status, attachBranch, prepareSubmodules, submodules, switchBranch, withCredentials,
+  applyPatch, discardFiles, workingDiff,
 } from "../../electron/gitOps.js";
+import { pickedPatch } from "../../src/plugins/builtin/git/diff";
 
 let root: string;
 let env: NodeJS.ProcessEnv;
@@ -651,6 +653,88 @@ describe("git safety: stashes", () => {
   });
 });
 
+describe("git safety: discarding changes", () => {
+  const files = (dir: string) => sh(dir, "status", "--porcelain=v1", "--untracked-files=all");
+  const exists = (dir: string, file: string) => fs.existsSync(path.join(dir, file));
+
+  it("takes out only the chosen files' changes, and undo and redo apply the patch it returns", async () => {
+    write(a, "a.txt", "edited\n");
+    fs.rmSync(path.join(a, "b.txt"));
+    write(a, "staged.txt", "new and staged\n");
+    sh(a, "add", "staged.txt");
+    write(a, "dir/new.txt", "brand new\n");
+    write(a, "c.txt", "not chosen\n");
+
+    const result = await discardFiles(git, a, { paths: ["a.txt", "b.txt", "staged.txt", "dir/new.txt"] });
+    expect(result).toMatchObject({ ok: true, files: ["a.txt", "b.txt", "staged.txt", "dir/new.txt"] });
+    expect(read(a, "a.txt")).toBe("a.txt line one\nline two\n");
+    expect(read(a, "b.txt")).toBe("b.txt line one\nline two\n");
+    expect(exists(a, "staged.txt")).toBe(false);
+    expect(exists(a, "dir")).toBe(false);
+    expect(files(a)).toBe("M c.txt");
+
+    // Undo: the changes come back (a staged new file comes back as a new file); redo takes them out again.
+    const { patch } = result as { patch: Uint8Array };
+    await applyPatch(git, a, { patch, reverse: false });
+    expect(read(a, "a.txt")).toBe("edited\n");
+    expect(exists(a, "b.txt")).toBe(false);
+    expect(read(a, "staged.txt")).toBe("new and staged\n");
+    expect(read(a, "dir/new.txt")).toBe("brand new\n");
+    await applyPatch(git, a, { patch, reverse: true });
+    expect(files(a)).toBe("M c.txt");
+  });
+
+  it("discards every change, new files only when asked, and keeps any file's bytes for undo", async () => {
+    const latin1 = Buffer.from([0x63, 0x61, 0x66, 0xe9, 0x0a]);
+    fs.writeFileSync(path.join(a, "a.txt"), latin1);
+    write(a, "fresh.txt", "new\n");
+    const kept = await discardFiles(git, a, { includeUntracked: false });
+    expect(kept).toMatchObject({ ok: true, files: ["a.txt"] });
+    expect(files(a)).toBe("?? fresh.txt");
+    expect(await discardFiles(git, a, {})).toMatchObject({ ok: true, files: ["fresh.txt"] });
+    expect(files(a)).toBe("");
+    expect(await discardFiles(git, a, {})).toEqual({ ok: false, reason: "nothing" });
+    await applyPatch(git, a, { patch: (kept as { patch: Uint8Array }).patch });
+    expect(fs.readFileSync(path.join(a, "a.txt"))).toEqual(latin1);
+  });
+
+  it("takes out picked lines only, and refuses a patch the file no longer fits, touching nothing", async () => {
+    write(a, "a.txt", "a.txt line one\nadded\nline two\nalso added\n");
+    const diff = (await workingDiff(git, a, "a.txt")).patch;
+    // 0 hunk, 1 line one, 2 +added, 3 line two, 4 +also added.
+    const patch = pickedPatch(diff, (line) => line === 4)!;
+    await applyPatch(git, a, { patch, reverse: true });
+    expect(read(a, "a.txt")).toBe("a.txt line one\nadded\nline two\n");
+    await applyPatch(git, a, { patch, reverse: false });
+    expect(read(a, "a.txt")).toBe("a.txt line one\nadded\nline two\nalso added\n");
+
+    write(a, "a.txt", "rewritten meanwhile\n");
+    await expect(applyPatch(git, a, { patch, reverse: true })).rejects.toThrow(/changed since/);
+    expect(read(a, "a.txt")).toBe("rewritten meanwhile\n");
+    await expect(applyPatch(git, a, { patch: "", reverse: true })).rejects.toThrow(/no changes/);
+  });
+
+  it("refuses paths outside the folder, an operation in progress, and a branch with no commits", async () => {
+    await expect(discardFiles(git, a, { paths: ["../outside"] })).rejects.toThrow(/Not a file/);
+    await expect(discardFiles(git, a, { paths: ["c.txt"] })).rejects.toThrow(/no changes/);
+
+    sh(a, "switch", "-q", "-c", "other");
+    write(a, "a.txt", "other side\n");
+    await commitAll(a, "Other");
+    sh(a, "switch", "-q", "main");
+    write(a, "a.txt", "main side\n");
+    await commitAll(a, "Main");
+    expect(() => sh(a, "merge", "other")).toThrow();
+    await expect(discardFiles(git, a, {})).rejects.toThrow(/merge is in progress/);
+    await expect(applyPatch(git, a, { patch: "diff --git a/x b/x\n", reverse: true })).rejects.toThrow(/merge is in progress/);
+
+    const empty = path.join(root, "empty");
+    sh(root, "init", "-q", empty);
+    write(empty, "first.txt", "first\n");
+    await expect(discardFiles(git, empty, {})).rejects.toThrow(/no commits yet/);
+  });
+});
+
 describe("MakeWork's own credentials", () => {
   // Another app's connection, as VS Code and credential managers set it up: each leaves a marker if git asks it.
   const otherApps = () => {
@@ -915,6 +999,42 @@ describe("submodules", () => {
     expect((await status(git, a)).map((f) => [f.path, f.kind, f.submodule ?? false])).toEqual([["a.txt", "modified", false], ["tool", "modified", true]]);
     await commitAll(a, "Move tool");
     expect((await submodules(git, a))[0].pinned).toBe(head(tool));
+  });
+});
+
+describe("git safety: cloning a repository", () => {
+  it("clones the whole history into a missing folder, or an empty one", async () => {
+    write(a, "a.txt", "changed\n");
+    await commitAll(a, "Second commit");
+    expect((await push(git, a)).ok).toBe(true);
+    const target = path.join(root, "clones", "new");
+    await cloneRepo(git, remote, target);
+    expect(head(target)).toBe(remoteHead());
+    expect(sh(target, "rev-list", "--count", "HEAD")).toBe("2");
+    expect(read(target, "a.txt")).toBe("changed\n");
+    const empty = path.join(root, "empty");
+    fs.mkdirSync(empty);
+    await cloneRepo(git, remote, empty);
+    expect(head(empty)).toBe(remoteHead());
+  });
+
+  it("never clones over files, through a link, or from something that isn't a link", async () => {
+    const full = path.join(root, "full");
+    write(full, "keep.txt", "mine\n");
+    await expect(cloneRepo(git, remote, full)).rejects.toThrow(/already holds files/);
+    expect(fs.readdirSync(full)).toEqual(["keep.txt"]);
+    const linked = path.join(root, "linked");
+    fs.mkdirSync(path.join(root, "elsewhere"));
+    fs.symlinkSync(path.join(root, "elsewhere"), linked);
+    await expect(cloneRepo(git, remote, linked)).rejects.toThrow(/is a link/);
+    await expect(cloneRepo(git, "--upload-pack=touch x", path.join(root, "opt"))).rejects.toThrow(/Not a repository link/);
+    await expect(cloneRepo(git, remote, "relative/folder")).rejects.toThrow(/Not a folder/);
+  });
+
+  it("leaves no folder behind when the clone fails", async () => {
+    const target = path.join(root, "failed");
+    await expect(cloneRepo(git, path.join(root, "missing.git"), target)).rejects.toThrow();
+    expect(fs.existsSync(target)).toBe(false);
   });
 });
 

@@ -211,6 +211,13 @@ export interface DesktopBridge {
   // Local git repositories: only folders picked in the dialog can be read.
   git?: {
     pickFolder(): Promise<{ path: string; name: string; origin: string } | null>;
+    // A free folder to clone the repository `name` into: under ~/MakeWork/Repositories, or under `parent` once it was
+    // picked with pickCloneParent.
+    cloneLocation(name: string, parent?: string): Promise<string>;
+    pickCloneParent(): Promise<string | null>;
+    // Clones the whole repository at `url` into `target` (from cloneLocation), signed in with a host connection's key
+    // ("" for none) or a token typed for this import, and makes it a folder the page may work in.
+    clone(url: string, target: string, auth: { connection: string } | { token: string }): Promise<{ path: string; name: string; origin: string }>;
     // Shows a picked working copy in the system's file browser.
     openFolder(folder: string): Promise<string>;
     branches(folder: string): Promise<{ current: string; branches: { name: string; head: string }[] }>;
@@ -259,6 +266,10 @@ export interface DesktopBridge {
     stashPush(folder: string, options?: { paths?: string[]; message?: string; includeUntracked?: boolean }): Promise<GitStashResult>;
     stashRestore(folder: string, sha: string): Promise<GitStashResult>;
     stashDelete(folder: string, sha: string): Promise<void>;
+    // Discarding: the chosen files' changes (all, or `paths`) go and come back with the patch it returns (decision
+    // 0033); `applyPatch` applies such a patch, in reverse to take changes out.
+    discard(folder: string, options?: { paths?: string[]; includeUntracked?: boolean }): Promise<GitDiscardResult>;
+    applyPatch(folder: string, patch: string | Uint8Array, reverse: boolean): Promise<void>;
     // A new commit on the current branch whose files are as they were at `sha` (one of its earlier commits).
     revertTo(folder: string, sha: string, options?: { allowMassDelete?: boolean }): Promise<GitRevertResult>;
     // The signed-in account, whose own host connections fetch, pull and push use (the tokens stay in main), and the
@@ -553,6 +564,8 @@ export interface GitStash {
   time: string;
   files: string[];
 }
+// `patch`: the discarded changes in bytes (a file needn't be UTF-8), for undo.
+export type GitDiscardResult = { ok: true; patch: Uint8Array; files: string[] } | { ok: false; reason: "nothing" };
 export type GitStashResult =
   | { ok: true; sha?: string; files: string[] }
   | { ok: false; reason: "nothing" }

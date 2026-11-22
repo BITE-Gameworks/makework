@@ -14,9 +14,10 @@ import { watchProfile } from "../core/account";
 import { watchSyncedPrefs } from "../core/syncedPrefs";
 import "./shell.css";
 
-// A view window: the same app showing the one tab it was popped out for. No workspace or channel bars (the window
-// is about that tab), no voice panel, no calls, no notifications of its own; the main window owns all of that.
-// Links here that point at another workspace are handed to the main window (core/popout.ts).
+// A view window: the same app showing the one tab it was popped out for, a channel or a private conversation. No
+// workspace or channel bars (the window is about that tab), no voice panel, no calls, no notifications of its own;
+// the main window owns all of that, and a conversation here goes through it (dm/windows.ts). Links here that point
+// at another workspace are handed to the main window (core/popout.ts).
 export default function PopoutShell() {
   const onKey = (e: KeyboardEvent) => {
     if (!e.altKey || e.ctrlKey || e.metaKey) return;

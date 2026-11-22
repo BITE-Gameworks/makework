@@ -4,9 +4,10 @@ import { For, Show, createEffect, createSignal, on, onCleanup, onMount } from "s
 import { account } from "../core/account";
 import { contentRef, contentUrl } from "../core/content";
 import { fileFromUrl, openFile } from "../core/files";
-import { current, messagesHome, openConversation, openFriends, openInNewTab } from "../core/navigation";
+import { current, messagesHome, moveToWindow, openConversation, openFriends, openInNewTab, type Location } from "../core/navigation";
+import { isPopout } from "../core/popout";
 import { formatBytes } from "../core/time";
-import { closeOverlays } from "../core/ui";
+import { closeOverlays, showOpenPlace } from "../core/ui";
 import { hostOf } from "../core/userServer";
 import MessageComposer, { type ComposerApi } from "../messaging/MessageComposer";
 import SharedCard from "../messaging/MessageCard";
@@ -24,12 +25,14 @@ import { openContextMenu, type MenuEntry } from "../ui/contextMenu";
 import { ProgressBar } from "../ui/UploadList";
 import { ConfirmItem } from "../shell/channelMenu";
 import { personEntries } from "../shell/personEntries";
+import NothingToShow from "../shell/NothingToShow";
+import { newWindowEntry } from "../shell/windowMenu";
 import FriendsPage from "./FriendsPage";
 import { addNote, deleteNote, editNote, loadNotes, notes, notesError, notesPeer, syncNotes, type Note } from "./notes";
 import { askedBy, askedThem, changeFriend, isBlocked, isFriend, requestCount } from "./friends";
 import {
-  appearsStatus, closeConversationLink, conversation, conversations, deleteConversation, deleteMessage, downloadAttachment, editMessage, isOnline,
-  linkOf, loadMessages, markRead, messagesBlocked, messagesWith, react, retry, sendMessage, startConversation, unreadTotal, type Attachment, type Conversation,
+  appearsStatus, closeConversationLink, conversation, conversations, deleteConversation, deleteMessage, downloadAttachment, downloadProgress,
+  editMessage, isOnline, loadMessages, markRead, messagesBlocked, messagesWith, react, retry, sendMessage, startConversation, unreadTotal, type Attachment, type Conversation,
   type DmMessage,
 } from "./messages";
 import "../plugins/builtin/views.css";
@@ -101,6 +104,7 @@ export function ConversationList() {
         aria-current={showingMessages() && !current()?.peer ? "page" : undefined}
         onClick={() => {
           closeOverlays();
+          if (showingMessages() && !current()?.peer) showOpenPlace();
           openFriends();
         }}>
         <Icon name="profile" size={22} />
@@ -113,6 +117,7 @@ export function ConversationList() {
         aria-current={showingMessages() && current()?.peer === notesPeer ? "page" : undefined}
         onClick={() => {
           closeOverlays();
+          if (showingMessages() && current()?.peer === notesPeer) showOpenPlace();
           openConversation(notesPeer);
         }}>
         <Icon name="notes" size={22} />
@@ -134,17 +139,23 @@ export function ConversationList() {
 
 function ConversationRow(props: { conversation: Conversation }) {
   const c = () => props.conversation;
+  const place = (): Location => ({ workspaceId: messagesHome, channelId: null, peer: c().id });
   const active = () => showingMessages() && current()?.peer === c().id;
-  const menu = (e: MouseEvent) => openContextMenu(e, personMenu(c()));
+  const menu = (e: MouseEvent) => openContextMenu(e, [
+    newWindowEntry("Open in new window", () => moveToWindow(place())),
+    "separator",
+    ...personMenu(c()),
+  ]);
   return (
     <button class="dm-row mw-box" classList={{ active: active(), unread: c().unread > 0 }} aria-current={active() ? "page" : undefined}
       onContextMenu={menu}
-      onAuxClick={(e) => e.button === 1 && openInNewTab({ workspaceId: messagesHome, channelId: null, peer: c().id })}
+      onAuxClick={(e) => e.button === 1 && openInNewTab(place())}
       onMouseDown={(e) => e.button === 1 && e.preventDefault()}
       onClick={(e) => {
         closeOverlays();
-        if (e.ctrlKey || e.metaKey) openInNewTab({ workspaceId: messagesHome, channelId: null, peer: c().id });
-        else openConversation(c().id);
+        if (e.ctrlKey || e.metaKey) return openInNewTab(place());
+        if (active()) showOpenPlace();
+        openConversation(c().id);
       }}>
       <span class="dm-row-avatar">
         <Avatar user={c()} size={32} />
@@ -181,7 +192,7 @@ export function MessagesView() {
   const peer = () => current()?.peer;
   return (
     <Show when={peer() !== notesPeer} fallback={<NotesView />}>
-      <Show when={conversation(peer())} keyed fallback={<FriendsPage />}>
+      <Show when={conversation(peer())} keyed fallback={isPopout() ? <NothingToShow what="This conversation" /> : <FriendsPage />}>
         {(c) => <ConversationView conversation={c} />}
       </Show>
     </Show>
@@ -395,7 +406,7 @@ function AttachmentView(props: { peer: string; attachment: Attachment; mine: boo
   const src = () => contentUrl(ref());
   const isImage = () => a().type.startsWith("image/");
   const [error, setError] = createSignal("");
-  const progress = () => linkOf(props.peer)?.streams.progress(a().hash);
+  const progress = () => downloadProgress(props.peer, a().hash);
   const download = async () => {
     setError("");
     setError(await downloadAttachment(props.peer, a()));

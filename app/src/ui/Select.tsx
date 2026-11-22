@@ -5,12 +5,24 @@ import "./Select.css";
 
 let closeActiveSelect: (() => void) | undefined;
 
+// A cell of a tree row's guide lines, one per level: `pass` a line going on past the row, `branch` a line with an
+// elbow to the row, `last` an elbow ending the line, `none` empty.
+export type SelectGuide = "pass" | "branch" | "last" | "none";
+
 export interface SelectOption<T> {
   value: T;
   label: string;
   icon?: string;
   swatch?: string;
   disabled?: boolean;
+  // Lists shown as a tree: the guide cells before the row, from the top level down.
+  guides?: SelectGuide[];
+  // Muted text at the row's end.
+  detail?: string;
+  // What the button shows for this option when `label` is shortened (a tree row's name without its parents).
+  selectedLabel?: string;
+  // Drawn stronger, e.g. the root of a tree.
+  emphasis?: boolean;
 }
 
 // A dropdown drawn in the theme, in place of the browser's <select>: a button showing the choice, and the options
@@ -100,7 +112,7 @@ export default function Select<T extends string | number>(props: {
         <Show when={chosen()?.swatch} fallback={<Show when={chosen()?.icon}><Icon name={chosen()!.icon!} size={14} /></Show>}>
           <span class="mw-select-swatch" style={{ background: chosen()?.swatch }} />
         </Show>
-        <span class="mw-select-value" classList={{ placeholder: !chosen() }}>{chosen()?.label ?? props.placeholder ?? ""}</span>
+        <span class="mw-select-value" classList={{ placeholder: !chosen() }}>{chosen()?.selectedLabel ?? chosen()?.label ?? props.placeholder ?? ""}</span>
         <Icon name="expanded" size={12} />
       </button>
       <Popover open={open()} onClose={() => close(false)} label={props.label} placement="below">
@@ -118,11 +130,21 @@ export default function Select<T extends string | number>(props: {
           <For each={shown()}>
             {(o) => (
               <button type="button" class="mw-menu-item" role="option" aria-selected={o.value === props.value}
-                classList={{ selected: o.value === props.value }} disabled={o.disabled} onClick={() => pick(o)}>
+                classList={{ selected: o.value === props.value, "mw-select-tree-row": !!o.guides, emphasis: !!o.emphasis }}
+                disabled={o.disabled} onClick={() => pick(o)}>
+                {/* A filtered list loses the tree's shape: its rows show their full label without guides. */}
+                <Show when={!query().trim() && o.guides?.length}>
+                  <span class="mw-select-guides" aria-hidden="true">
+                    <For each={o.guides}>{(g) => <span class={`mw-select-guide ${g}`} />}</For>
+                  </span>
+                </Show>
                 <Show when={o.swatch} fallback={<Show when={o.icon} fallback={<Icon name="check" size={14} />}><Icon name={o.icon!} size={14} /></Show>}>
                   <span class="mw-select-swatch" style={{ background: o.swatch }} />
                 </Show>
-                {o.label}
+                <Show when={o.detail || o.guides} fallback={o.label}>
+                  <span class="mw-select-label">{query().trim() ? o.selectedLabel ?? o.label : o.label}</span>
+                  <Show when={o.detail}><span class="mw-select-detail">{o.detail}</span></Show>
+                </Show>
               </button>
             )}
           </For>

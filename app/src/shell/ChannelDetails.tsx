@@ -54,7 +54,7 @@ export default function ChannelDetails(props: { workspaceId: string; channel: Ch
           <Icon name="tab-new" /> New tab
         </button>
         <Show when={poppable({ workspaceId: props.workspaceId, channelId: channel().id }, type())}>
-          <button class="mw-button mw-box" disabled={!canPopOutWindows()} onClick={() => moveToWindow(props.workspaceId, channel().id, type())}>
+          <button class="mw-button mw-box" disabled={!canPopOutWindows()} onClick={() => moveToWindow({ workspaceId: props.workspaceId, channelId: channel().id }, type())}>
             <Icon name="window-new" /> New window
           </button>
         </Show>

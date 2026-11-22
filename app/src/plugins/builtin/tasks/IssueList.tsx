@@ -15,14 +15,15 @@ import {
   issueStatuses, openDependencies, severities, type Board, type IssueStatus, type NewIssue, type Severity, type Tag, type Task,
 } from "./data";
 import { TagChip } from "./TagChip";
+import TitleField from "./TitleField";
 import { createCopied } from "../../../ui/clipboard";
 
 export const severityColor: Record<Severity, string> = {
   none: "var(--mw-text-disabled)",
-  low: "var(--mw-success)",
-  medium: "var(--mw-warning)",
-  high: "color-mix(in srgb, var(--mw-warning) 50%, var(--mw-danger))",
-  severe: "var(--mw-danger)",
+  low: "var(--mw-severity-low)",
+  medium: "var(--mw-severity-medium)",
+  high: "var(--mw-severity-high)",
+  severe: "var(--mw-severity-severe)",
 };
 const statusColor: Record<IssueStatus, string> = {
   triage: "var(--mw-text-disabled)",
@@ -203,6 +204,9 @@ function IssueCard(props: {
             </button>
             <Show when={copied()}><span class="task-copied mw-box mw-fade-in" role="status">Title copied to clipboard!</span></Show>
           </span>
+          <button class="icon-button task-more" title="Issue options" aria-label="Issue options" onClick={props.onMenu}>
+            <Icon name="more" size={13} />
+          </button>
           <Select label="Severity" value={issue().severity} options={severityOptions} class="issue-select"
             onChange={(v) => void props.actions.setSeverity(issue(), v)} />
           <Select label="Status" value={issue().status} options={statusOptions} class="issue-select"
@@ -277,8 +281,8 @@ function NewIssueForm(props: { context: ChannelContext; onAdd: (issue: NewIssue)
     <form class="issue-new" onSubmit={(e) => void submit(e)}>
       <label class="task-editor-field column">
         <span>Title</span>
-        <input class="mw-input mw-box" value={title()} placeholder="What is wrong, in a few words" aria-label="Title"
-          onInput={(e) => setTitle(e.currentTarget.value)} />
+        <TitleField value={title()} placeholder="What is wrong, in a few words" aria-label="Title"
+          onInput={(e) => setTitle(e.currentTarget.value)} onEnter={() => void submit()} />
       </label>
       <div class="task-editor-field">
         <span>Severity</span>

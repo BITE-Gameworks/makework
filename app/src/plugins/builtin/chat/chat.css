@@ -91,7 +91,8 @@
   transition: opacity var(--mw-duration) var(--mw-ease);
 }
 
-.chat-message-actions .icon-button {
+.chat-message-actions .icon-button,
+.chat-message-more {
   width: 22px;
   height: 22px;
 }
@@ -99,6 +100,12 @@
 .chat-message:hover .chat-message-actions,
 .chat-message-actions:focus-within {
   opacity: 1;
+}
+
+/* Touch screens only: there it takes the place of the hover buttons (see the hover: none rules below). */
+.chat-message .chat-message-more {
+  display: none;
+  margin-left: auto;
 }
 
 .chat-edit .mw-editor {
@@ -277,7 +284,8 @@
   display: contents;
 }
 
-/* Reply and react stay out of the way until the message is hovered or focused; touch has no hover, so there they stay. */
+/* Reply and react stay out of the way until the message is hovered or focused. Touch has no hover: there they live in
+   the three-dots menu instead. */
 .chat-replies.idle {
   order: 2;
   margin-left: auto;
@@ -301,8 +309,6 @@
   transition: opacity var(--mw-duration) var(--mw-ease);
 }
 
-.chat-message:hover .chat-replies.idle,
-.chat-message:hover .chat-message-footer .mw-reactions > :first-child,
 .chat-message-footer:focus-within .chat-replies.idle,
 .chat-message-footer:focus-within .mw-reactions > :first-child,
 .chat-message-footer:has([aria-expanded="true"]) .mw-reactions > :first-child {
@@ -318,7 +324,6 @@
   pointer-events: none;
 }
 
-.chat-message:hover .chat-message-footer.quiet,
 .chat-message-footer.quiet:focus-within,
 .chat-message-footer.quiet:has([aria-expanded="true"]) {
   pointer-events: auto;
@@ -328,20 +333,39 @@
   background: transparent;
 }
 
-.chat-message:hover .chat-message-footer.quiet {
-  background: var(--mw-dark);
-}
-
-@media (hover: none) {
-  .chat-message-footer.quiet {
-    position: static;
-    padding: 0;
-    pointer-events: auto;
+/* Only where hovering is real: phones keep :hover on whatever was last tapped. */
+@media (hover: hover) {
+  .chat-message:hover .chat-replies.idle,
+  .chat-message:hover .chat-message-footer .mw-reactions > :first-child {
+    opacity: 1;
   }
 
-  .chat-replies.idle,
-  .chat-message-footer .mw-reactions > :first-child {
-    opacity: 1;
+  .chat-message:hover .chat-message-footer.quiet {
+    pointer-events: auto;
+    background: var(--mw-dark);
+  }
+}
+
+/* Touch screens: one three-dots menu per message instead of buttons on every message. The react button stays laid
+   out, hidden, as the anchor of the emoji picker that "More reactions" opens, and shows while that is open. */
+@media (hover: none) {
+  .chat-message .chat-message-more {
+    display: grid;
+  }
+
+  .chat-message-actions,
+  .chat-replies.idle {
+    display: none;
+  }
+
+  .chat-message-footer .mw-reaction-add:not([aria-expanded="true"]) {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* Continued messages pin their header over the text's top right. */
+  .chat-message.continued .chat-message-main {
+    padding-right: 22px;
   }
 }
 

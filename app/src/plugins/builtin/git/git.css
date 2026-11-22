@@ -735,6 +735,32 @@
   font-style: italic;
 }
 
+/* Picking changes to discard (Changes): a checkbox column, and picked changes marked in the warning color. */
+.git-diff-lines.picking .git-diff-line {
+  grid-template-columns: 1.8em 3.6em 3.6em 1.4em 1fr;
+}
+
+.git-diff-pick {
+  justify-self: center;
+  align-self: center;
+  margin: 0;
+}
+
+.git-diff-lines.picking label.git-diff-line {
+  cursor: pointer;
+}
+
+.git-diff-line.picked {
+  background: color-mix(in srgb, var(--mw-warning) 30%, transparent);
+  box-shadow: inset 3px 0 0 var(--mw-warning);
+}
+
+/* An added line goes when discarded; a removed one comes back, so only added lines are struck through. */
+.git-diff-line.add.picked code {
+  text-decoration: line-through;
+  text-decoration-color: var(--mw-warning);
+}
+
 /* Blame: who wrote each run of lines */
 .git-blame-lines {
   overflow-x: auto;
@@ -908,8 +934,30 @@
 
 .git-commit-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--mw-margin);
+}
+
+/* Discarding: the buttons say they take changes away. */
+.git-changes .mw-button.danger:not(:disabled) {
+  color: var(--mw-warning);
+}
+
+/* Over a file's diff: what ticking its changes does, then Discard and Clear. */
+.git-pick-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--mw-margin) / 2);
+  min-height: 2em;
+  margin-bottom: calc(var(--mw-margin) / 2);
+}
+
+.git-pick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--mw-margin) / 2);
 }
 
 .git-typed-confirm label {
@@ -1556,4 +1604,38 @@
   .git-merge-cell.incoming {
     border-left: 0;
   }
+}
+
+.git-clone-location,
+.git-clone-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--mw-margin) / 2);
+}
+
+.git-clone-row {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--mw-margin) / 2);
+}
+
+.git-clone-path {
+  flex: 1;
+  min-width: 0;
+  padding: calc(var(--mw-margin) / 2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+  text-align: left;
+}
+
+.git-repo-count {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--mw-margin) / 4);
+  padding: calc(var(--mw-margin) / 4) calc(var(--mw-margin) / 2);
+  background: var(--mw-darker);
+  color: var(--mw-text-muted);
+  font-size: 0.85em;
 }

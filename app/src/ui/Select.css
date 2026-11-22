@@ -98,3 +98,84 @@
   flex: none;
   border-radius: 50%;
 }
+
+/* Lists shown as a tree: guide lines from each row to its parent's, drawn in the theme's border color. */
+.mw-select-list .mw-select-tree-row {
+  min-height: 2em;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.mw-select-list .mw-select-tree-row .mw-icon {
+  visibility: visible;
+}
+
+.mw-select-list .mw-select-tree-row.emphasis {
+  color: var(--mw-text);
+  font-weight: 600;
+}
+
+.mw-select-list .mw-select-tree-row.selected {
+  color: var(--mw-accent);
+}
+
+.mw-select-guides {
+  display: flex;
+  flex: none;
+  align-self: stretch;
+}
+
+.mw-select-guide {
+  position: relative;
+  width: 1.2em;
+}
+
+.mw-select-guide.pass::before,
+.mw-select-guide.branch::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  border-left: max(1px, var(--mw-border-width)) solid var(--mw-border);
+}
+
+.mw-select-guide.branch::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  right: 0;
+  border-top: max(1px, var(--mw-border-width)) solid var(--mw-border);
+}
+
+/* The last child's line turns into the row with a rounded elbow. */
+.mw-select-guide.last::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 50%;
+  left: 50%;
+  right: 0;
+  border-left: max(1px, var(--mw-border-width)) solid var(--mw-border);
+  border-bottom: max(1px, var(--mw-border-width)) solid var(--mw-border);
+  border-bottom-left-radius: min(var(--mw-radius), 0.5em);
+}
+
+.mw-select-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mw-select-detail {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-left: calc(var(--mw-margin) / 2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--mw-text-disabled);
+  font-size: 0.85em;
+  font-weight: normal;
+}

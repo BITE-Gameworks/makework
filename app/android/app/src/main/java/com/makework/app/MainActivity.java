@@ -9,6 +9,7 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(GoogleSignInPlugin.class);
         registerPlugin(SignInBrowserPlugin.class);
+        registerPlugin(CamerasPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

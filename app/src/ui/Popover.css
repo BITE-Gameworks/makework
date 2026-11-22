@@ -87,8 +87,10 @@
   transition: opacity var(--mw-duration) var(--mw-ease);
 }
 
+/* While its width animates, a menu kept inside the window glides to its new place. */
 .mw-context-menu.resizing {
   overflow: hidden;
+  transition: opacity var(--mw-duration) var(--mw-ease), transform var(--mw-duration) var(--mw-ease);
 }
 
 .mw-context-menu .mw-menu-item .mw-icon {
@@ -136,8 +138,20 @@
 }
 
 /* A menu row rendered inside a content block (ConfirmItem/RenameItem) spans the menu like the plain rows. */
-.mw-menu-content:has(> .mw-menu-item:first-child) {
+.mw-menu-content:has(> .mw-menu-item:first-child, > .menu-confirm:first-child) {
   padding: 0;
+}
+
+/* A confirming entry and, when the menu has no room below, its buttons beside it (shell/channelMenu.tsx). The row
+   widens the menu rather than wrapping. */
+.menu-confirm {
+  display: flex;
+  align-items: center;
+}
+
+.menu-confirm > .mw-menu-item {
+  flex: 1 0 auto;
+  width: auto;
 }
 
 /* Rename field inside a right-click menu (shell/channelMenu.tsx). */

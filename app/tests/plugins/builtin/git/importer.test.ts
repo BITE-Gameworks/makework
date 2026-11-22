@@ -51,18 +51,18 @@ function repository(n: number) {
 }
 
 describe("importing a repository", () => {
-  it("brings the newest 1,000 per branch in batches, then only what's new, then older commits", async () => {
+  it("brings the whole history in batches, 1,000 per branch at a time, then only what's new", async () => {
     const api = client();
     await api.call("set-repo", { channel_id: 1, provider: "github", host: "github.com", path: "o/r", url: "https://github.com/o/r" });
     const repo = repository(1500);
     const progress: number[] = [];
-    const first = await importRepo(api, 1, repo, "first", (p) => p.sent && progress.push(p.sent));
-    // main: 1500..501; dev: 5003..5001 and then commit 10, which main didn't reach.
-    expect(first.added).toBe(1000 + 3 + 10);
-    expect(progress).toEqual([200, 400, 600, 800, 1000, 1013]);
+    const first = await importRepo(api, 1, repo, "first", (p) => p.sent && progress.at(-1) !== p.sent && progress.push(p.sent));
+    // main: 1500..501; dev: 5003..5001 and then 10..1, which main didn't reach; then main's 500..11 below that.
+    expect(first.added).toBe(1500 + 3);
+    expect(progress).toEqual([200, 400, 600, 800, 1000, 1013, 1213, 1413, 1503]);
     const main = await api.call<{ rows: { message: string }[]; total: number; truncated: boolean }>("list-commits", { channel_id: 1, branch: "main", limit: 5 });
-    expect(main.total).toBe(1000);
-    expect(main.truncated).toBe(true);
+    expect(main.total).toBe(1500);
+    expect(main.truncated).toBe(false);
     expect(main.rows[0].message).toBe("commit 1500 :tada:");
 
     // Messages from Windows repositories come with \r\n line ends.
@@ -74,11 +74,29 @@ describe("importing a repository", () => {
 
     repo.grow(1502);
     expect((await importRepo(api, 1, repo, "update")).added).toBe(2);
+    expect((await importRepo(api, 1, repo, "older")).added).toBe(0);
+  });
 
-    const older = await importRepo(api, 1, repo, "older");
-    expect(older.added).toBe(490);
+  it("finishes a history imported only partly, on the next update", async () => {
+    const api = client();
+    await api.call("set-repo", { channel_id: 1, provider: "github", host: "github.com", path: "o/r", url: "https://github.com/o/r" });
+    const repo = repository(1500);
+    // As imports were before they were whole: the newest 1,000 of main only.
+    const newest = (await repo.history("main", 1000, () => false)).map((c) => ({ ...c, message: c.message.replace("🎉", ":tada:") }));
+    for (let i = 0; i < newest.length; i += 200) await api.call("import-commits", { channel_id: 1, commits: JSON.stringify(newest.slice(i, i + 200)) });
+    expect((await importRepo(api, 1, repo, "update")).added).toBe(500 + 3);
     const after = await api.call<{ total: number; truncated: boolean }>("list-commits", { channel_id: 1, branch: "main" });
-    expect(after).toMatchObject({ total: 1502, truncated: false });
+    expect(after).toMatchObject({ total: 1500, truncated: false });
+  });
+
+  it("stops between steps when cancelled", async () => {
+    const api = client();
+    await api.call("set-repo", { channel_id: 1, provider: "github", host: "github.com", path: "o/r", url: "https://github.com/o/r" });
+    const stop = new AbortController();
+    const progress = (p: { sent: number }) => p.sent >= 1013 && stop.abort();
+    await expect(importRepo(api, 1, repository(1500), "first", progress, stop.signal)).rejects.toMatchObject({ name: "AbortError" });
+    const known = (await api.call<{ shas: string }>("known-shas", { channel_id: 1 })).shas.split("\n").filter(Boolean);
+    expect(known.length).toBe(1013);
   });
 });
 
