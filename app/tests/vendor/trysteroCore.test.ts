@@ -2,14 +2,21 @@
 // own copy of the core (its own selfId and shared connections), they meet on an in-memory relay, and connect over
 // werift WebRTC like a node. tests/p2p/fakeNetwork.ts replaces Trystero, so it can't see races inside Trystero's
 // shared connections; these tests can. One test per bug in vendor/trystero-core/README.md.
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
+import { createHash, randomBytes } from "node:crypto";
 import { cpSync, mkdtempSync, rmSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
+import { monitorEventLoopDelay } from "node:perf_hooks";
 import { RTCPeerConnection } from "werift";
 import type { Room } from "trystero";
+import { fileContent } from "../../src/node/storage";
+import { Mesh } from "../../src/p2p/mesh";
+import { RoomGroup } from "../../src/p2p/roomGroup";
+import { ContentStreams } from "../../src/p2p/stream";
 
 type Core = typeof import("@trystero-p2p/core");
 type Handler = (topic: string, message: string) => void;
@@ -167,4 +174,99 @@ describe("Trystero progress of a big message", () => {
       expect(heard.every((h) => JSON.stringify(h.metadata) === JSON.stringify(metadata))).toBe(true);
     });
   }, 60_000);
+});
+
+// A node's link to a member under the load that broke it (diagnosis 2026-11-26), over real WebRTC: the member uploads a
+// big file to the node while the node relays a burst for it (call presence, mesh news) and more members join. The
+// member asks the node "are you there" the way NodeLink does (p2p/nodes.ts): through an urgent channel, and for
+// comparison through the outbox every other message waits in. The link must hold, and the urgent answers must come
+// in well under the 15 s a member waits.
+describe("a node's link under load", () => {
+  it("keeps a member uploading to the node while the node relays a burst and others join", async () => {
+    const warnings: string[] = [];
+    const warn = vi.spyOn(console, "warn").mockImplementation((...args: unknown[]) => void warnings.push(args.map(String).join(" ")));
+    const dir = mkdtempSync(join(tmpdir(), "mw-load-"));
+    copies.push(dir);
+    const closing: (() => void)[] = [];
+    try {
+      await attempts(1, async (enter, bus, errors) => {
+        const side = async (passive: boolean, name: string) => {
+          const room = enter((await peer(bus, errors))("hub", "secret", passive));
+          const group = new RoomGroup();
+          group.add("hub", room);
+          const mesh = new Mesh(group as never, name, () => {}, { deltaAfterMs: 0 });
+          const left: string[] = [];
+          mesh.onDirectPeers(() => {}, (peerId) => void left.push(peerId));
+          closing.push(() => mesh.close());
+          return { room, group, mesh, left };
+        };
+        const node = await side(false, "node");
+        const member = await side(true, "member");
+        await expect.poll(() => connected([node.room, member.room]), { timeout: 15_000, interval: 50 }).toBe(true);
+        const memberId = Object.keys(node.room.getPeers())[0];
+        const nodeId = Object.keys(member.room.getPeers())[0];
+
+        // The member's file, and the node taking it in (p2p/stream.ts, as node/host.ts does).
+        const bytes = randomBytes(16 * 1024 * 1024);
+        const hash = createHash("sha256").update(bytes).digest("hex");
+        const memberStore = fileContent(join(dir, "member"));
+        const writer = await memberStore.openWriter(hash);
+        await writer.append(new Uint8Array(bytes) as Uint8Array<ArrayBuffer>);
+        await writer.finish(hash);
+        const nodeStore = fileContent(join(dir, "node"));
+        const memberStreams = new ContentStreams(member.group as never, memberStore);
+        const nodeStreams = new ContentStreams(node.group as never, nodeStore, { senders: 8 });
+        closing.push(() => memberStreams.close(), () => nodeStreams.close());
+
+        // Pings both ways the member checks the node: answered on the channel they came on.
+        const rtts = { urgent: [] as number[], queued: [] as number[] };
+        const pings = (name: string, urgent: boolean, into: number[]) => {
+          const answer = node.mesh.channel<number>(name, (t, from) => answer(t, from), { urgent });
+          return member.mesh.channel<number>(name, (t) => void into.push(performance.now() - t), { urgent });
+        };
+        const urgentPing = pings("load-ping", true, rtts.urgent);
+        const queuedPing = pings("load-ping-q", false, rtts.queued);
+        const pinging = setInterval(() => {
+          urgentPing(performance.now(), nodeId);
+          queuedPing(performance.now(), nodeId);
+        }, 200);
+        closing.push(() => clearInterval(pinging));
+
+        // What the node relays to the member meanwhile.
+        let relayed = 0;
+        const burst = node.mesh.channel<string>("load-burst", () => {});
+        member.mesh.channel<string>("load-burst", () => void relayed++);
+
+        const delay = monitorEventLoopDelay({ resolution: 10 });
+        delay.enable();
+        const started = performance.now();
+        const download = nodeStreams.download(hash, memberId);
+        for (let i = 0; i < 400; i++) burst(JSON.stringify({ presence: i, cursor: [i, i], pad: "x".repeat(200) }), memberId);
+        // Members joining the node mid-transfer, passive like members in a hub.
+        await wait(1_000);
+        const joiners = await Promise.all(Array.from({ length: 6 }, (_, i) => side(true, `joiner${i}`)));
+        expect(await download).toBe("done");
+        const transferMs = performance.now() - started;
+        await expect.poll(() => joiners.every((j) => peersIn(j.room) > 0), { timeout: 30_000, interval: 100 }).toBe(true);
+        await expect.poll(() => relayed, { timeout: 30_000, interval: 100 }).toBe(400);
+        await wait(1_000);
+        delay.disable();
+
+        expect(createHash("sha256").update(await readFile(join(dir, "node", "content", hash))).digest("hex")).toBe(hash);
+        const worst = (list: number[]) => Math.max(0, ...list);
+        console.log(`[load] 16 MiB in ${(transferMs / 1000).toFixed(1)} s; ping round trip worst ${worst(rtts.urgent).toFixed(0)} ms `
+          + `urgent (${rtts.urgent.length} answers), ${worst(rtts.queued).toFixed(0)} ms through the outbox (${rtts.queued.length}); `
+          + `event loop p99 ${(delay.percentile(99) / 1e6).toFixed(0)} ms, max ${(delay.max / 1e6).toFixed(0)} ms`);
+        expect(member.left).toEqual([]);
+        expect(node.left).toEqual([]);
+        expect(joiners.flatMap((j) => j.left)).toEqual([]);
+        expect(warnings.filter((w) => w.includes("disconnecting peer"))).toEqual([]);
+        expect(rtts.urgent.length).toBeGreaterThan(0);
+        expect(worst(rtts.urgent)).toBeLessThan(5_000);
+      });
+    } finally {
+      closing.forEach((close) => close());
+      warn.mockRestore();
+    }
+  }, 120_000);
 });

@@ -145,6 +145,8 @@ export interface HostContext {
   self?: string;
   // Tests: how long a transfer may stall before it stops (p2p/stream.ts `idleMs`, 30 s by default).
   streamIdleMs?: number;
+  // Tests: how often nodes ping each other, and after how long without an answer one is silent (p2p/nodes.ts).
+  nodeTiming?: { pingEveryMs: number; deadAfterMs: number };
   updateEntry?: (entry: HostedEntry) => Promise<void>;
 }
 
@@ -266,7 +268,9 @@ export class HostedServer {
         peerAuth: { localAccess: nodeIsMember(ledger) ? "member" as const : "invite" as const },
       } : {}),
     });
-    this.nodes = new NodeLink(entry.id, ledger, this.sync, { answerPings: true, answerHoldings: (hashes) => this.holdsHere(hashes) });
+    this.nodes = new NodeLink(entry.id, ledger, this.sync, {
+      answerPings: true, answerHoldings: (hashes) => this.holdsHere(hashes), ...context.nodeTiming,
+    });
     this.bridges = new SfuBridges({
       calls: () => this.sfu,
       address: () => this.describe().address,
@@ -296,13 +300,19 @@ export class HostedServer {
         idleMs: context.streamIdleMs,
         // A member asked this node for a file it doesn't have yet (another node keeps it, or it is a new upload this
         // node is still fetching): load it first.
-        onMissing: (hash) => (this.wanted().has(hash) ? this.fetchOnDemand(hash) : Promise.resolve(false)),
+        // One nobody had at the last pass is "missing" until the next (or until its uploader comes, `retryFrom`): asking
+        // every source again for each member that asks costs a request per member and source.
+        onMissing: (hash) => (this.wanted().has(hash) && !this.unavailable.has(hash) ? this.fetchOnDemand(hash) : Promise.resolve(false)),
         // A joiner (not a member yet) may fetch the workspace's snapshot state from here, nothing else.
         invitees: {
           may: (hash) => ledger.select("members", "members_snapshots", {}).some((row) => row.content === `mwc:${hash}`),
           isMember: (peer) => room.isMember?.(peer) ?? true,
         },
+        // Another node sending or taking content is there, though that holds back its answers to pings.
+        onActivity: (peer) => this.nodes.noteActive(peer),
       });
+      const streams = this.streams;
+      this.cleanups.push(mesh.onDirectPeers(() => {}, (peer) => streams.peerLeft(peer)));
       // Through NodeLink's `node-have` channel: a second listener here never heard anything (Trystero keeps the first
       // action of a name), so this node knew nothing of what the others keep (mesh-test s8/s9: every file "below").
       this.sendHave = (data, peer) => this.nodes.sendHave(data, peer);
@@ -318,10 +328,11 @@ export class HostedServer {
       const bridge = requestAction<BridgeRequest, BridgeReply>(room, sfuBridgeChannel, (request, { peerId }) => this.bridges.handle(peerId, request));
       this.askBridge = (peer, request) => bridge.request(request, { target: peer, timeoutMs: bridgeAskMs }).catch(() => null);
       const notify = (room.makeAction as (name: string) => { send(data: SfuNotify, options: { target: string }): Promise<void> })(sfuNotifyChannel);
-      this.notifySfu = (notice, peer) => void notify.send(notice, { target: peer });
+      // A notice to a member whose connection just closed is lost; it gets the call's producers when it joins again.
+      this.notifySfu = (notice, peer) => void notify.send(notice, { target: peer }).catch(() => {});
       this.cleanups.push(mesh.onPeers((peer) => {
         void this.hello(peer);
-        this.scheduleKeep(true);
+        this.retryFrom(peer);
       }, (peer) => {
         this.holdings.delete(peer);
         this.pieceHoldings.delete(peer);
@@ -1092,22 +1103,42 @@ export class HostedServer {
 
   // Where to fetch a file or piece from: nodes that say they have it, then the members, then the other nodes (which
   // would fetch it on demand: for a new file none has, every node asked the others first, each waiting on the next).
-  // Of the members its uploader's devices first (`rows().uploaders`; asked in the order they joined, a new file cost a
-  // request to every member before its uploader), and last those something is coming from already: a request to one
-  // of them waits behind that transfer and makes it give way, for a file it most likely doesn't have.
-  // `nodesOnly`: the nodes, those that say they have it first (pieces).
+  // Nodes that answer pings late count as nodes: they are still connected. Of the members its uploader's devices first
+  // (`rows().uploaders`; asked in the order they joined, a new file cost a request to every member before its
+  // uploader). A member something is coming from already is asked only for its own uploads, or last when nobody knows
+  // the uploader: a request to it waits behind that transfer and makes it give way, for a file it most likely doesn't
+  // have. `nodesOnly`: the nodes, those that say they have it first (pieces).
   private sources(key: string, nodesOnly = false): string[] {
     const peers = Object.keys(this.sync.room!.getPeers());
-    const nodePeers = new Set(this.nodes.onlineNodes().values());
-    const has = (p: string) => nodePeers.has(p) && this.nodeHas(p, key);
+    const isNode = (p: string) => this.nodes.isNode(p);
+    const has = (p: string) => isNode(p) && this.nodeHas(p, key);
     const holding = peers.filter(has);
-    const otherNodes = peers.filter((p) => !has(p) && nodePeers.has(p));
+    const otherNodes = peers.filter((p) => !has(p) && isNode(p));
     if (nodesOnly) return [...holding, ...otherNodes];
     const uploader = this.rows().uploaders.get(key);
     const theirs = new Set(uploader === undefined ? [] : this.sync.peersOf(uploader));
-    const rank = (p: string) => (theirs.has(p) ? 0 : this.streams?.receivingFrom(p) ? 2 : 1);
-    const members = peers.filter((p) => !nodePeers.has(p)).map((p) => ({ p, rank: rank(p) }));
+    const busy = (p: string) => !!this.streams?.receivingFrom(p);
+    const rank = (p: string) => (theirs.has(p) ? 0 : busy(p) ? 2 : 1);
+    // Known to be someone else than the uploader (without peer authentication nobody is known).
+    const other = (p: string) => uploader !== undefined && (this.sync.userOf(p) ?? uploader) !== uploader;
+    const members = peers.filter((p) => !isNode(p) && !(busy(p) && other(p))).map((p) => ({ p, rank: rank(p) }));
     return [...holding, ...members.toSorted((a, b) => a.rank - b.rank).map((m) => m.p), ...otherNodes];
+  }
+
+  // A member came (or proved who it is): what it may have, its own uploads and files nobody is known to have uploaded,
+  // is asked for again now. Everything else waits for the next pass (`keepEveryMs`): asking every member again for
+  // every file nobody had, at every join, makes a running upload give way to each of those requests.
+  private retryFrom(peer: string) {
+    const user = this.sync.userOf(peer);
+    // Not proved yet (it is greeted again once it has), or reached through another peer: nothing to take from it.
+    if (user === null && this.sync.identifiesPeers()) return;
+    const uploaders = this.rows().uploaders;
+    for (const key of [...this.unavailable]) {
+      const uploader = uploaders.get(key.slice(0, 64));
+      // Without peer authentication (workspaces from before it) any member could be the uploader.
+      if (user === null || uploader === undefined || uploader === user) this.unavailable.delete(key);
+    }
+    this.scheduleKeep();
   }
 
   private scheduleKeep(retry = false) {
@@ -1339,8 +1370,7 @@ export class HostedServer {
   private rangeFromMembers(hash: string, size: number, i: number): Promise<Uint8Array<ArrayBuffer> | null> {
     return this.exclusive(`${hash}:range`, async () => {
       if (!this.streams || !this.sync.room) return null;
-      const nodePeers = new Set(this.nodes.onlineNodes().values());
-      const members = Object.keys(this.sync.room.getPeers()).filter((p) => !nodePeers.has(p));
+      const members = Object.keys(this.sync.room.getPeers()).filter((p) => !this.nodes.isNode(p));
       const last = this.rangeSource.get(hash);
       const order = last && members.includes(last) ? [last, ...members.filter((p) => p !== last)] : members;
       const start = i * pieceSize;

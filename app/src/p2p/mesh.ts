@@ -276,18 +276,23 @@ export class Mesh {
     this.update();
   }
 
-  // JSON messages to any member; `peer` left out sends to everyone.
-  channel<T>(name: string, receive: (data: T, peer: string) => void): (data: T, peer?: string) => void {
+  // JSON messages to any member; `peer` left out sends to everyone. `urgent`: small and rare messages that must not
+  // wait behind the outbox (a node's answer to a ping): they go to a direct peer at once and wait only for its buffer,
+  // like the sends in flight. Behind a burst a node relays, the outbox can hold a ping's answer longer than the member
+  // waits for it.
+  channel<T>(name: string, receive: (data: T, peer: string) => void, options: { urgent?: boolean } = {}): (data: T, peer?: string) => void {
     const action = this.room.makeAction<never>(name, { onMessage: (data, { peerId }) => receive(data as T, peerId) });
     const send = (data: T, peer: string) => {
       const route = this.via.get(peer);
       if (route) void this.sendOut(relayed(peer, route, name, data as Json), route[0]);
+      else if (options.urgent) void action.send(data as never, { target: peer }).catch(() => {});
       else this.post(peer, () => action.send(data as never, { target: peer }));
     };
     this.channels.set(name, { send: send as never, receive: receive as never });
     return (data, peer) => {
       if (peer) return send(data, peer);
-      this.toEveryone((to) => action.send(data as never, { target: to }));
+      if (options.urgent) for (const to of Object.keys(this.room.getPeers())) send(data, to);
+      else this.toEveryone((to) => action.send(data as never, { target: to }));
       for (const relayed of this.via.keys()) send(data, relayed);
     };
   }

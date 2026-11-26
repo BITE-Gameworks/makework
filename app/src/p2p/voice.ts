@@ -25,6 +25,8 @@ const table = "voice_participants";
 const kinds: ReadonlySet<MediaKind> = new Set(["mic", "camera", "screen"]);
 // How often a member in a call sends its presence again (a lost one heals within this).
 const presenceRefreshMs = 20_000;
+// How long changes of the call's member count are gathered before this member says its count again.
+const seenGatherMs = 1_000;
 // How many refreshes after leaving a call still say so (one lost "left" left a ghost participant).
 const leftResends = 3;
 // How many of a member's refreshes may go missing before its call row is taken out (it left, and every "left" was
@@ -231,13 +233,14 @@ export class VoiceLink implements MediaLink {
         this.lastSent = text;
         return this.sendPresence(own);
       }
-      // Only our count changed (another member's row): once, after this change, so receiving a presence never sends
-      // one from inside it.
+      // Only our count changed (another member's row): once, after the changes of a burst of joins have come
+      // (`seenGatherMs`), never from inside receiving a presence. It goes to every member through the nodes: said for
+      // each join of a burst, it costs them a relayed message per join, call member and member online.
       if (this.seenHere() === this.seenSent || this.seenTimer) return;
       this.seenTimer = setTimeout(() => {
         this.seenTimer = undefined;
         if (this.seenHere() !== this.seenSent) this.sendOwn();
-      }, 0);
+      }, seenGatherMs);
     }));
     this.cleanups.push(() => clearTimeout(this.seenTimer), () => clearTimeout(this.watchTimer), registerMediaLink(workspaceId, this));
     this.mesh = mesh;

@@ -87,7 +87,10 @@ first time find the first group's nodes.
 member-to-member: one node of the call's group forwards it (a mediasoup router, ADR 0005), so a call with many people
 costs each member one connection instead of a dozen. The node is the call's arbiter — it decides whether it serves,
 who may join, and what they may send — so every member agrees on the mode; a call that loses its node falls back to
-the mesh. The node sees the media of the calls it serves (it forwards it), unlike a mesh call, where members send to
+the mesh. A node that only answers pings late (busy relaying for many members joining at once) keeps its call members
+while their media through it works; they leave it once it left, a transport failed, or it is silent and their media
+stopped too. A join the node doesn't answer within 8 s is followed by a leave, so a late yes doesn't keep a place
+taken. The node sees the media of the calls it serves (it forwards it), unlike a mesh call, where members send to
 each other. Every member's media comes in on one port, `--rtc-port` (UDP and TCP; default the first port of
 `--rtc-ports`, else 40000), announced as the node's public address (`--address`): open it in the firewall, and on a
 node at home forward it on the router (UDP and TCP, to the node's machine). Behind a router the node also offers its

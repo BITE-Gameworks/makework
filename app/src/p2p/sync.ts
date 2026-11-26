@@ -388,6 +388,17 @@ export class WorkspaceSync {
     return peers;
   }
 
+  // The user a peer reached directly proved to be (`peerAuth`), or null before it did (and without it).
+  userOf(peer: string): number | null {
+    const author = this.peerAuthors.get(peer);
+    return author ? userNumberOf(author) : null;
+  }
+
+  // Whether peers prove who they are here (`peerAuth`), so `userOf` names every member reached directly in time.
+  identifiesPeers(): boolean {
+    return this.peerAuth;
+  }
+
   setNodes(nodes: { known(): boolean; isNode(peer: string): boolean }): void {
     this.nodes = nodes;
     this.checkRooms();

@@ -3,17 +3,18 @@ import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { access } from "node:fs/promises";
+import { monitorEventLoopDelay } from "node:perf_hooks";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import type { Room } from "trystero";
 import { ApiClient } from "../../src/api/client";
-import { createIdentity } from "../../src/core/identity";
+import { createIdentity, exportPkcs8, importAgreementKey } from "../../src/core/identity";
 import { MockTransport } from "../../src/mock/transport";
 import { HostedServer } from "../../src/node/host";
 import { fileContent } from "../../src/node/storage";
 import { memoryCommits } from "../../src/p2p/commits";
 import { Ledger, createLedgerBackend, newRowId } from "../../src/p2p/ledger";
 import { signCommit, userNumberOf, type SnapshotRef } from "../../src/p2p/log";
-import { NodeLink, nodeRows } from "../../src/p2p/nodes";
+import { NodeLink, nodeChannels, nodeRows } from "../../src/p2p/nodes";
 import { digestBytes, pieceCount, pieceKey, pieceSize, setMinStripeBytes } from "../../src/p2p/pieces";
 import { localPlugins, plugins } from "../../src/p2p/plugins";
 import { workspacePolicy } from "../../src/p2p/policy";
@@ -50,8 +51,9 @@ async function until(check: () => boolean | Promise<boolean>, ms = 30_000) {
 const nameOf = (roomId: string) => (roomId.endsWith(":members") ? "members" : roomId.includes(":call:") ? "call" : "hub");
 
 // The owner ("a") of a new workspace on a fake network: its ledger, room, API and content store. `slowMs`: each chunk
-// it sends is read that much later (a slow uplink).
-async function owner(slowMs = 0) {
+// it sends is read that much later (a slow uplink). `auth`: peers prove who they are (p2p/sync.ts `peerAuth`), as in
+// every workspace made since it exists.
+async function owner(slowMs = 0, auth = false) {
   const network = new Network();
   const identity = await createIdentity(false);
   const signer = { author: identity.id, key: { x: identity.publicKey.x!, y: identity.publicKey.y! }, privateKey: identity.privateKey, replica: crypto.randomUUID() };
@@ -63,6 +65,7 @@ async function owner(slowMs = 0) {
   await ledger.adopt(genesis);
   const sync = new WorkspaceSync(ledger, workspaceId, "secret", {
     self: "a", tabs: false, fallbackAfterMs: 60_000, joinRoom: (roomId, passive) => network.join("a", nameOf(roomId), passive) as unknown as Room,
+    ...(auth && { peerAuth: { localAccess: "member" as const } }),
   });
   sync.setNodes({ known: () => true, isNode: (p) => p.startsWith("n") });
   const api = new ApiClient(new MockTransport(backend));
@@ -121,14 +124,18 @@ async function uploader(o: Owner, name: string) {
 
 // Nodes hosting the owner's workspace, authorized once they asked. `cutOff`: nodes the owner never connects to (like
 // the nodes of another group, which members don't reach). `streamIdleMs`: how long their transfers may stall.
-async function hostNodes({ network, workspaceId, ledger, api }: Owner, names: string[], cutOff: string[] = [], streamIdleMs?: number) {
+// `nodeTiming`: how often they ping each other and when one counts as silent.
+async function hostNodes(
+  { network, workspaceId, ledger, api }: Owner, names: string[], cutOff: string[] = [], streamIdleMs?: number,
+  nodeTiming?: { pingEveryMs: number; deadAfterMs: number },
+) {
   const nodes: { name: string; server: HostedServer; dir: string }[] = [];
   for (const name of names) {
     const identity = await createIdentity(false);
     const dir = await scratch();
     const server = await HostedServer.open({ id: workspaceId, secret: "secret", replica: crypto.randomUUID() }, {
       identity: { id: identity.id, key: { x: identity.publicKey.x!, y: identity.publicKey.y! }, privateKey: identity.privateKey },
-      commits: memoryCommits(), content: fileContent(dir), senders: 8, healAfterMs: 60_000, self: name, streamIdleMs,
+      commits: memoryCommits(), content: fileContent(dir), senders: 8, healAfterMs: 60_000, self: name, streamIdleMs, nodeTiming,
       joinRoom: (roomId, passive) => network.join(name, nameOf(roomId), passive) as unknown as Room,
     }, () => ({ address: "", url: "", place: null }));
     nodes.push({ name, server, dir });
@@ -624,4 +631,199 @@ describe("nodes and signed history snapshots", () => {
     const again = await open("n2");
     expect(bodies(again).sort()).toEqual(["after the snapshot", "before the snapshot"]);
   }, 120_000);
+});
+
+// Node health under load, and part of the nodes out (diagnosis 2026-11-26: the link to a node "broke" while files were
+// uploaded to it, while members joined, and while a call filled up). A node that is there but busy must not be treated
+// as gone, and what members do when one joins must not hold up the uploads on their way.
+describe("node health and partial outage", () => {
+  const chunk = 4 * 1024 * 1024;
+  const partOf = (dir: string, hash: string) => stat(join(dir, "parts", `${hash}.part`)).then((s) => s.size, () => 0);
+
+  async function attach(who: { api: ApiClient; ledger: Ledger; store(data: Uint8Array): Promise<string> }, bytes: Uint8Array) {
+    const hash = await who.store(bytes);
+    const { id } = await who.api.plugin("chat").call<{ id: number }>("post-message", { channel_id: 1, body: "file" });
+    await who.api.plugin("chat").call("attach", { message_id: id, name: "file.bin", mime: "application/octet-stream", size: bytes.byteLength, url: `mwc:${hash}` });
+    await who.ledger.flush();
+    return hash;
+  }
+
+  // Attachments whose content nobody online has: their uploader posted them and went.
+  async function attachMissing(api: ApiClient, ledger: Ledger, count: number) {
+    const { id } = await api.plugin("chat").call<{ id: number }>("post-message", { channel_id: 1, body: "lost" });
+    const hashes: string[] = [];
+    for (let i = 0; i < count; i++) {
+      const hash = createHash("sha256").update(randomBytes(1_000)).digest("hex");
+      await api.plugin("chat").call("attach", { message_id: id, name: `${i}.bin`, mime: "application/octet-stream", size: 1_000, url: `mwc:${hash}` });
+      hashes.push(hash);
+    }
+    await ledger.flush();
+    return hashes;
+  }
+
+  // A workspace whose peers prove who they are, with members who joined before any invite (their profiles copied in by
+  // hand), and a node the owner added by its code (p2p/pair.ts), settled in (registered and its first pass done). The
+  // first member posted `lost` files and is never online again. `online` brings another member's app up: its sync,
+  // proving its account, and its own store.
+  async function provenWorkspace(slowMs: number, memberNames: string[], lost: number) {
+    const o = await owner(slowMs, true);
+    const members: { name: string; ledger: Ledger }[] = [];
+    let missing: string[] = [];
+    for (const name of memberNames) {
+      const identity = await createIdentity(false);
+      const signer = { author: identity.id, key: { x: identity.publicKey.x!, y: identity.publicKey.y! }, privateKey: identity.privateKey, replica: crypto.randomUUID() };
+      const ledger = new Ledger(o.workspaceId, signer, workspacePolicy, memoryCommits());
+      const backend = createLedgerBackend(ledger, localPlugins);
+      for (const plugin of plugins) backend.load(plugin);
+      await ledger.load();
+      await ledger.receive(o.ledger.missing(ledger.vector()));
+      const api = new ApiClient(new MockTransport(backend));
+      await api.plugin("members").call("set-profile", { username: name, display_name: name, color: "" });
+      await ledger.flush();
+      if (members.length === 0 && lost > 0) missing = await attachMissing(api, ledger, lost);
+      await o.ledger.receive(ledger.missing(o.ledger.vector()));
+      members.push({ name, ledger });
+    }
+    const identity = await createIdentity(true);
+    const key = { x: identity.publicKey.x!, y: identity.publicKey.y! };
+    await o.api.plugin("nodes").call("add", { user_id: userNumberOf(identity.id), key_x: key.x, key_y: key.y, page: "" });
+    await o.api.plugin("nodes").call("set-storage", { stripe_mb: 0, copies: 1, parity: 0 });
+    await o.ledger.flush();
+    const dir = await scratch();
+    const server = await HostedServer.open({ id: o.workspaceId, secret: "secret", v: 3, replica: crypto.randomUUID() }, {
+      identity: { id: identity.id, key, privateKey: identity.privateKey, agreementKey: await importAgreementKey(await exportPkcs8(identity.privateKey)) },
+      commits: memoryCommits(), content: fileContent(dir), senders: 8, healAfterMs: 60_000, self: "n1",
+      joinRoom: (roomId, passive) => o.network.join("n1", nameOf(roomId), passive) as unknown as Room,
+    }, () => ({ address: "", url: "", place: null }));
+    closers.push(() => server.close().catch(() => {}));
+    // Its profile comes once it has registered, after its data stopped arriving; then it looks for what it keeps.
+    expect(await until(() => o.ledger.select("members", "members_profiles", { user_id: userNumberOf(identity.id) }).length === 1, 30_000)).toBe(true);
+    expect(await until(() => o.network.count("n1", "a", "content-want") >= missing.length, 30_000)).toBe(true);
+    await wait(500);
+    const online = async (m: { name: string; ledger: Ledger }) => {
+      const sync = new WorkspaceSync(m.ledger, o.workspaceId, "secret", {
+        self: m.name, tabs: false, fallbackAfterMs: 60_000, peerAuth: { localAccess: "member" },
+        joinRoom: (roomId, passive) => o.network.join(m.name, nameOf(roomId), passive) as unknown as Room,
+      });
+      sync.setNodes({ known: () => true, isNode: (p) => p.startsWith("n") });
+      const streams = new ContentStreams(sync.room!, fileContent(await scratch()));
+      closers.push(() => streams.close(), () => sync.close());
+      // Proved to the node: until then it refuses the member's requests.
+      expect(await until(() => server.sync.peersOf(m.ledger.me).includes(m.name), 10_000)).toBe(true);
+      return streams;
+    };
+    return { o, node: { name: "n1", server, dir }, members: members.slice(1), missing, online };
+  }
+
+  // Each member's app asks the nodes again for everything it lacks when someone joins. A node asked for a file nobody had
+  // asked every member for it, its uploader too, and each of those requests made the upload running from that uploader
+  // give way: with members joining, a big upload kept stopping.
+  it("keeps an upload going while members come online and ask for files nobody has", async () => {
+    const { o, node, members, missing, online } = await provenWorkspace(1_500, ["gone", "m1", "m2", "m3"], 5);
+    // A big file from the owner over a slow uplink: 4 chunks and a bit, one every 1.5 s.
+    const big = await attach(o, randomBytes(4 * chunk + 123));
+    expect(await until(async () => (await partOf(node.dir, big)) >= chunk, 60_000)).toBe(true);
+    const wants = o.network.count(node.name, "a", "content-want");
+    const stops = o.network.count(node.name, "a", "content-stop");
+    for (const m of members) {
+      const streams = await online(m);
+      for (const hash of missing) expect(await streams.download(hash, node.name)).toBe("missing");
+    }
+    expect(await until(() => whole(node.dir, big), 60_000)).toBe(true);
+    // The uploader was asked for nothing else meanwhile, and its upload never gave way.
+    expect(o.network.count(node.name, "a", "content-want") - wants).toBe(0);
+    expect(o.network.count(node.name, "a", "content-stop") - stops).toBe(0);
+  }, 180_000);
+
+  // A transfer from a peer that left waited `idleMs` (30 s) with nothing moving before it ended, and the file was asked
+  // for again only at the next pass of the node.
+  it("goes on with an upload as soon as its uploader is back", async () => {
+    const o = await owner(500);
+    await o.api.plugin("nodes").call("set-storage", { stripe_mb: 0, copies: 1, parity: 0 });
+    const [node] = await hostNodes(o, ["n1"]);
+    const hash = await attach(o, randomBytes(4 * chunk + 123));
+    expect(await until(async () => (await partOf(node.dir, hash)) >= chunk, 60_000)).toBe(true);
+    o.network.unlink("a", node.name);
+    await wait(1_000);
+    o.network.link("a", node.name);
+    const back = Date.now();
+    expect(await until(() => whole(node.dir, hash), 25_000)).toBe(true);
+    expect(Date.now() - back).toBeLessThan(15_000);
+    const bytes = await readFile(join(node.dir, "content", hash));
+    expect(createHash("sha256").update(bytes).digest("hex")).toBe(hash);
+  }, 120_000);
+
+  // Part of the nodes out: one stops answering pings for a while (busy), and comes back. The other keeps it as a node
+  // all along and sends it nothing it held already, nor the other way round.
+  it("keeps trusting a node that answers late, without sending it its whole list again", async () => {
+    const o = await owner();
+    const [n1, n2] = await hostNodes(o, ["n1", "n2"], [], undefined, { pingEveryMs: 100, deadAfterMs: 300 });
+    expect(await until(() => o.network.linked("n1", "n2"), 10_000)).toBe(true);
+    const hash = await attach(o, randomBytes(50_000));
+    expect(await until(async () => (await whole(n1.dir, hash)) || (await whole(n2.dir, hash)), 30_000)).toBe(true);
+    await wait(1_000);
+    const haves = () => o.network.count("n1", "n2", nodeChannels.have) + o.network.count("n2", "n1", nodeChannels.have);
+    const before = haves();
+    // n1 answers nobody for a second, then answers again.
+    const pings = o.network.rooms.get("n1")!.actions.get(nodeChannels.ping)!;
+    const send = pings.send;
+    pings.send = async () => {};
+    await wait(1_000);
+    pings.send = send;
+    await wait(1_000);
+    expect(haves() - before).toBe(0);
+    // Both still serve the file to a member, from whichever keeps it.
+    const other = (await whole(n1.dir, hash)) ? n2 : n1;
+    expect(createHash("sha256").update((await download(o.network, other.name, hash))!).digest("hex")).toBe(hash);
+  }, 120_000);
+
+  // Health while busy: a folder posted file by file while members come online and ask for files. The node shares the
+  // event loop of the process with every peer of the test; a long block there would hold up the werift of every
+  // connection.
+  it("keeps its event loop free while a folder is posted and members come online", async () => {
+    const o = await owner();
+    await o.api.plugin("nodes").call("set-storage", { stripe_mb: 0, copies: 1, parity: 0 });
+    // Some history first: rows the node goes over when it works out what it keeps.
+    const history: string[] = [];
+    for (let i = 0; i < 300; i++) history.push(await attach(o, randomBytes(64)));
+    const [node] = await hostNodes(o, ["n1"]);
+    const allOn = (hashes: string[]) => async () => {
+      for (const hash of hashes) if (!(await whole(node.dir, hash))) return false;
+      return true;
+    };
+    expect(await until(allOn(history), 120_000)).toBe(true);
+    const proto = HostedServer.prototype as unknown as { rows: (this: { rowCache: { version: number } | null; version: number }) => unknown };
+    const rows = proto.rows;
+    let scans = 0;
+    let scanMs = 0;
+    proto.rows = function () {
+      if (this.rowCache?.version === this.version) return rows.call(this);
+      const started = performance.now();
+      const result = rows.call(this);
+      scans++;
+      scanMs += performance.now() - started;
+      return result;
+    };
+    closers.push(() => void (proto.rows = rows));
+    const delay = monitorEventLoopDelay({ resolution: 10 });
+    delay.enable();
+    const folder: string[] = [];
+    for (let i = 0; i < 40; i++) {
+      folder.push(await attach(o, randomBytes(2_000)));
+      if (i % 8 === 0) {
+        const id = `d${i}`;
+        const room = o.network.join(id, "hub", false);
+        const streams = new ContentStreams(room as unknown as Room, fileContent(await scratch()));
+        closers.push(() => streams.close(), () => room.leave());
+        void until(() => o.network.linked(id, node.name), 5_000).then(() => streams.download(history[i], node.name));
+      }
+      await wait(50);
+    }
+    expect(await until(allOn(folder), 60_000)).toBe(true);
+    delay.disable();
+    const p99 = delay.percentile(99) / 1e6;
+    const max = delay.max / 1e6;
+    console.log(`[health] event loop p99 ${p99.toFixed(0)} ms, max ${max.toFixed(0)} ms; node row passes: ${scans}, ${scanMs.toFixed(0)} ms in all`);
+    expect(p99).toBeLessThan(200);
+  }, 300_000);
 });

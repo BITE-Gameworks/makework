@@ -624,3 +624,43 @@ describe("a slow link", () => {
     expect(done?.byteLength).toBe(35);
   });
 });
+
+// A node counts content moving with a peer as an answer from it (p2p/nodes.ts `noteActive`), and a transfer with a
+// peer whose connection closed ends at once.
+describe("the peers content moves with", () => {
+  it("tells who content is moving with, on both ends: frames, chunks and acks", async () => {
+    const hub = new Hub();
+    hub.delays["content-part"] = 250;
+    hub.frameMs = 50;
+    const heard: Record<string, string[]> = { a: [], b: [] };
+    const stores = { a: new MemoryStore(), b: new MemoryStore() };
+    const streams = (id: "a" | "b") => new ContentStreams(hub.room(id), stores[id], { chunkSize: 10, idleMs: 2_000, onActivity: (peer) => heard[id].push(peer) });
+    const [, b] = [streams("a"), streams("b")];
+    const { bytes, hash } = file(25);
+    stores.a.content.set(hash, bytes);
+    expect(await b.download(hash, "a")).toBe("done");
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    // Three chunks, each with frames on the way: more than one note per chunk on each end, all about the other one.
+    expect(heard.b.length).toBeGreaterThan(3);
+    expect(heard.a.length).toBeGreaterThan(3);
+    expect(new Set(heard.a)).toEqual(new Set(["b"]));
+    expect(new Set(heard.b)).toEqual(new Set(["a"]));
+  });
+
+  it("ends a transfer with a peer that left at once, keeping what arrived", async () => {
+    const { hub, nodes } = setup(["a", "b"]);
+    hub.delays["content-part"] = 100;
+    const { bytes, hash } = file(50);
+    nodes.a.store.content.set(hash, bytes);
+    const download = nodes.b.streams.download(hash, "a");
+    for (let i = 0; i < 50 && (nodes.b.store.partial.get(hash)?.byteLength ?? 0) < 10; i++) await new Promise((resolve) => setTimeout(resolve, 20));
+    const started = Date.now();
+    nodes.b.streams.peerLeft("a");
+    nodes.a.streams.peerLeft("b");
+    expect(await download).toBe("failed");
+    // Not after `idleMs` with nothing moving (500 ms here, 30 s in the app).
+    expect(Date.now() - started).toBeLessThan(200);
+    expect(nodes.b.store.partial.get(hash)?.byteLength).toBeGreaterThanOrEqual(10);
+    expect(nodes.a.streams.sendingTo(hash)).toBeUndefined();
+  });
+});

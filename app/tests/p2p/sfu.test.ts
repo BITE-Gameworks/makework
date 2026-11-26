@@ -24,6 +24,8 @@ const media = vi.hoisted(() => ({
   produced: [] as { kind: string; encodings?: RTCRtpEncodingParameters[]; codecOptions?: { opusDtx?: boolean }; stopTracks?: boolean; sender: FakeSender; producer?: { track: unknown; [field: string]: unknown } }[],
   transports: [] as { emit(event: string, ...args: unknown[]): void }[],
   online: new Map<number, string>(),
+  // Nodes still connected that stopped answering pings for a while (NodeLink's silent ones): not online, still nodes.
+  silent: new Set<string>(),
   authorized: [11] as number[],
   // Whether a transport's connection comes up once connected (false: the node's media port is unreachable, ICE
   // never gets through and the test says when it fails).
@@ -96,7 +98,10 @@ vi.mock("mediasoup-client", async () => {
 vi.mock("../../src/p2p/nodes", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../src/p2p/nodes")>()),
   authorizedNodes: () => media.authorized,
-  nodeLinkOf: () => ({ onlineNodes: () => media.online }),
+  nodeLinkOf: () => ({
+    onlineNodes: () => media.online,
+    isNode: (peer: string) => [...media.online.values()].includes(peer) || media.silent.has(peer),
+  }),
 }));
 
 // sfuSettings only reads the one nodes_settings row; that is all the ledger it needs.
@@ -241,6 +246,7 @@ describe("a member's side of a call through a node: the screen share, a lost nod
     media.produced.length = 0;
     media.transports.length = 0;
     media.online = new Map([[11, "nodePeer"]]);
+    media.silent.clear();
     media.authorized = [11];
     media.autoConnect = true;
     modes = [];
@@ -309,7 +315,7 @@ describe("a member's side of a call through a node: the screen share, a lost nod
       },
       () => ({ key: { x: "x", y: "y" }, sign: async () => "sig" }),
       // Short waits, so retries happen within a test.
-      { joinRetryMs: 300, refusedRetryMs: 300, avoidMs: 200 },
+      { joinRetryMs: 300, refusedRetryMs: 300, avoidMs: 200, askMs: 1_000 },
     );
   });
   afterEach(async () => {
@@ -416,6 +422,31 @@ describe("a member's side of a call through a node: the screen share, a lost nod
     media.online = new Map([[11, "nodePeer"]]);
     link.setIntent(call, streams());
     await vi.waitFor(() => expect(link.modeOf(call)).toBe("sfu"));
+  });
+
+  // A node busy relaying a burst (call presence from many members joining) answers pings late and drops out of the
+  // online nodes for a while: its media still works, and every member leaving it at once made the burst worse.
+  it("stays on a node that only answers pings late while its media is connected", async () => {
+    link.setIntent(call, streams());
+    await vi.waitFor(() => expect(link.modeOf(call)).toBe("sfu"));
+    media.online = new Map();
+    media.silent.add("nodePeer");
+    link.setIntent(call, streams());
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(link.modeOf(call)).toBe("sfu");
+    expect(leaves).toEqual([]);
+    expect(modes).toEqual(["sfu"]);
+  });
+
+  it("leaves a node that answers late once its media stopped too", async () => {
+    link.setIntent(call, streams());
+    await vi.waitFor(() => expect(link.modeOf(call)).toBe("sfu"));
+    media.online = new Map();
+    media.silent.add("nodePeer");
+    for (const transport of media.transports) transport.emit("connectionstatechange", "disconnected");
+    link.setIntent(call, streams());
+    await vi.waitFor(() => expect(link.modeOf(call)).toBe("mesh"));
+    expect(leaves).toEqual(["nodePeer"]);
   });
 
   it("leaves a node whose transport failed without waiting for the next change, and stays a mesh call without another", async () => {
@@ -713,6 +744,15 @@ describe("a member's side of a call through a node: the screen share, a lost nod
     await new Promise((resolve) => setTimeout(resolve, 350));
     release();
     await vi.waitFor(() => expect(link.modeOf(call + 1)).toBe("sfu"), { timeout: 2000 });
+  });
+
+  // A node too busy to answer in time may still take the join: it then kept this member, a place in the call taken,
+  // until their connection closed.
+  it("tells a node whose join answer didn't come in time to let it go", async () => {
+    held.set("join", new Promise(() => {}));
+    link.setIntent(call, streams());
+    await vi.waitFor(() => expect(leaves).toEqual(["nodePeer"]), { timeout: 3_000 });
+    expect(link.modeOf(call)).toBe("mesh");
   });
 
   it("takes a producer the node announced while its join answer was on the way", async () => {

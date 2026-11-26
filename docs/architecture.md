@@ -170,6 +170,13 @@ its own key, and the hosted workspaces listed in `node.json`.
   - Connections only to nodes (hub).
   - Members ping authorized nodes every 5 s to know the closest and to notice one that stopped answering (15 s).
     Any answer to an earlier ping counts too: a busy node answering in more than 5 s is slow, not gone.
+  - **A busy node is not a gone node** (ADR 0037). Pings, their answers and hellos skip the per-peer outbox
+    (`Mesh.channel` `urgent`): a node relaying a burst for a member (call presence of many joiners, mesh news) held a
+    ping's answer behind hundreds of messages, longer than the member waits. Content moving with a node counts as an
+    answer (`ContentStreams` `onActivity`, `NodeLink.noteActive`): an upload filling a slow uplink holds the member's
+    pings back while the node is taking it in. A node that went silent but is still connected stays a node
+    (`NodeLink.isNode`): it keeps its call members while their media through it works (`SfuLink.nodeLost`), other nodes
+    keep their call bridges with it, and coming back is no new meeting (no `onNodes`, no full `node-have` again).
 
 ### Files across nodes (RAID 1 copies, RAID 10 pieces, RAID 4/5 parity)
 
@@ -184,6 +191,12 @@ its own key, and the hosted workspaces listed in `node.json`.
   it (`ContentStreams` `onMissing`, waiting up to 8 s; members wait 10 s for an answer, so a peer that went away is
   skipped soon). Members ask a file's holders first (closest first), then the other nodes, then
   members (`NodeLink.orderFor`).
+- **Files nobody has.** A file a node's pass found nowhere is "missing" to members who ask, at once, until the next
+  pass (every minute) or until its uploader connects (`retryFrom`, by the account the peer proved). A join asked every
+  member again for every such file before, and each request to a member already uploading to the node made that upload
+  give way (`sliceMs`). So a member something is coming from is asked only for its own uploads, or when the uploader
+  isn't known. A transfer with a peer whose connection closed ends at once (`ContentStreams.peerLeft`), not after 30 s
+  without data, and goes on from its part when the peer is back.
 - **Self-healing.** A node not reached for `--heal-after` minutes (default 15) counts as gone. Each remaining node
   recomputes placement, and the files it now keeps are fetched from a surviving copy (pointers first) or a member.
   When the node returns, the extra copies become cache.

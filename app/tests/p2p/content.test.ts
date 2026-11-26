@@ -40,6 +40,7 @@ vi.mock("../../src/p2p/nodes", async (importOriginal) => {
     nodeLinkOf: () => (nodeState.nodes.length ? {
       isNode: (peer: string) => nodeState.nodes.includes(peer), hasNodes: () => true,
       onlineNodes: () => new Map(nodeState.nodes.map((peer, i) => [i + 2, peer])),
+      noteActive: () => {},
       keptWhole: (size: number) => size <= 100,
       holdsWhole: (hash: string) => nodeState.known.includes(hash),
       askHoldings: async (hashes: string[]) => {

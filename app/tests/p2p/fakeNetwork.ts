@@ -42,6 +42,24 @@ export class Network {
   isFull(from: string, to: string): boolean {
     return this.full.has(`${from}>${to}`);
   }
+  // Slow connections ("<from>><to>"): messages go out one at a time, `everyMs` apart, in the order `send` was called,
+  // like a congested data channel. What a sender holds back (Mesh's outbox) only enters the line once it sends.
+  // Each message is due `everyMs` after the one before; timers firing late (Windows: about 15 ms) send what is due
+  // together, so the rate holds. Timers due in order fire in order.
+  private readonly slow = new Map<string, { everyMs: number; nextAt: number }>();
+  throttle(from: string, to: string, everyMs: number) {
+    this.slow.set(`${from}>${to}`, { everyMs, nextAt: 0 });
+  }
+  unthrottle(from: string, to: string) {
+    this.slow.delete(`${from}>${to}`);
+  }
+  waitTurn(from: string, to: string): Promise<void> | null {
+    const slow = this.slow.get(`${from}>${to}`);
+    if (!slow) return null;
+    const now = performance.now();
+    slow.nextAt = Math.max(slow.nextAt, now) + slow.everyMs;
+    return new Promise((resolve) => setTimeout(resolve, slow.nextAt - now));
+  }
   room(id: string, name = "hub") {
     const room = new FakeRoom(id, this, name);
     this.rooms.set(roomKey(name, id), room);
@@ -137,6 +155,11 @@ export class FakeRoom {
             await this.network.waitToSend(this.id, peer);
             if (!this.peers.has(peer)) continue;
           }
+          const turn = this.network.waitTurn(this.id, peer);
+          if (turn) {
+            await turn;
+            if (!this.peers.has(peer)) continue;
+          }
           const key = `${this.id}>${peer}:${name}`;
           this.network.sent.set(key, (this.network.sent.get(key) ?? 0) + 1);
           const copied = copy(data);
@@ -153,7 +176,19 @@ export class FakeRoom {
         this.network.sent.set(key, (this.network.sent.get(key) ?? 0) + 1);
         const handler = this.network.rooms.get(roomKey(this.name, options.target))!.actions.get(name)?.onRequest;
         if (!handler) throw new Error("no handler");
-        return copy(await handler(copy(data), { peerId: this.id }));
+        const answer = Promise.resolve(handler(copy(data), { peerId: this.id })).then(copy);
+        if (options.timeoutMs === undefined) return answer;
+        // Trystero's error for an answer that didn't come in time (@trystero-p2p/core actions.mjs `requestOne`).
+        return new Promise((resolve, reject) => {
+          const timer = setTimeout(() => reject(Object.assign(new Error("request timed out"), { kind: "timeout" })), options.timeoutMs);
+          answer.then((value) => {
+            clearTimeout(timer);
+            resolve(value);
+          }, (error: unknown) => {
+            clearTimeout(timer);
+            reject(error);
+          });
+        });
       },
     };
     this.actions.set(name, action);

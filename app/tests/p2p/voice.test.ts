@@ -462,6 +462,22 @@ describe("screen-share quality through the media link", () => {
     expect(rowOf(2)).toBeUndefined();
   });
 
+  // Each of these goes to every member of the workspace, relayed by the nodes: a call's members each saying their count
+  // again for every one of a burst of joins was most of what a node relayed then.
+  it("says its count of the call's members once after a burst of joins, not once per join", async () => {
+    backend.data("voice").insert("voice_participants", { user_id: 1, ...inCall() });
+    await settle();
+    sentPresence.length = 0;
+    for (let user = 2; user <= 6; user++) {
+      join(`p${user}`, user);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1_200));
+    const broadcasts = sentPresence.filter((s) => s.peer === undefined);
+    expect(broadcasts).toHaveLength(1);
+    expect(broadcasts[0].data.seen).toBe(6);
+  });
+
   it("takes out only the silent device of an account, not its other device still in the call", () => {
     // The same account on two devices; the first crashed (its "left" never went out), the second refreshes.
     presence({ userId: 2, row: inCall(), refreshMs: 20_000 }, "p2-crashed");

@@ -99,6 +99,7 @@ export class ContentStreams {
   private readonly onMissing?: (hash: string) => Promise<boolean | "busy">;
   private readonly refuse?: (hash: string, peer: string) => boolean;
   private readonly invitees?: Invitees;
+  private readonly activity: (peer: string) => void;
 
   // `refuse`: content not given to `peer` though it is here, answered as missing (an upload its member holds back from
   // the nodes, p2p/content.ts).
@@ -110,6 +111,8 @@ export class ContentStreams {
   // snapshot state: it needs that before it can become a member. Members-only, a joiner never got it, fell back to the
   // whole history, and got nothing where nobody online still had that (mesh-test s12). With it the
   // transfer is open to such peers (room access "invite") and everything else is refused to them here.
+  // `onActivity`: content is moving with `peer` (a frame or chunk came from it, a frame went to it, it acked). It is
+  // there, though its other messages may wait behind the transfer (a node's answers to pings, p2p/nodes.ts).
   constructor(
     room: Pick<Room, "makeAction">, private readonly store: StreamStore,
     options: {
@@ -118,8 +121,10 @@ export class ContentStreams {
       onMissing?: (hash: string) => Promise<boolean | "busy">;
       refuse?: (hash: string, peer: string) => boolean;
       invitees?: Invitees;
+      onActivity?: (peer: string) => void;
     } = {},
   ) {
+    this.activity = options.onActivity ?? (() => {});
     this.refuse = options.refuse;
     this.onSent = options.onSent;
     this.onSending = options.onSending;
@@ -140,12 +145,14 @@ export class ContentStreams {
       onMessage: (data, { peerId, metadata }) => {
         const at = metadata as Position | undefined;
         if (!at) return;
+        this.activity(peerId);
         const receiving = this.receiving.get(at.hash);
         if (receiving?.peer === peerId) receiving.part(toBytes(data), at.offset);
       },
       onReceiveProgress: (progress, { peerId, metadata }) => {
         const at = metadata as Position | undefined;
         if (!at) return;
+        this.activity(peerId);
         const receiving = this.receiving.get(at.hash);
         if (receiving?.peer === peerId) receiving.moving(at.offset, progress);
       },
@@ -153,6 +160,7 @@ export class ContentStreams {
     this.ack = room.makeAction<Position>("content-ack", {
       ...access,
       onMessage: ({ hash, offset }, { peerId }) => {
+        this.activity(peerId);
         const s = this.sending.get(peerId);
         if (s?.hash === hash) s.acked?.(offset);
       },
@@ -426,6 +434,14 @@ export class ContentStreams {
     }
   }
 
+  // The connection to `peer` closed: its transfers end now, keeping what arrived. Otherwise a receive from it waits
+  // `idleMs` with nothing moving, and the next try with that peer waits behind it.
+  peerLeft(peer: string): void {
+    for (const receiving of [...this.receiving.values()]) if (receiving.peer === peer) receiving.stop("failed");
+    const sending = this.sending.get(peer);
+    if (sending) this.endSending(sending);
+  }
+
   close(): void {
     this.closed = true;
     for (const receiving of [...this.receiving.values()]) receiving.stop("failed");
@@ -487,6 +503,7 @@ export class ContentStreams {
         await this.part.send(bytes, {
           target: peer, metadata: { hash, offset }, signal: sending.abort.signal,
           onProgress: (fraction) => {
+            this.activity(peer);
             ack.moving();
             this.sent(sending, (at + fraction * bytes.byteLength) / size, true);
           },

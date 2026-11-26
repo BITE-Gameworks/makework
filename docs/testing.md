@@ -22,6 +22,14 @@ every migration on `node:sqlite`), with mail and GitHub caught by a stubbed `fet
   and close instances in `afterEach` so their timers never reach IndexedDB.
 - The fake network (`tests/p2p/fakeNetwork.ts`) delivers at once, but `Mesh` sends through a per-peer outbox: await
   `vi.advanceTimersByTimeAsync(...)` after a change before reading routes.
+- Busy links on the fake network: `fill`/`drain` hold every send to a peer until the buffer drains; `throttle(from, to,
+  everyMs)` sends one message every `everyMs`, in the order `send` was called (a congested data channel: what waits in
+  Mesh's outbox comes after what is in flight). Requests honor `timeoutMs` and reject with `kind: "timeout"`, like
+  Trystero.
+- Node health and partial outage: `tests/node/host.test.ts` ("node health and partial outage") covers uploads while
+  members join, an uploader that drops and comes back, a node that answers late, and the node's event-loop delay while
+  a folder is posted (it logs `[health]`). `tests/vendor/trysteroCore.test.ts` ("a node's link under load") does an
+  upload, a relayed burst and joins over real WebRTC and logs `[load]`: no peer may leave or be kicked.
 - Trystero keeps the first action of a name; a second `makeAction` with the same name gets the first one back. One
   owner per channel.
 - `fakeNetwork.ts` replaces Trystero, so races inside Trystero never show there. `tests/vendor/trysteroCore.test.ts`

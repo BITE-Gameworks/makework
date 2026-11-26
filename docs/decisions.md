@@ -294,3 +294,18 @@ exact one. Calls on a phone start with the front camera. Switching cameras while
 when the new one is busy, as phones open one camera at a time. Rejected: the WebView's list (cameras that never open,
 a choice lost at every launch) and opening each camera to test it (it lights the camera, takes about a second each,
 and can't run while a camera is on). Other platforms keep the browser's list and its device ids, which last.
+
+## 0037 A busy node is not a gone node
+
+A member knows a node is there by its answers to pings (`NodeLink`, every 5 s, silent after 15 s). Those answers waited
+in the per-peer outbox behind whatever the node relayed to that member, and the member's own pings waited behind its
+upload, so a node busy with a burst (members joining a call, a member uploading over a slow uplink) went silent for
+members that were still connected to it. They then showed uploads as waiting, left its calls all at once and joined
+again, and other nodes dropped its call bridges and sent it their whole file lists again: more load on a node already
+busy. Now pings, answers and hellos skip the outbox (`Mesh.channel` `urgent`; they still wait for the data channel
+like any send in flight), content moving with a node counts as an answer (`ContentStreams` `onActivity`), and a node
+that is silent but still connected stays a node: its calls keep their members while media works, and its return is
+no new meeting. Rejected: a second data channel for pings (Trystero has one per connection; a fork of its wire
+format for one signal), a longer silence before a node counts as gone (members would wait longer for a node that
+really died, the reason for 15 s), and answering pings from inside Trystero (the vendored core changes only for its
+own bugs).

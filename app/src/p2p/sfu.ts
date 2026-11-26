@@ -181,7 +181,7 @@ export class SfuLink {
     private readonly onRemote: (user: number, kind: MediaKind, stream: MediaStream | null) => void,
     private readonly credentials: () => SfuCredentials | null = accountCredentials,
     // Shorter waits, for tests.
-    private readonly timing: { joinRetryMs?: number; refusedRetryMs?: number; avoidMs?: number } = {},
+    private readonly timing: { joinRetryMs?: number; refusedRetryMs?: number; avoidMs?: number; askMs?: number } = {},
   ) {
     const room = sync.room;
     if (!room) return;
@@ -323,10 +323,19 @@ export class SfuLink {
     return [...(nodeLinkOf(this.workspaceId)?.onlineNodes().values() ?? [])].sort(compareText).join(",");
   }
 
+  // The node is gone: it failed, left the mesh, or is silent (no answer to pings for a while) and its media stopped
+  // too. A node that only answers late while its media works is kept: relaying the burst of a call's joins makes a
+  // node late, and every member leaving it at once makes that burst bigger.
   private nodeLost(): boolean {
     if (this.failed !== null || this.joined === null) return true;
-    const online = nodeLinkOf(this.workspaceId)?.onlineNodes() ?? new Map<number, string>();
-    return ![...online.values()].includes(this.joined);
+    const nodes = nodeLinkOf(this.workspaceId);
+    if (!nodes?.isNode(this.joined)) return true;
+    if ([...nodes.onlineNodes().values()].includes(this.joined)) return false;
+    return !this.mediaConnected();
+  }
+
+  private mediaConnected(): boolean {
+    return [this.send, this.recv].some((transport) => !!transport && this.connectedTransports.has(transport));
   }
 
   // A transport to the node connected: its media works, so the call can leave the mesh. One that failed: leave the
@@ -427,8 +436,11 @@ export class SfuLink {
       for (const user of users) {
         this.joining = reachable.get(user)!;
         this.known.clear();
-        const reply = await this.request?.request({ join: last ? { ...join, last } : join }, { target: this.joining, timeoutMs: askMs });
+        const reply = await this.request?.request({ join: last ? { ...join, last } : join }, { target: this.joining, timeoutMs: this.askMs() });
         log(call, `asked node ${user}${last ? " (last resort)" : ""}: ${!reply ? "no answer" : "serve" in reply ? (reply.serve ? "serves" : reply.reason) : "error" in reply ? reply.error : "?"}`);
+        // No answer in time: a busy node may still take the join, and would keep this member, a place in the call
+        // taken, until their connection closed. The leave comes after the join on the same ordered channel.
+        if (!reply) void this.request?.request({ leave: true }, { target: this.joining, timeoutMs: this.askMs() });
         if (reply && "serve" in reply && !reply.serve && reply.reason === "busy" && !last) busy.push(user);
         if (!reply || !("serve" in reply) || !reply.serve) continue;
         this.joined = this.joining;
@@ -446,9 +458,14 @@ export class SfuLink {
     return false;
   }
 
+  // How long a request to a node waits for its answer.
+  private askMs(): number {
+    return this.timing.askMs ?? askMs;
+  }
+
   private async hangUp(): Promise<void> {
     if (this.joined) {
-      void this.request?.request({ leave: true }, { target: this.joined, timeoutMs: askMs }).catch(() => {});
+      void this.request?.request({ leave: true }, { target: this.joined, timeoutMs: this.askMs() }).catch(() => {});
       this.joined = null;
     }
     this.tearDown();
@@ -538,7 +555,7 @@ export class SfuLink {
 
   private async ask(request: SfuRequest): Promise<SfuReply | null> {
     if (!this.request || !this.joined) return { ok: false, error: notInCall };
-    return this.request.request(request, { target: this.joined, timeoutMs: askMs });
+    return this.request.request(request, { target: this.joined, timeoutMs: this.askMs() });
   }
 
   // Sends what the streams say: a producer for each kind that is on, closed (or replaced) for one turned off. The

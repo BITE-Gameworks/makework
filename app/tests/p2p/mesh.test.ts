@@ -106,6 +106,42 @@ describe("mesh", () => {
     expect(texts().sort()).toEqual([...Array.from({ length: 300 }, (_, i) => `m${i}`), "to everyone"].sort());
   });
 
+  it("sends an urgent channel's messages ahead of the ones waiting in a peer's outbox", async () => {
+    const { network, a, b } = setup();
+    meshes = [a.mesh, b.mesh];
+    // Each answer with how many of the other messages had arrived before it.
+    const pongs: { n: number; after: number }[] = [];
+    const sendPong = a.mesh.channel<number>("pong", () => {}, { urgent: true });
+    b.mesh.channel<number>("pong", (n) => pongs.push({ n, after: b.got.length }), { urgent: true });
+    network.link("a", "b");
+    // A busy node: hundreds of messages for one member wait behind a full buffer, then its answer to a ping.
+    network.fill("a", "b");
+    for (let i = 0; i < 300; i++) a.send({ text: `m${i}` }, "b");
+    sendPong(1, "b");
+    // It waits for the buffer like any send in flight (Trystero), not behind the outbox.
+    expect(network.waiting("a", "b")).toBeLessThanOrEqual(17);
+    network.drain("a", "b");
+    await vi.waitFor(() => expect(b.got).toHaveLength(300));
+    expect(pongs).toHaveLength(1);
+    expect(pongs[0].after).toBeLessThanOrEqual(16);
+  });
+
+  it("relays an urgent channel's messages to a peer reached through another", () => {
+    const { network, a, b, c } = setup();
+    meshes = [a.mesh, b.mesh, c.mesh];
+    const got: { n: number; from: string }[] = [];
+    const sendPong = a.mesh.channel<number>("pong", () => {}, { urgent: true });
+    b.mesh.channel<number>("pong", () => {}, { urgent: true });
+    c.mesh.channel<number>("pong", (n, from) => got.push({ n, from }), { urgent: true });
+    network.link("a", "b");
+    network.link("b", "c");
+    c.mesh.noteFailure("a");
+    a.mesh.noteFailure("c");
+    expect(a.mesh.relayOf("c")).toBe("b");
+    sendPong(7, "c");
+    expect(got).toEqual([{ n: 7, from: "a" }]);
+  });
+
   it("reaches a member through another one when a direct connection fails", () => {
     const { network, a, b, c } = setup();
     meshes = [a.mesh, b.mesh, c.mesh];

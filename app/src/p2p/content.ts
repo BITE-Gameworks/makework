@@ -124,6 +124,8 @@ export class ContentLink implements ContentSync {
         },
         // Held back from the nodes; members who ask still get it.
         refuse: (hash, peer) => !!nodeLinkOf(workspaceId)?.isNode(peer) && this.readHeld().has(hash),
+        // An upload moving to a node says the node is there, though the upload holds back the pings to it.
+        onActivity: (peer) => nodeLinkOf(workspaceId)?.noteActive(peer),
         // A joiner (not a member yet) may fetch the workspace's snapshot state from here, nothing else.
         invitees: {
           may: (hash) => this.rows("members", "members_snapshots").some((row) => refHash(String(row.content ?? "")) === hash),
@@ -131,6 +133,8 @@ export class ContentLink implements ContentSync {
         },
       });
       this.cleanups.push(sync.onPeers(() => this.schedule(true), () => {}));
+      const streams = this.streams;
+      if (sync.mesh) this.cleanups.push(sync.mesh.onDirectPeers(() => {}, (peer) => streams.peerLeft(peer)));
     }
     this.cleanups.push(backend.subscribe((event) => {
       if (event.plugin === "channels" && event.table === "channels_plugins") this.refreshDeclaredPlugins();

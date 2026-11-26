@@ -197,11 +197,12 @@ export class NodeLink {
     setPeerState(workspaceId, {});
     const mesh = sync.mesh;
     if (!mesh) return;
-    this.sendHelloTo = mesh.channel<NodeHello>(nodeChannels.hello, (hello, peer) => void this.receiveHello(hello, peer));
+    // Hellos and pings say whether a node is there, so they skip the outbox a node fills relaying for its members.
+    this.sendHelloTo = mesh.channel<NodeHello>(nodeChannels.hello, (hello, peer) => void this.receiveHello(hello, peer), { urgent: true });
     this.sendPing = mesh.channel<NodePing>(nodeChannels.ping, (ping, peer) => {
       if (options.answerPings && !ping?.pong && typeof ping?.t === "number") this.sendPing?.({ t: ping.t, pong: true }, peer);
       else this.receivePong(ping, peer);
-    });
+    }, { urgent: true });
     this.sendHaveTo = mesh.channel<Have>(nodeChannels.have, (have, peer) => {
       this.receiveHave(peer, have);
       for (const handler of this.haveHandlers) handler(peer, have);
@@ -214,16 +215,15 @@ export class NodeLink {
     }
     this.cleanups.push(mesh.onPeers(() => {}, (peer) => {
       this.waiting.delete(peer);
-      this.silent.delete(peer);
       this.pinged.delete(peer);
       this.holdings.delete(peer);
       this.pieceHoldings.delete(peer);
       this.known.delete(peer);
-      this.forget(peer);
+      this.drop(peer);
     }));
     this.cleanups.push(ledger.subscribe((event) => {
       if (event.plugin !== "nodes") return;
-      for (const peer of [...this.peers.keys()]) if (!this.authorized(this.peers.get(peer)!.user)) this.forget(peer);
+      for (const [peer, node] of [...this.peers, ...this.silent]) if (!this.authorized(node.user)) this.drop(peer);
       for (const [peer, hello] of [...this.waiting]) {
         this.waiting.delete(peer);
         void this.receiveHello(hello, peer);
@@ -297,7 +297,9 @@ export class NodeLink {
     return () => this.haveHandlers.delete(handler);
   }
 
-  // Called when a peer turns out to be a node (its user id) or stops being one (null).
+  // Called when a peer turns out to be a node (its user id) or stops being one (null: it left, or lost its
+  // authorization). Not for a node going silent and answering again: it stays connected meanwhile, and what it sends
+  // on its reliable channel still arrives, only late.
   onNodes(handler: (peer: string, user: number | null) => void): () => void {
     this.nodeHandlers.add(handler);
     return () => this.nodeHandlers.delete(handler);
@@ -326,7 +328,7 @@ export class NodeLink {
       return;
     }
     if (!(await verifySigned({ x: row.key_x, y: row.key_y }, helloText(this.workspaceId, peer, hello.time), hello.sig))) return;
-    const known = this.peers.get(peer);
+    const known = this.peers.get(peer) ?? this.silent.get(peer);
     this.silent.delete(peer);
     this.heard.set(peer, performance.now());
     this.peers.set(peer, { user: row.user_id, rtt: known?.rtt ?? null, app: validVersion(hello.app) ? hello.app : known?.app ?? null });
@@ -337,17 +339,36 @@ export class NodeLink {
     }
   }
 
-  // Pings the nodes reached; one that hasn't answered for `deadAfterMs` is forgotten until its next hello.
+  // Pings the nodes reached; one that hasn't answered (or sent content) for `deadAfterMs` goes silent: it stops
+  // counting as reached until it answers again.
   private pingAll() {
     const now = performance.now();
     for (const [peer, node] of [...this.peers]) {
       if (now - (this.heard.get(peer) ?? now) > (this.options.deadAfterMs ?? deadAfterMs)) {
-        this.forget(peer);
+        this.peers.delete(peer);
+        this.heard.delete(peer);
         this.silent.set(peer, node);
+        this.publish();
       }
       this.ping(peer);
     }
     for (const peer of this.silent.keys()) this.ping(peer);
+  }
+
+  // Content moving to or from a node (ContentStreams `onActivity`) says it is there as well as an answer to a ping:
+  // an upload filling a slow uplink holds the pings back, and the node is still taking it in.
+  noteActive(peer: string): void {
+    this.wake(peer);
+    if (this.peers.has(peer)) this.heard.set(peer, performance.now());
+  }
+
+  // A silent node that showed it is there counts as reached again.
+  private wake(peer: string) {
+    const quiet = this.silent.get(peer);
+    if (!quiet) return;
+    this.silent.delete(peer);
+    this.peers.set(peer, quiet);
+    this.publish();
   }
 
   private ping(peer: string) {
@@ -362,13 +383,7 @@ export class NodeLink {
   private receivePong(ping: NodePing, peer: string) {
     const last = this.pinged.get(peer);
     const ours = !!ping?.pong && typeof ping.t === "number" && last !== undefined && ping.t <= last;
-    const quiet = this.silent.get(peer);
-    if (quiet && ours) {
-      this.silent.delete(peer);
-      this.peers.set(peer, quiet);
-      this.publish();
-      this.nodeHandlers.forEach((handler) => handler(peer, quiet.user));
-    }
+    if (ours) this.wake(peer);
     const node = this.peers.get(peer);
     if (!ours || !node) return;
     const rtt = performance.now() - ping.t;
@@ -377,9 +392,12 @@ export class NodeLink {
     this.publish();
   }
 
-  private forget(peer: string) {
-    if (!this.peers.delete(peer)) return;
+  // A node left (or lost its authorization), reached or silent: no longer a node until its next hello.
+  private drop(peer: string) {
+    const was = this.peers.delete(peer);
+    const quiet = this.silent.delete(peer);
     this.heard.delete(peer);
+    if (!was && !quiet) return;
     this.publish();
     this.nodeHandlers.forEach((handler) => handler(peer, null));
   }
